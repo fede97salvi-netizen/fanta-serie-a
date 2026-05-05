@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <span class="page-title">Classifica</span>
+  <span class="page-subtitle">generale</span>
+</div>
+<div class="fsa-section" style="padding-top:8px;">
+  {% for utente in classifica %}
+  <div style="display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);gap:12px;{% if utente.nome_utente == session.nome_utente %}background:rgba(0,144,212,0.08);border-left:3px solid var(--azzurro);padding-left:10px;border-radius:0 8px 8px 0;{% endif %}">
+    <div style="font-family:var(--font-d);font-size:20px;font-weight:700;width:32px;text-align:center;
+      {% if loop.index == 1 %}color:var(--gold);{% elif loop.index == 2 %}color:#b0bec5;{% elif loop.index == 3 %}color:#a1887f;{% else %}color:var(--muted);{% endif %}">
+      {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+    </div>
+    <div style="flex:1;font-size:15px;font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};color:var(--text);">
+      {{ utente.nome_utente }}
+      {% if utente.nome_utente == session.nome_utente %}<span style="font-size:11px;color:var(--azzurro);margin-left:4px;">✦ tu</span>{% endif %}
+    </div>
+    <div style="font-family:var(--font-d);font-size:22px;font-weight:700;color:white;">{{ utente.punteggio_totale }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

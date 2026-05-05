@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Gestione</span><span class="page-subtitle">utenti</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  <div class="fsa-card" style="padding:0;">
+    <table class="fsa-table">
+      <thead><tr><th style="padding-left:14px;">ID</th><th>Utente</th><th>Azioni</th></tr></thead>
+      <tbody>
+        {% for utente in utenti %}
+        <tr>
+          <td style="padding-left:14px;color:var(--muted);">{{ utente.id }}</td>
+          <td><strong>{{ utente.nome_utente }}</strong>{% if utente.is_temp_password %} <span class="badge badge-locked" style="font-size:10px;">temp</span>{% endif %}</td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <a href="{{ url_for('admin_resetta_password', id_utente=utente.id) }}" class="btn-warning" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</a>
+              {% if utente.nome_utente != 'mirko' %}
+              <a href="{{ url_for('admin_elimina_utente', id_utente=utente.id) }}" class="btn-danger" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

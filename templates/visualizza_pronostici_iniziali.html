@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  {% if pronostico %}
+  <div class="fsa-card">
+    {% for i in range(1,5) %}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;color:var(--muted);">{{ i }}° Classificato</span>
+      <strong>{{ pronostico['squadra_' ~ i] }}</strong>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;">
+      <span style="font-size:13px;color:var(--muted);">Capocannoniere</span>
+      <strong>{{ pronostico.capocannoniere }}</strong>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info">Nessun pronostico iniziale inserito.</div>
+  {% endif %}
+</div>
+{% endblock %}

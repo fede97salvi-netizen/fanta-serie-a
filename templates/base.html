@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1628">
+  <title>FantaSerieA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1a6b2e; --green-light: #2d8a45; --green-dark: #0f4a1e;
+      --blue: #003f8a; --blue-mid: #1565c0; --azzurro: #0090d4;
+      --red: #c62828; --gold: #f5a623;
+      --bg: #0a1628; --card: #111d33; --card2: #162040;
+      --border: rgba(255,255,255,0.08); --text: #e8edf5; --muted: #7a8ba8;
+      --font-d: 'Barlow Condensed', sans-serif; --font-b: 'Barlow', sans-serif;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: var(--font-b); font-size: 15px; line-height: 1.5; min-height: 100vh; }
+    .fsa-nav { background: linear-gradient(135deg, var(--blue) 0%, var(--green-dark) 100%); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--azzurro); position: sticky; top: 0; z-index: 100; }
+    .fsa-brand { font-family: var(--font-d); font-size: 22px; font-weight: 700; letter-spacing: 1px; color: white; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .fsa-brand-icon { width: 28px; height: 28px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .fsa-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--azzurro); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; text-decoration: none; }
+    .fsa-nav-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+    main { padding-bottom: 84px; }
+    .fsa-tab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 16px; z-index: 100; }
+    .fsa-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 16px; border-radius: 10px; position: relative; }
+    .fsa-tab.active { background: rgba(0,144,212,0.15); }
+    .fsa-tab-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+    .fsa-tab.active .fsa-tab-icon { color: var(--azzurro); }
+    .fsa-tab-label { font-size: 10px; font-weight: 500; color: var(--muted); }
+    .fsa-tab.active .fsa-tab-label { color: var(--azzurro); }
+    .fsa-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+    .fsa-section { padding: 16px; }
+    .fsa-section-title { font-family: var(--font-d); font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .fsa-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, var(--blue-mid) 0%, var(--azzurro) 100%); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; font-family: var(--font-b); cursor: pointer; text-decoration: none; transition: opacity 0.15s; }
+    .btn-primary:active { opacity: 0.85; }
+    .btn-success { display: block; width: 100%; background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%); color: white; border: none; border-radius: 12px; padding: 14px; font-size: 18px; font-weight: 700; font-family: var(--font-d); letter-spacing: 1px; cursor: pointer; text-align: center; text-decoration: none; transition: opacity 0.15s; }
+    .btn-success:active { opacity: 0.85; }
+    .btn-secondary { display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--azzurro); border: 1px solid var(--azzurro); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; font-family: var(--font-b); cursor: pointer; text-decoration: none; }
+    .btn-danger { display: inline-flex; align-items: center; justify-content: center; background: rgba(198,40,40,0.2); color: #ef5350; border: 1px solid rgba(239,83,80,0.4); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: var(--font-b); cursor: pointer; text-decoration: none; }
+    .btn-warning { display: inline-flex; align-items: center; justify-content: center; background: rgba(245,166,35,0.15); color: #ffb74d; border: 1px solid rgba(245,166,35,0.3); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: var(--font-b); cursor: pointer; text-decoration: none; }
+    .alert { border-radius: 10px; padding: 12px 16px; font-size: 14px; margin-bottom: 12px; }
+    .alert-success { background: rgba(26,107,46,0.25); border: 1px solid rgba(76,175,80,0.35); color: #81c784; }
+    .alert-warning { background: rgba(245,166,35,0.15); border: 1px solid rgba(245,166,35,0.3); color: #ffb74d; }
+    .alert-danger { background: rgba(198,40,40,0.2); border: 1px solid rgba(239,83,80,0.3); color: #ef9a9a; }
+    .alert-info { background: rgba(0,144,212,0.15); border: 1px solid rgba(0,144,212,0.3); color: #81d4fa; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+    .form-control { width: 100%; height: 46px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font-b); font-size: 15px; padding: 0 14px; outline: none; transition: border-color 0.15s; }
+    .form-control:focus { border-color: var(--azzurro); }
+    .form-select { width: 100%; height: 46px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font-b); font-size: 14px; padding: 0 14px; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8ba8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; transition: border-color 0.15s; }
+    .form-select:focus { border-color: var(--azzurro); }
+    .form-select option, .form-select optgroup { background: #1a2840; color: var(--text); }
+    .fsa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .fsa-table th { font-family: var(--font-d); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    .fsa-table td { padding: 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    .fsa-table tr:last-child td { border-bottom: none; }
+    .fsa-table tr.highlight-row td { background: rgba(0,144,212,0.08); }
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-open { background: rgba(26,107,46,0.3); color: #4caf50; border: 1px solid rgba(76,175,80,0.3); }
+    .badge-locked { background: rgba(198,40,40,0.25); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+    .badge-saved { background: rgba(0,144,212,0.2); color: var(--azzurro); border: 1px solid rgba(0,144,212,0.3); }
+    .badge-archived { background: rgba(122,139,168,0.15); color: var(--muted); border: 1px solid var(--border); }
+    .rank-1 { color: var(--gold); } .rank-2 { color: #b0bec5; } .rank-3 { color: #a1887f; }
+    .admin-nav { background: rgba(198,40,40,0.12); border-bottom: 1px solid rgba(239,83,80,0.2); padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .admin-nav a { color: #ef9a9a; font-size: 12px; font-weight: 500; text-decoration: none; padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(239,83,80,0.2); }
+    .page-header { padding: 20px 16px 4px; display: flex; align-items: baseline; gap: 10px; }
+    .page-title { font-family: var(--font-d); font-size: 24px; font-weight: 700; color: white; }
+    .page-subtitle { font-family: var(--font-d); font-size: 16px; color: var(--azzurro); font-weight: 600; }
+    .text-muted { color: var(--muted); } .text-center { text-align: center; }
+    .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; }
+    .p-16 { padding: 16px; } .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; } .gap-2 { gap: 8px; } .w-full { width: 100%; }
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+    .overflow-x { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <nav class="fsa-nav">
+    <a class="fsa-brand" href="{{ url_for('home') }}">
+      <div class="fsa-brand-icon">🏆</div>
+      FantaSerieA
+    </a>
+    <div>
+      {% if 'nome_utente' in session %}
+        <a class="fsa-avatar" href="{{ url_for('home') }}" title="{{ session.nome_utente }}">{{ session.nome_utente[:2].upper() }}</a>
+      {% else %}
+        <a class="fsa-nav-link" href="{{ url_for('login') }}">Accedi</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  {% if 'nome_utente' in session and session.nome_utente == 'mirko' and request.endpoint and request.endpoint.startswith('admin') %}
+  <div class="admin-nav">
+    <a href="{{ url_for('admin_home') }}">⚡ Dashboard</a>
+    <a href="{{ url_for('admin_gestisci_partite') }}">Partite</a>
+    <a href="{{ url_for('admin_utenti') }}">Utenti</a>
+    <a href="{{ url_for('admin_gestisci_pronostici_iniziali') }}">Pronostici Iniziali</a>
+    <a href="{{ url_for('admin_gestisci_finalizzazione') }}">Finalizzazione</a>
+    <a href="{{ url_for('home') }}">← Esci da Admin</a>
+  </div>
+  {% endif %}
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="padding: 12px 16px 0">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'info' if category == 'message' else category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if 'nome_utente' in session %}
+  <div class="fsa-tab-bar">
+    <a href="{{ url_for('home') }}" class="fsa-tab {% if request.endpoint == 'home' %}active{% endif %}">
+      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10V17H13V13H7V17H3V10Z" fill="currentColor"/></svg></div>
+      <div class="fsa-tab-label">Home</div>
+    </a>
+    <a href="{% if giornata_attiva %}{{ url_for('pronostici_giornata', giornata=giornata_attiva) }}{% else %}#{% endif %}" class="fsa-tab {% if request.endpoint == 'pronostici_giornata' %}active{% endif %}">
+      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7 10H13M10 7V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="fsa-tab-label">Pronostici</div>
+    </a>
+    <a href="{{ url_for('classifica') }}" class="fsa-tab {% if request.endpoint == 'classifica' %}active{% endif %}">
+      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="12" width="4" height="6" rx="1" fill="currentColor" opacity="0.5"/><rect x="8" y="8" width="4" height="10" rx="1" fill="currentColor" opacity="0.7"/><rect x="14" y="4" width="4" height="14" rx="1" fill="currentColor"/></svg></div>
+      <div class="fsa-tab-label">Classifica</div>
+    </a>
+    <a href="{{ url_for('archivio_giornate') }}" class="fsa-tab {% if request.endpoint == 'archivio_giornate' or request.endpoint == 'visualizza_giornata' %}active{% endif %}">
+      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5H17V8H3V5Z" fill="currentColor" opacity="0.6"/><path d="M4 8H16V16H4V8Z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M8 11H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="fsa-tab-label">Archivio</div>
+    </a>
+  </div>
+  {% endif %}
+</body>
+</html>

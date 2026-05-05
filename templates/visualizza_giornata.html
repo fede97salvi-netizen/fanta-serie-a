@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Giornata</span><span class="page-subtitle">{{ giornata }}</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  <div class="fsa-section-title">Risultati reali</div>
+  {% for partita in partite %}
+  <div class="fsa-card" style="margin-bottom:10px;padding:14px 16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">{{ partita.squadra_casa }}</div>
+      <div style="font-family:var(--font-d);font-size:24px;font-weight:700;color:white;padding:0 12px;">{{ partita.risultato_casa_reale }} – {{ partita.risultato_ospite_reale }}</div>
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">{{ partita.squadra_ospite }}</div>
+    </div>
+    {% if partita.marcatore_reale %}<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px;">⚽ {{ partita.marcatore_reale }}</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="fsa-section-title" style="margin-top:8px;">Classifica di giornata</div>
+  <div class="fsa-card" style="padding:0;">
+    <div class="overflow-x">
+      <table class="fsa-table">
+        <thead>
+          <tr>
+            <th style="padding-left:14px;">Pos.</th>
+            <th>Utente</th>
+            <th>Punti</th>
+            {% for partita in partite %}<th style="text-align:center;">{{ partita.squadra_casa[:3] }}-{{ partita.squadra_ospite[:3] }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for utente in classifica %}
+          <tr {% if utente.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
+            <td style="padding-left:14px;">
+              <span style="font-family:var(--font-d);font-size:17px;font-weight:700;{% if loop.index==1 %}color:var(--gold);{% elif loop.index==2 %}color:#b0bec5;{% elif loop.index==3 %}color:#a1887f;{% else %}color:var(--muted);{% endif %}">{{ loop.index }}</span>
+            </td>
+            <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};">{{ utente.nome_utente }}</td>
+            <td><strong style="font-family:var(--font-d);font-size:18px;">{{ utente.punti_totali }}</strong></td>
+            {% for partita in partite %}
+              {% set d = utente.punti_per_partita[partita.id] %}
+              <td style="text-align:center;font-family:var(--font-d);font-size:16px;font-weight:700;{% if d.totale > 0 %}color:var(--azzurro);{% else %}color:var(--muted);{% endif %}" title="Esito:+{{ d.esito }} Risultato:+{{ d.risultato }} Marcatore:+{{ d.marcatore }} Bonus:+{{ d.bonus }}">{{ d.totale }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div style="margin-top:16px;"><a href="{{ url_for('archivio_giornate') }}" class="btn-secondary">← Torna all'archivio</a></div>
+</div>
+{% endblock %}

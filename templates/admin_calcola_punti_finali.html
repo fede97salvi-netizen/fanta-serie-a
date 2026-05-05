@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Punteggi</span><span class="page-subtitle">finali stagione</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  {% if messaggio %}<div class="alert alert-success">{{ messaggio }}</div>{% endif %}
+  <div class="fsa-card">
+    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Risultati reali fine stagione</div>
+    <form method="post" action="{{ url_for('admin_calcola_punti_finali') }}">
+      {% for i in range(1,5) %}
+      <div class="form-group">
+        <label class="form-label">{{ i }}° Classificato reale</label>
+        <input type="text" name="squadra_{{ i }}" class="form-control" value="{{ risultati_finali['squadra_' ~ i] if risultati_finali and risultati_finali['squadra_' ~ i] else '' }}" required placeholder="Nome squadra">
+      </div>
+      {% endfor %}
+      <div class="form-group">
+        <label class="form-label">Capocannoniere reale</label>
+        <input type="text" name="capocannoniere" class="form-control" value="{{ risultati_finali.capocannoniere if risultati_finali and risultati_finali.capocannoniere else '' }}" required placeholder="Nome giocatore">
+      </div>
+      <button type="submit" class="btn-success" onclick="return confirm('Calcolare i punteggi finali? Questo aggiornerà la classifica.')">Calcola punteggi finali</button>
+    </form>
+  </div>
+  <a href="{{ url_for('admin_home') }}" class="btn-secondary" style="margin-top:8px;">← Dashboard</a>
+</div>
+{% endblock %}

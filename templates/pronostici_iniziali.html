@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Pronostici</span><span class="page-subtitle">iniziali</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  {% if is_locked %}
+    <div class="alert alert-info">🔒 Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div>
+    <div class="fsa-card">
+      <div class="overflow-x">
+        <table class="fsa-table">
+          <thead><tr><th>Utente</th><th>1°</th><th>2°</th><th>3°</th><th>4°</th><th>Capocannoniere</th></tr></thead>
+          <tbody>
+            {% for p in pronostici_tutti %}
+            <tr {% if p.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
+              <td><strong>{{ p.nome_utente }}</strong>{% if p.nome_utente == session.nome_utente %} <span style="font-size:11px;color:var(--azzurro);">✦</span>{% endif %}</td>
+              <td>{{ p.squadra_1 }}</td><td>{{ p.squadra_2 }}</td><td>{{ p.squadra_3 }}</td><td>{{ p.squadra_4 }}</td>
+              <td>{{ p.capocannoniere }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Nessun pronostico inserito.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info">Inserisci i tuoi pronostici per la classifica finale. Potrai modificarli finché l'admin non blocca le scommesse.</div>
+    <div class="fsa-card">
+      <form action="{{ url_for('pronostici_iniziali') }}" method="post">
+        {% for i in range(1,5) %}
+        <div class="form-group">
+          <label class="form-label">{{ i }}° Classificato</label>
+          <input type="text" class="form-control" name="squadra_{{ i }}" value="{{ pronostico['squadra_' ~ i] if pronostico else '' }}" placeholder="Nome squadra" required>
+        </div>
+        {% endfor %}
+        <div class="form-group">
+          <label class="form-label">Capocannoniere</label>
+          <input type="text" class="form-control" name="capocannoniere" value="{{ pronostico.capocannoniere if pronostico else '' }}" placeholder="Nome giocatore" required>
+        </div>
+        <button type="submit" class="btn-success">Salva pronostici</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

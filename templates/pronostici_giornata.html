@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <span class="page-title">Pronostici</span>
+  <span class="page-subtitle">Giornata {{ giornata }}</span>
+</div>
+
+<div style="padding: 0 16px 8px; display:flex; gap:6px; overflow-x:auto;">
+  {% set ns = namespace(completate=0, aperte=0) %}
+  {% for partita in partite %}
+    {% set is_scaduta = scadenze.get(partita.id, False) %}
+    {% set p = pronostici_per_partita.get(partita.id) %}
+    {% if is_scaduta %}{% set ns.completate = ns.completate + 1 %}{% elif p and p.esito_pronosticato %}{% set ns.completate = ns.completate + 1 %}{% else %}{% set ns.aperte = ns.aperte + 1 %}{% endif %}
+  {% endfor %}
+  <div style="white-space:nowrap;padding:5px 14px;border-radius:20px;background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;">Tutte ({{ partite|length }})</div>
+  {% if ns.completate > 0 %}<div style="white-space:nowrap;padding:5px 14px;border-radius:20px;background:rgba(0,144,212,0.15);border:1px solid rgba(0,144,212,0.3);color:var(--azzurro);font-size:12px;font-weight:500;">✓ Salvate ({{ ns.completate }})</div>{% endif %}
+  {% if ns.aperte > 0 %}<div style="white-space:nowrap;padding:5px 14px;border-radius:20px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.25);color:#ffb74d;font-size:12px;font-weight:500;">⏳ Da compilare ({{ ns.aperte }})</div>{% endif %}
+</div>
+
+{% if messaggio %}
+  <div style="padding:0 16px 4px;"><div class="alert alert-success">✓ {{ messaggio }}</div></div>
+{% endif %}
+
+<form action="{{ url_for('pronostici_giornata', giornata=giornata) }}" method="post">
+  <div style="padding:0 16px;">
+  {% for partita in partite %}
+    {% set pronostico_salvato = pronostici_per_partita.get(partita.id) %}
+    {% set is_scaduta = scadenze.get(partita.id, False) %}
+    <div class="fsa-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--azzurro);font-weight:500;">{{ partita.data_ora_partita | fuso_orario_italia }}</div>
+        {% if is_scaduta %}
+          <span class="badge badge-locked">🔒 Chiusa</span>
+        {% elif pronostico_salvato and pronostico_salvato.esito_pronosticato %}
+          <span class="badge badge-saved">✓ Salvato</span>
+        {% else %}
+          <span class="badge badge-open">Aperta</span>
+        {% endif %}
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:11px;font-weight:700;color:var(--muted);">{{ partita.squadra_casa[:3] }}</div>
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:600;letter-spacing:0.5px;text-align:center;">{{ partita.squadra_casa }}</div>
+        </div>
+        <div style="font-family:var(--font-d);font-size:22px;font-weight:700;color:var(--muted);padding:0 10px;">vs</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:11px;font-weight:700;color:var(--muted);">{{ partita.squadra_ospite[:3] }}</div>
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:600;letter-spacing:0.5px;text-align:center;">{{ partita.squadra_ospite }}</div>
+        </div>
+      </div>
+
+      {% if is_scaduta %}
+        <div style="background:rgba(0,144,212,0.08);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;font-weight:600;">Il tuo pronostico</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div><span style="font-size:11px;color:var(--muted);">Esito </span><strong style="font-family:var(--font-d);font-size:18px;color:var(--azzurro);">{{ pronostico_salvato.esito_pronosticato if pronostico_salvato else 'N/D' }}</strong></div>
+            <div><span style="font-size:11px;color:var(--muted);">Risultato </span><strong style="font-family:var(--font-d);font-size:18px;">{% if pronostico_salvato and pronostico_salvato.risultato_casa_pronosticato is not none %}{{ pronostico_salvato.risultato_casa_pronosticato }}–{{ pronostico_salvato.risultato_ospite_pronosticato }}{% else %}N/D{% endif %}</strong></div>
+            <div><span style="font-size:11px;color:var(--muted);">Marcatore </span><strong style="font-size:13px;">{{ pronostico_salvato.marcatore_pronosticato if pronostico_salvato and pronostico_salvato.marcatore_pronosticato else 'N/D' }}</strong></div>
+          </div>
+        </div>
+        {% if pronostici_altri_utenti.get(partita.id) %}
+          <div style="margin-top:14px;">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Pronostici degli altri</div>
+            <div class="overflow-x">
+              <table class="fsa-table">
+                <thead><tr><th>Utente</th><th>Esito</th><th>Risultato</th><th>Marcatore</th></tr></thead>
+                <tbody>
+                  {% for p in pronostici_altri_utenti[partita.id] %}
+                  <tr>
+                    <td style="font-weight:500;">{{ p.nome_utente }}</td>
+                    <td><strong style="font-family:var(--font-d);font-size:16px;color:var(--azzurro);">{{ p.esito_pronosticato | default('–') }}</strong></td>
+                    <td style="font-family:var(--font-d);font-size:14px;">{% if p.risultato_casa_pronosticato is not none %}{{ p.risultato_casa_pronosticato }}–{{ p.risultato_ospite_pronosticato }}{% else %}–{% endif %}</td>
+                    <td style="font-size:12px;">{{ p.marcatore_pronosticato | default('–', true) }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+      {% else %}
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Esito</div>
+            <div style="display:flex;gap:5px;">
+              {% for esito in ['1','X','2'] %}
+              <label style="flex:1;cursor:pointer;">
+                <input type="radio" name="esito_{{ partita.id }}" value="{{ esito }}" {% if pronostico_salvato and pronostico_salvato.esito_pronosticato == esito %}checked{% endif %} style="display:none;" class="esito-radio">
+                <div class="esito-btn {% if pronostico_salvato and pronostico_salvato.esito_pronosticato == esito %}selected{% endif %}" style="width:100%;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--font-d);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">{{ esito }}</div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Gol Casa</div>
+            <input type="number" name="risultato_casa_{{ partita.id }}" class="form-control" style="height:40px;text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;padding:0 8px;" min="0" max="20" value="{{ pronostico_salvato.risultato_casa_pronosticato if pronostico_salvato and pronostico_salvato.risultato_casa_pronosticato is not none else '' }}" placeholder="–">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Gol Ospite</div>
+            <input type="number" name="risultato_ospite_{{ partita.id }}" class="form-control" style="height:40px;text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;padding:0 8px;" min="0" max="20" value="{{ pronostico_salvato.risultato_ospite_pronosticato if pronostico_salvato and pronostico_salvato.risultato_ospite_pronosticato is not none else '' }}" placeholder="–">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Marcatore</div>
+          <select name="marcatore_{{ partita.id }}" class="form-select">
+            <option value="">Scegli un marcatore...</option>
+            <option value="Nessun Marcatore" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == 'Nessun Marcatore' %}selected{% endif %}>— Nessun marcatore (0-0) —</option>
+            <option value="Autogol" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == 'Autogol' %}selected{% endif %}>— Autogol —</option>
+            {% set lista_giocatori = giocatori_per_partita.get(partita.id, []) %}
+            {% if lista_giocatori %}
+              <optgroup label="{{ partita.squadra_casa }}">
+                {% for g in lista_giocatori %}{% if g.squadra|upper == partita.squadra_casa|upper %}<option value="{{ g.nome_giocatore }}" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }}</option>{% endif %}{% endfor %}
+              </optgroup>
+              <optgroup label="{{ partita.squadra_ospite }}">
+                {% for g in lista_giocatori %}{% if g.squadra|upper == partita.squadra_ospite|upper %}<option value="{{ g.nome_giocatore }}" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }}</option>{% endif %}{% endfor %}
+              </optgroup>
+            {% endif %}
+          </select>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+  <div style="padding:4px 16px 16px;">
+    <button type="submit" class="btn-success">SALVA PRONOSTICI</button>
+  </div>
+</form>
+
+<style>
+  input[type="radio"].esito-radio:checked + .esito-btn,
+  .esito-btn.selected { background: var(--blue-mid) !important; border-color: var(--azzurro) !important; color: white !important; }
+  label:has(.esito-radio:checked) .esito-btn { background: var(--blue-mid); border-color: var(--azzurro); color: white; }
+</style>
+{% endblock %}

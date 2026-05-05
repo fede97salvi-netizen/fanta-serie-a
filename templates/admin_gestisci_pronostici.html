@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Pronostici</span><span class="page-subtitle">giornata {{ giornata }}</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  {% for partita in partite %}
+  <div class="fsa-section-title">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>
+  <div class="fsa-card" style="padding:0;margin-bottom:16px;">
+    <div class="overflow-x">
+      <table class="fsa-table">
+        <thead><tr><th style="padding-left:14px;">Utente</th><th>Esito</th><th>Risultato</th><th>Marcatore</th></tr></thead>
+        <tbody>
+          {% for p in pronostici_per_partita.get(partita.id, []) %}
+          <tr>
+            <td style="padding-left:14px;font-weight:500;">{{ p.nome_utente }}</td>
+            <td><strong style="font-family:var(--font-d);font-size:18px;color:var(--azzurro);">{{ p.esito_pronosticato or '–' }}</strong></td>
+            <td style="font-family:var(--font-d);font-size:15px;">{% if p.risultato_casa_pronosticato is not none %}{{ p.risultato_casa_pronosticato }}–{{ p.risultato_ospite_pronosticato }}{% else %}–{% endif %}</td>
+            <td style="font-size:12px;">{{ p.marcatore_pronosticato or '–' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;">Nessun pronostico inserito.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  <a href="{{ url_for('admin_home') }}" class="btn-secondary">← Dashboard</a>
+</div>
+{% endblock %}

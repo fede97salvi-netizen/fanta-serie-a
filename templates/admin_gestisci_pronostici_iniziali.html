@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Pronostici</span><span class="page-subtitle">iniziali</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    {% if is_locked %}
+    <form method="post" action="{{ url_for('admin_sblocca_pronostici_iniziali') }}">
+      <button type="submit" class="btn-secondary">🔓 Sblocca modifiche</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('admin_blocca_pronostici_iniziali') }}">
+      <button type="submit" class="btn-danger">🔒 Blocca modifiche</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('admin_home') }}" class="btn-secondary">← Dashboard</a>
+  </div>
+  <div class="fsa-card" style="padding:0;">
+    <div class="overflow-x">
+      <table class="fsa-table">
+        <thead><tr><th style="padding-left:14px;">Utente</th><th>1°</th><th>2°</th><th>3°</th><th>4°</th><th>Capocannoniere</th><th>Azioni</th></tr></thead>
+        <tbody>
+          {% for p in pronostici %}
+          <tr>
+            <td style="padding-left:14px;"><strong>{{ p.nome_utente }}</strong></td>
+            <td>{{ p.squadra_1 }}</td><td>{{ p.squadra_2 }}</td><td>{{ p.squadra_3 }}</td><td>{{ p.squadra_4 }}</td>
+            <td>{{ p.capocannoniere }}</td>
+            <td>
+              <a href="{{ url_for('admin_elimina_pronostico_iniziale', id_pronostico=p.id) }}" class="btn-danger" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Eliminare?')">Elimina</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">Nessun pronostico iniziale.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
