@@ -802,6 +802,35 @@ def admin_importa_risultati(giornata):
         flash(f"Errore durante l importazione: {str(e)}", "danger")
     return redirect(url_for("admin_home"))
 
+@app.route("/admin/invia-reminder/<int:giornata>", methods=["POST"])
+def admin_invia_reminder(giornata):
+    if require_admin(): return "Accesso negato.", 403
+    try:
+        conn = get_db_connection()
+        partite = db_fetchall(conn,
+            "SELECT squadra_casa, squadra_ospite, data_ora_partita FROM partite WHERE giornata = ? AND pronosticabile = TRUE",
+            (giornata,))
+        utenti_email = db_fetchall(conn,
+            "SELECT email FROM utenti WHERE email IS NOT NULL AND email != ''")
+        conn.close()
+        destinatari = [row_get(u, 'email') for u in utenti_email if row_get(u, 'email')]
+        if not destinatari:
+            flash("Nessun utente con email registrata.", "warning")
+            return redirect(url_for('admin_home'))
+        partite_list = [{'squadra_casa': row_get(p, 'squadra_casa'),
+                         'squadra_ospite': row_get(p, 'squadra_ospite'),
+                         'data_ora_partita': row_get(p, 'data_ora_partita')} for p in partite]
+        html = build_email_giornata(giornata, partite_list)
+        oggetto = f"⚽ FantaSerieA — Reminder Giornata {giornata}: inserisci i pronostici!"
+        successi, errori_email = invia_email(destinatari, oggetto, html)
+        msg = f"Reminder inviato a {successi}/{len(destinatari)} utenti."
+        if errori_email:
+            msg += f" Errori: {'; '.join(errori_email[:2])}"
+        flash(msg, "success" if not errori_email else "warning")
+    except Exception as e:
+        flash(f"Errore invio reminder: {str(e)}", "danger")
+    return redirect(url_for('admin_home'))
+
 @app.route("/admin/importa-giornata", methods=["GET", "POST"])
 def admin_importa_giornata():
     if require_admin(): return "Accesso negato.", 403

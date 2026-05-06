@@ -26,6 +26,12 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <a href="{{ url_for('admin_gestisci_partite') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;">Gestisci partite</a>
       <a href="{{ url_for('admin_gestisci_pronostici', giornata=g) }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;">Vedi pronostici</a>
+      <form method="post" action="{{ url_for('admin_invia_reminder', giornata=g) }}" style="display:inline;">
+        <button type="submit" class="btn-primary" style="font-size:12px;padding:6px 12px;"
+          onclick="return confirm('Inviare email di reminder a tutti gli utenti per la giornata {{ g }}?')">
+          📧 Invia reminder
+        </button>
+      </form>
       <a href="{{ url_for('archivia_giornata', giornata=g) }}" class="btn-danger" style="font-size:12px;padding:6px 12px;" onclick="return confirm('Archiviare la giornata {{ g }}?')">Archivia giornata</a>
     </div>
   </div>
@@ -138,6 +144,10 @@
     <a href="{{ url_for('admin_gestisci_finalizzazione') }}" class="fsa-card" style="text-decoration:none;text-align:center;padding:18px 10px;">
       <div style="font-size:24px;margin-bottom:6px;">🏁</div>
       <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">Finalizzazione</div>
+    </a>
+    <a href="{{ url_for('admin_gestisci_email') }}" class="fsa-card" style="text-decoration:none;text-align:center;padding:18px 10px;">
+      <div style="font-size:24px;margin-bottom:6px;">📧</div>
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">Email utenti</div>
     </a>
     <a href="{{ url_for('calcola_punteggi') }}" class="fsa-card" style="text-decoration:none;text-align:center;padding:18px 10px;"
       onclick="return confirm('Ricalcolare tutti i punteggi?')">
