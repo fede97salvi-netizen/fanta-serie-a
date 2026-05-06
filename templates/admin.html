@@ -15,23 +15,23 @@
   <div class="fsa-card" style="border-left:3px solid var(--green-light);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div>
-        <div style="font-family:var(--font-d);font-size:22px;font-weight:700;">Giornata {{ giornata_attiva.giornata }}</div>
+        <div style="font-family:var(--font-d);font-size:22px;font-weight:700;">Giornata {{ giornata_attiva['giornata'] }}</div>
         <div style="font-size:12px;color:var(--muted);">{{ partite_attive|length }} partite · {{ pronostici_inseriti }} pronostici inseriti</div>
       </div>
       <span class="badge badge-open">Attiva</span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <a href="{{ url_for('admin_gestisci_partite') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;">Gestisci partite</a>
-      <a href="{{ url_for('admin_gestisci_pronostici', giornata=giornata_attiva.giornata) }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;">Vedi pronostici</a>
+      <a href="{{ url_for('admin_gestisci_pronostici', giornata=giornata_attiva['giornata']) }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;">Vedi pronostici</a>
       <form method="post" action="{{ url_for('admin_salva_modifiche_giornata') }}" style="display:inline;">
-        <input type="hidden" name="giornata" value="{{ giornata_attiva.giornata }}">
-        <button type="submit" name="azione" value="archivia" class="btn-danger" style="font-size:12px;padding:6px 12px;" onclick="return confirm('Archiviare la giornata {{ giornata_attiva.giornata }}?')">Archivia giornata</button>
+        <input type="hidden" name="giornata" value="{{ giornata_attiva['giornata'] }}">
+        <button type="submit" name="azione" value="archivia" class="btn-danger" style="font-size:12px;padding:6px 12px;" onclick="return confirm('Archiviare la giornata {{ giornata_attiva['giornata'] }}?')">Archivia giornata</button>
       </form>
     </div>
   </div>
   <div class="fsa-card">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:12px;">Inserisci risultati reali</div>
-    <form method="post" action="{{ url_for('admin_risultati_giornata', giornata=giornata_attiva.giornata) }}">
+    <form method="post" action="{{ url_for('admin_risultati_giornata', giornata=giornata_attiva['giornata']) }}">
       {% for partita in partite_attive %}
       <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);">
         <div style="font-size:13px;font-weight:600;color:var(--azzurro);margin-bottom:8px;">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>
@@ -52,7 +52,7 @@
       <button type="submit" class="btn-success">Salva risultati</button>
     </form>
   </div>
-  <a href="{{ url_for('admin_calcola_punti_giornata', giornata=giornata_attiva.giornata) }}" class="btn-primary" style="display:block;text-align:center;margin-bottom:12px;">⚡ Calcola punteggi giornata {{ giornata_attiva.giornata }}</a>
+  <a href="{{ url_for('admin_calcola_punti_giornata', giornata=giornata_attiva['giornata']) }}" class="btn-primary" style="display:block;text-align:center;margin-bottom:12px;">⚡ Calcola punteggi giornata {{ giornata_attiva['giornata'] }}</a>
   {% else %}
   <div class="fsa-card" style="text-align:center;padding:24px;">
     <div style="font-size:28px;margin-bottom:8px;">⏸</div>
