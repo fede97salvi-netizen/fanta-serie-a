@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <span class="page-title">Importa</span>
+  <span class="page-subtitle">da API Serie A</span>
+</div>
+
+<div class="fsa-section" style="padding-top:8px;">
+
+  {% if errore %}
+  <div class="alert alert-danger">{{ errore }}</div>
+  {% endif %}
+
+  <div class="fsa-card">
+    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:12px;">Seleziona giornata da importare</div>
+    <form method="post" action="{{ url_for('admin_importa_giornata') }}">
+      <input type="hidden" name="azione" value="carica">
+      <div style="display:flex;gap:10px;align-items:flex-end;">
+        <div style="flex:1;">
+          <label class="form-label">Numero giornata</label>
+          <input type="number" name="giornata" class="form-control" min="1" max="38"
+            value="{{ giornata_selezionata or giornata_corrente or '' }}" placeholder="es. 35" required>
+        </div>
+        <button type="submit" class="btn-primary" style="height:46px;white-space:nowrap;">Carica partite</button>
+      </div>
+    </form>
+    {% if giornata_corrente %}
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Giornata corrente Serie A: <strong style="color:var(--azzurro);">{{ giornata_corrente }}</strong></div>
+    {% endif %}
+  </div>
+
+  {% if partite_api %}
+  <div class="fsa-section-title">Partite giornata {{ giornata_selezionata }}</div>
+  <div class="alert alert-info" style="margin-bottom:12px;">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
+
+  <form method="post" action="{{ url_for('admin_importa_giornata') }}">
+    <input type="hidden" name="azione" value="salva">
+    <input type="hidden" name="giornata" value="{{ giornata_selezionata }}">
+
+    {% for partita in partite_api %}
+    <div class="fsa-card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="padding-top:2px;">
+          <input type="checkbox" name="partita_ids" value="{{ partita.id }}"
+            id="p_{{ partita.id }}"
+            style="width:20px;height:20px;accent-color:var(--azzurro);cursor:pointer;"
+            {% if partita.id in selezionate %}checked{% endif %}>
+        </div>
+        <label for="p_{{ partita.id }}" style="flex:1;cursor:pointer;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">
+              {{ partita.home }} <span style="color:var(--muted);font-weight:400;">vs</span> {{ partita.away }}
+            </div>
+            <span class="badge badge-archived" style="font-size:10px;">{{ partita.data_ora }}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">ID API: {{ partita.id }}</div>
+        </label>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:16px;">
+      <button type="submit" class="btn-success" id="btn-salva">IMPORTA PARTITE SELEZIONATE</button>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;">
+        Verranno importate anche le rose aggiornate delle squadre selezionate.
+      </div>
+    </div>
+  </form>
+
+  <script>
+    // Limita selezione a max 3 partite
+    const checkboxes = document.querySelectorAll('input[name="partita_ids"]');
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', () => {
+        const checked = document.querySelectorAll('input[name="partita_ids"]:checked');
+        if (checked.length > 3) {
+          cb.checked = false;
+          return;
+        }
+        const btn = document.getElementById('btn-salva');
+        btn.textContent = checked.length > 0
+          ? `IMPORTA ${checked.length} PARTITE SELEZIONATE`
+          : 'IMPORTA PARTITE SELEZIONATE';
+      });
+    });
+  </script>
+  {% endif %}
+
+  <div style="margin-top:12px;">
+    <a href="{{ url_for('admin_gestisci_partite') }}" class="btn-secondary">← Torna a gestisci partite</a>
+  </div>
+</div>
+{% endblock %}

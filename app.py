@@ -501,6 +501,169 @@ def ricalcola_punteggi_finali():
 
 
 # ─────────────────────────────────────────────
+# INTEGRAZIONE API FOOTBALL-DATA.ORG
+# ─────────────────────────────────────────────
+
+import requests as http_requests
+from datetime import timezone
+
+FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
+FOOTBALL_API_BASE = 'https://api.football-data.org/v4'
+SERIE_A_CODE = 'SA'
+
+def api_headers():
+    return {'X-Auth-Token': FOOTBALL_API_KEY}
+
+def get_matches_giornata(giornata):
+    """Scarica i match di una giornata di Serie A dall API."""
+    url = f"{FOOTBALL_API_BASE}/competitions/{SERIE_A_CODE}/matches?matchday={giornata}"
+    r = http_requests.get(url, headers=api_headers(), timeout=10)
+    if r.status_code != 200:
+        return None, f"Errore API ({r.status_code}): {r.text[:200]}"
+    data = r.json()
+    partite = []
+    for m in data.get('matches', []):
+        data_utc = m.get('utcDate', '')[:16].replace('T', 'T')
+        partite.append({
+            'id': m['id'],
+            'home': m['homeTeam']['name'],
+            'away': m['awayTeam']['name'],
+            'home_id': m['homeTeam']['id'],
+            'away_id': m['awayTeam']['id'],
+            'data_ora': data_utc,
+        })
+    return partite, None
+
+def get_giornata_corrente():
+    """Restituisce la giornata corrente della Serie A."""
+    url = f"{FOOTBALL_API_BASE}/competitions/{SERIE_A_CODE}"
+    r = http_requests.get(url, headers=api_headers(), timeout=10)
+    if r.status_code == 200:
+        return r.json().get('currentSeason', {}).get('currentMatchday')
+    return None
+
+def get_giocatori_squadra(team_id, team_name):
+    """Scarica la rosa di una squadra dall API."""
+    url = f"{FOOTBALL_API_BASE}/teams/{team_id}"
+    r = http_requests.get(url, headers=api_headers(), timeout=10)
+    if r.status_code != 200:
+        return []
+    data = r.json()
+    giocatori = []
+    for p in data.get('squad', []):
+        if p.get('position') != 'Goalkeeper':
+            giocatori.append({
+                'nome': p.get('name', ''),
+                'squadra': team_name.upper()
+            })
+    return giocatori
+
+@app.route("/admin/importa-giornata", methods=["GET", "POST"])
+def admin_importa_giornata():
+    if require_admin(): return "Accesso negato.", 403
+
+    giornata_corrente = None
+    partite_api = []
+    giornata_selezionata = None
+    errore = None
+    selezionate = []
+
+    try:
+        giornata_corrente = get_giornata_corrente()
+    except Exception:
+        pass
+
+    if request.method == "POST":
+        azione = request.form.get('azione')
+        giornata_selezionata = request.form.get('giornata', type=int)
+
+        if azione == 'carica':
+            try:
+                partite_api, errore = get_matches_giornata(giornata_selezionata)
+            except Exception as e:
+                errore = f"Errore di connessione: {str(e)}"
+
+        elif azione == 'salva':
+            partita_ids = request.form.getlist('partita_ids', type=int)
+            if not partita_ids:
+                errore = "Seleziona almeno una partita."
+            elif len(partita_ids) > 3:
+                errore = "Puoi selezionare massimo 3 partite."
+            else:
+                try:
+                    # Ricarica i dati API per avere i dettagli completi
+                    partite_api, errore_api = get_matches_giornata(giornata_selezionata)
+                    if errore_api:
+                        errore = errore_api
+                    else:
+                        conn = get_db_connection()
+                        partite_sel = [p for p in partite_api if p['id'] in partita_ids]
+
+                        # Raccoglie tutti i team ID unici
+                        team_ids = {}
+                        for p in partite_sel:
+                            team_ids[p['home_id']] = p['home'].upper()
+                            team_ids[p['away_id']] = p['away'].upper()
+
+                        # Inserisce le partite nel DB
+                        for p in partite_sel:
+                            home = p['home'].upper()
+                            away = p['away'].upper()
+                            data_ora = p['data_ora']
+                            # Controlla se esiste già
+                            esistente = db_fetchone(conn,
+                                "SELECT id FROM partite WHERE giornata=? AND squadra_casa=? AND squadra_ospite=?",
+                                (giornata_selezionata, home, away))
+                            if esistente:
+                                db_execute(conn,
+                                    "UPDATE partite SET pronosticabile=TRUE, data_ora_partita=? WHERE id=?",
+                                    (data_ora, row_get(esistente, 'id')))
+                            else:
+                                db_execute(conn,
+                                    "INSERT INTO partite (giornata, squadra_casa, squadra_ospite, pronosticabile, data_ora_partita) VALUES (?,?,?,TRUE,?)",
+                                    (giornata_selezionata, home, away, data_ora))
+
+                        # Rimuove giocatori vecchi delle squadre coinvolte
+                        for team_name in team_ids.values():
+                            db_execute(conn, "DELETE FROM giocatori WHERE UPPER(squadra) = UPPER(?)", (team_name,))
+
+                        # Importa giocatori aggiornati
+                        for team_id, team_name in team_ids.items():
+                            giocatori = get_giocatori_squadra(team_id, team_name)
+                            for g in giocatori:
+                                db_execute(conn,
+                                    "INSERT INTO giocatori (nome_giocatore, squadra) VALUES (?,?)",
+                                    (g['nome'], g['squadra']))
+
+                        # Assicura che la giornata esista in stato_giornata come attiva
+                        if USE_POSTGRES:
+                            db_execute(conn,
+                                "INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio) VALUES (?,TRUE,FALSE) ON CONFLICT (giornata) DO UPDATE SET is_attiva=TRUE",
+                                (giornata_selezionata,))
+                        else:
+                            db_execute(conn,
+                                "INSERT OR IGNORE INTO stato_giornata (giornata, is_attiva, is_in_archivio) VALUES (?,1,0)",
+                                (giornata_selezionata,))
+                            db_execute(conn,
+                                "UPDATE stato_giornata SET is_attiva=1 WHERE giornata=?",
+                                (giornata_selezionata,))
+
+                        db_commit(conn)
+                        conn.close()
+                        session['flash_message'] = f"Giornata {giornata_selezionata}: {len(partite_sel)} partite e rose giocatori importate con successo!"
+                        return redirect(url_for('admin_home'))
+                except Exception as e:
+                    errore = f"Errore durante il salvataggio: {str(e)}"
+
+    return render_template('admin_importa_giornata.html',
+        giornata_corrente=giornata_corrente,
+        giornata_selezionata=giornata_selezionata,
+        partite_api=partite_api,
+        selezionate=selezionate,
+        errore=errore,
+        session=session)
+
+# ─────────────────────────────────────────────
 # ROUTE ADMIN
 # ─────────────────────────────────────────────
 
