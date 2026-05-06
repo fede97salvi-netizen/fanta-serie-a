@@ -3,6 +3,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import hashlib
 import smtplib
+import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import random
@@ -199,6 +200,12 @@ def create_tables():
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+def invia_email_async(destinatari, oggetto, corpo_html):
+    """Invia email in background senza bloccare la richiesta HTTP."""
+    t = threading.Thread(target=invia_email, args=(destinatari, oggetto, corpo_html))
+    t.daemon = True
+    t.start()
 
 def invia_email(destinatari, oggetto, corpo_html):
     """Invia email tramite Gmail SMTP. Restituisce (successi, errori)."""
@@ -822,11 +829,8 @@ def admin_invia_reminder(giornata):
                          'data_ora_partita': row_get(p, 'data_ora_partita')} for p in partite]
         html = build_email_giornata(giornata, partite_list)
         oggetto = f"⚽ FantaSerieA — Reminder Giornata {giornata}: inserisci i pronostici!"
-        successi, errori_email = invia_email(destinatari, oggetto, html)
-        msg = f"Reminder inviato a {successi}/{len(destinatari)} utenti."
-        if errori_email:
-            msg += f" Errori: {'; '.join(errori_email[:2])}"
-        flash(msg, "success" if not errori_email else "warning")
+        invia_email_async(destinatari, oggetto, html)
+        flash(f"Reminder in invio a {len(destinatari)} utenti!", "success")
     except Exception as e:
         flash(f"Errore invio reminder: {str(e)}", "danger")
     return redirect(url_for('admin_home'))
@@ -936,10 +940,8 @@ def admin_importa_giornata():
                         if destinatari:
                             corpo = build_email_giornata(giornata_selezionata, [dict(p) if hasattr(p, 'keys') else p for p in partite_per_email])
                             oggetto = f"🏆 FantaSerieA — Giornata {giornata_selezionata}: inserisci i tuoi pronostici!"
-                            successi, errori_email = invia_email(destinatari, oggetto, corpo)
-                            msg_email = f" Email inviate: {successi}/{len(destinatari)}."
-                            if errori_email:
-                                msg_email += f" Errori: {'; '.join(errori_email[:2])}"
+                            invia_email_async(destinatari, oggetto, corpo)
+                            msg_email = f" Email in invio a {len(destinatari)} utenti."
                         else:
                             msg_email = " Nessun utente con email registrata."
                         session['flash_message'] = f"Giornata {giornata_selezionata}: {len(partite_sel)} partite importate.{msg_email}"
