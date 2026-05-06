@@ -224,7 +224,10 @@ def invia_email(destinatari, oggetto, corpo_html):
     successi = 0
     errori = []
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=25)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
         server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         for dest in destinatari:
             try:
@@ -235,11 +238,14 @@ def invia_email(destinatari, oggetto, corpo_html):
                 msg.attach(MIMEText(corpo_html, 'html'))
                 server.sendmail(GMAIL_USER, dest, msg.as_string())
                 successi += 1
+                print(f"[EMAIL] Inviata a {dest}", flush=True)
             except Exception as e:
                 errori.append(f"{dest}: {str(e)}")
+                print(f"[EMAIL] Errore per {dest}: {e}", flush=True)
         server.quit()
     except Exception as e:
         errori.append(f"Connessione SMTP fallita: {str(e)}")
+        print(f"[EMAIL] SMTP error: {e}", flush=True)
     return successi, errori
 
 def build_email_giornata(giornata, partite):
