@@ -124,8 +124,9 @@
       <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10V17H13V13H7V17H3V10Z" fill="currentColor"/></svg></div>
       <div class="fsa-tab-label">Home</div>
     </a>
-    {% if giornata_attiva %}
-      <a href="{{ url_for('pronostici_giornata', giornata=giornata_attiva) }}" class="fsa-tab {% if request.endpoint == 'pronostici_giornata' %}active{% endif %}">
+    {% set g_num = giornata_attiva['giornata'] if giornata_attiva is mapping else giornata_attiva %}
+    {% if g_num %}
+      <a href="{{ url_for('pronostici_giornata', giornata=g_num) }}" class="fsa-tab {% if request.endpoint == 'pronostici_giornata' %}active{% endif %}">
     {% else %}
       <a href="{{ url_for('archivio_giornate') }}" class="fsa-tab">
     {% endif %}
