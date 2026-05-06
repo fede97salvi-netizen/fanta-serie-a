@@ -218,34 +218,38 @@ def invia_email_async(destinatari, oggetto, corpo_html):
     t.start()
 
 def invia_email(destinatari, oggetto, corpo_html):
-    """Invia email tramite Gmail SMTP. Restituisce (successi, errori)."""
-    if not GMAIL_APP_PASSWORD or not GMAIL_USER:
-        return 0, ["Email non configurata (GMAIL_USER o GMAIL_APP_PASSWORD mancante)"]
+    """Invia email tramite Resend API (HTTP). Restituisce (successi, errori)."""
+    if not RESEND_API_KEY:
+        return 0, ["Email non configurata (RESEND_API_KEY mancante)"]
     successi = 0
     errori = []
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=25)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        for dest in destinatari:
-            try:
-                msg = MIMEMultipart('alternative')
-                msg['Subject'] = oggetto
-                msg['From'] = f'FantaSerieA <{GMAIL_USER}>'
-                msg['To'] = dest
-                msg.attach(MIMEText(corpo_html, 'html'))
-                server.sendmail(GMAIL_USER, dest, msg.as_string())
+    for dest in destinatari:
+        try:
+            payload = {
+                'from': f'{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>',
+                'to': [dest],
+                'subject': oggetto,
+                'html': corpo_html
+            }
+            r = http_requests.post(
+                'https://api.resend.com/emails',
+                headers={
+                    'Authorization': f'Bearer {RESEND_API_KEY}',
+                    'Content-Type': 'application/json'
+                },
+                json=payload,
+                timeout=15
+            )
+            if r.status_code in (200, 201):
                 successi += 1
                 print(f"[EMAIL] Inviata a {dest}", flush=True)
-            except Exception as e:
-                errori.append(f"{dest}: {str(e)}")
-                print(f"[EMAIL] Errore per {dest}: {e}", flush=True)
-        server.quit()
-    except Exception as e:
-        errori.append(f"Connessione SMTP fallita: {str(e)}")
-        print(f"[EMAIL] SMTP error: {e}", flush=True)
+            else:
+                errore = r.json().get('message', r.text[:100])
+                errori.append(f"{dest}: {errore}")
+                print(f"[EMAIL] Errore per {dest}: {errore}", flush=True)
+        except Exception as e:
+            errori.append(f"{dest}: {str(e)}")
+            print(f"[EMAIL] Eccezione per {dest}: {e}", flush=True)
     return successi, errori
 
 def build_email_giornata(giornata, partite):
@@ -634,6 +638,9 @@ SERIE_A_CODE = 'SA'
 GMAIL_USER = os.environ.get('GMAIL_USER', '')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 APP_URL = os.environ.get('APP_URL', 'https://fanta-serie-a-1.onrender.com')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+EMAIL_FROM_NAME = 'FantaSerieA'
+EMAIL_FROM_ADDRESS = 'onboarding@resend.dev'  # Mittente verificato Resend gratuito
 
 # Email config
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'fantaseriea.notifiche@gmail.com')
