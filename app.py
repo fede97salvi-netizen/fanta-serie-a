@@ -682,9 +682,20 @@ def admin_home():
         partite_attive = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (g,))
         row_pi = db_fetchone(conn, "SELECT COUNT(*) as cnt FROM pronostici_giornata WHERE id_partita IN (SELECT id FROM partite WHERE giornata = ?)", (g,))
         pronostici_inseriti = row_get(row_pi, 'cnt') or 0
+    # Carica giocatori per ogni partita attiva (per lista marcatori)
+    giocatori_per_partita = {}
+    for partita in partite_attive:
+        pid = row_get(partita, 'id')
+        sc = (row_get(partita, 'squadra_casa') or '').upper()
+        so = (row_get(partita, 'squadra_ospite') or '').upper()
+        giocatori_per_partita[pid] = db_fetchall(conn,
+            "SELECT nome_giocatore, squadra FROM giocatori WHERE UPPER(squadra) = ? OR UPPER(squadra) = ? ORDER BY squadra, nome_giocatore",
+            (sc, so))
     flash_message = session.pop('flash_message', None)
     conn.close()
-    return render_template("admin.html", giornata_attiva=giornata_attiva, partite_attive=partite_attive, pronostici_inseriti=pronostici_inseriti, flash_message=flash_message, session=session)
+    return render_template("admin.html", giornata_attiva=giornata_attiva, partite_attive=partite_attive,
+        pronostici_inseriti=pronostici_inseriti, flash_message=flash_message,
+        giocatori_per_partita=giocatori_per_partita, session=session)
 
 @app.route("/admin/utenti")
 def admin_utenti():
@@ -778,10 +789,15 @@ def admin_risultati_giornata(giornata):
         pid = row_get(partita, 'id')
         r_casa = request.form.get(f"risultato_casa_{pid}")
         r_osp = request.form.get(f"risultato_ospite_{pid}")
-        marcatori = ",".join(request.form.getlist(f"marcatore_{pid}"))
+        # Combina marcatore dal dropdown + eventuali extra scritti a mano
+        marcatore_principale = request.form.get(f"marcatore_{pid}", "").strip()
+        marcatore_extra = request.form.get(f"marcatore_extra_{pid}", "").strip()
+        tutti = [m.strip() for m in [marcatore_principale] + marcatore_extra.split(",") if m.strip()]
+        marcatori = ", ".join(tutti)
         db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?", (r_casa, r_osp, marcatori, pid))
     db_commit(conn)
     conn.close()
+    flash("Risultati salvati con successo!", "success")
     return redirect(url_for("admin_home"))
 
 @app.route("/admin/archivia-giornata/<int:giornata>")
