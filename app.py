@@ -203,7 +203,17 @@ from email.mime.text import MIMEText
 
 def invia_email_async(destinatari, oggetto, corpo_html):
     """Invia email in background senza bloccare la richiesta HTTP."""
-    t = threading.Thread(target=invia_email, args=(destinatari, oggetto, corpo_html))
+    def _invia():
+        try:
+            print(f"[EMAIL] Avvio invio a {len(destinatari)} destinatari...", flush=True)
+            successi, errori = invia_email(destinatari, oggetto, corpo_html)
+            print(f"[EMAIL] Completato: {successi} successi, {len(errori)} errori", flush=True)
+            if errori:
+                for e in errori:
+                    print(f"[EMAIL] Errore: {e}", flush=True)
+        except Exception as e:
+            print(f"[EMAIL] Eccezione nel thread: {e}", flush=True)
+    t = threading.Thread(target=_invia)
     t.daemon = True
     t.start()
 
