@@ -364,25 +364,6 @@ def classifica():
     return render_template("classifica.html", classifica=classifica_utenti, session=session)
 
 
-@app.route("/profilo", methods=["GET", "POST"])
-def profilo():
-    if 'nome_utente' not in session:
-        return redirect(url_for('login'))
-    conn = get_db_connection()
-    user = db_fetchone(conn, "SELECT * FROM utenti WHERE nome_utente = ?", (session['nome_utente'],))
-    if request.method == "POST":
-        email = request.form.get('email', '').strip().lower()
-        if not email or '@' not in email:
-            conn.close()
-            return render_template('profilo.html', user=user, errore="Inserisci un indirizzo email valido.", session=session)
-        db_execute(conn, "UPDATE utenti SET email = ? WHERE nome_utente = ?", (email, session['nome_utente']))
-        db_commit(conn)
-        conn.close()
-        flash("Email aggiornata con successo!", "success")
-        return redirect(url_for('home'))
-    conn.close()
-    return render_template('profilo.html', user=user, session=session)
-
 @app.route("/giornate")
 def archivio_giornate():
     if 'nome_utente' not in session:
