@@ -202,21 +202,21 @@ from email.mime.text import MIMEText
 
 def invia_email(destinatari, oggetto, corpo_html):
     """Invia email tramite Gmail SMTP. Restituisce (successi, errori)."""
-    if not EMAIL_PASSWORD:
-        return 0, ["Email non configurata (EMAIL_PASSWORD mancante)"]
+    if not GMAIL_APP_PASSWORD or not GMAIL_USER:
+        return 0, ["Email non configurata (GMAIL_USER o GMAIL_APP_PASSWORD mancante)"]
     successi = 0
     errori = []
     try:
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(EMAIL_FROM, EMAIL_PASSWORD)
+        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         for dest in destinatari:
             try:
                 msg = MIMEMultipart('alternative')
                 msg['Subject'] = oggetto
-                msg['From'] = f'FantaSerieA <{EMAIL_FROM}>'
+                msg['From'] = f'FantaSerieA <{GMAIL_USER}>'
                 msg['To'] = dest
                 msg.attach(MIMEText(corpo_html, 'html'))
-                server.sendmail(EMAIL_FROM, dest, msg.as_string())
+                server.sendmail(GMAIL_USER, dest, msg.as_string())
                 successi += 1
             except Exception as e:
                 errori.append(f"{dest}: {str(e)}")
