@@ -521,7 +521,8 @@ def admin_home():
         pronostici_inseriti = row_get(row_pi, 'cnt') or 0
     flash_message = session.pop('flash_message', None)
     conn.close()
-    return render_template("admin.html", giornata_attiva=giornata_attiva, partite_attive=partite_attive, pronostici_inseriti=pronostici_inseriti, flash_message=flash_message, session=session)
+    giornata_attiva_dict = {'giornata': row_get(giornata_attiva, 'giornata')} if giornata_attiva else None
+    return render_template("admin.html", giornata_attiva=giornata_attiva_dict, partite_attive=partite_attive, pronostici_inseriti=pronostici_inseriti, flash_message=flash_message, session=session)
 
 @app.route("/admin/utenti")
 def admin_utenti():
