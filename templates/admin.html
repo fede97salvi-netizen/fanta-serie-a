@@ -98,10 +98,17 @@
     </form>
   </div>
 
-  <a href="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" class="btn-primary"
-    style="display:block;text-align:center;margin-bottom:12px;">
-    ⚡ Calcola punteggi giornata {{ g }}
-  </a>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+    <form method="post" action="{{ url_for('admin_importa_risultati', giornata=g) }}">
+      <button type="submit" class="btn-primary" style="width:100%;display:block;text-align:center;padding:12px 8px;font-size:13px;" onclick="return confirm('Importare risultati e marcatori dalla API per la giornata {{ g }}?')">
+        🌐 Importa risultati da API
+      </button>
+    </form>
+    <a href="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" class="btn-success"
+      style="display:block;text-align:center;padding:12px 8px;font-size:13px;font-family:var(--font-d);font-weight:700;letter-spacing:1px;border-radius:12px;text-decoration:none;">
+      ⚡ Calcola punteggi
+    </a>
+  </div>
 
   {% else %}
   <div class="fsa-card" style="text-align:center;padding:24px;">

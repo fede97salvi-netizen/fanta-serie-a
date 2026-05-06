@@ -558,6 +558,87 @@ def get_giocatori_squadra(team_id, team_name):
             })
     return giocatori
 
+def get_risultati_giornata(giornata):
+    """Scarica risultati e marcatori reali di una giornata dall API."""
+    url = f"{FOOTBALL_API_BASE}/competitions/{SERIE_A_CODE}/matches?matchday={giornata}"
+    r = http_requests.get(url, headers=api_headers(), timeout=10)
+    if r.status_code != 200:
+        return None, f"Errore API ({r.status_code}): {r.text[:200]}"
+    data = r.json()
+    risultati = []
+    for m in data.get('matches', []):
+        if m.get('status') != 'FINISHED':
+            continue
+        home = m['homeTeam']['name'].upper()
+        away = m['awayTeam']['name'].upper()
+        score = m.get('score', {}).get('fullTime', {})
+        gol_home = score.get('home')
+        gol_away = score.get('away')
+        # Estrai tutti i marcatori (escludi autogol come marcatori validi)
+        marcatori = []
+        for g in m.get('goals', []):
+            tipo = g.get('type', 'REGULAR')
+            if tipo == 'OWN':
+                continue  # autogol non conta come marcatore pronosticabile
+            scorer = g.get('scorer', {})
+            nome = scorer.get('name', '').strip()
+            if nome:
+                marcatori.append(nome)
+        risultati.append({
+            'home': home,
+            'away': away,
+            'gol_home': gol_home,
+            'gol_away': gol_away,
+            'marcatori': marcatori,  # lista di tutti i marcatori reali
+            'marcatori_str': ', '.join(marcatori),
+            'status': m.get('status'),
+        })
+    return risultati, None
+
+@app.route("/admin/importa-risultati/<int:giornata>", methods=["POST"])
+def admin_importa_risultati(giornata):
+    """Importa risultati e marcatori reali dall API per le partite pronosticabili."""
+    if require_admin(): return "Accesso negato.", 403
+    try:
+        risultati_api, errore = get_risultati_giornata(giornata)
+        if errore:
+            flash(f"Errore API: {errore}", "danger")
+            return redirect(url_for("admin_home"))
+        if not risultati_api:
+            flash(f"Nessuna partita terminata trovata per la giornata {giornata}.", "warning")
+            return redirect(url_for("admin_home"))
+        conn = get_db_connection()
+        partite_db = db_fetchall(conn,
+            "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+        aggiornate = 0
+        non_trovate = []
+        for partita in partite_db:
+            sc = row_get(partita, 'squadra_casa').upper()
+            so = row_get(partita, 'squadra_ospite').upper()
+            # Cerca corrispondenza nell API (match parziale sul nome squadra)
+            match_api = None
+            for r in risultati_api:
+                if (sc in r['home'] or r['home'] in sc) and (so in r['away'] or r['away'] in so):
+                    match_api = r
+                    break
+            if match_api:
+                db_execute(conn,
+                    "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
+                    (match_api['gol_home'], match_api['gol_away'],
+                     match_api['marcatori_str'], row_get(partita, 'id')))
+                aggiornate += 1
+            else:
+                non_trovate.append(f"{sc} vs {so}")
+        db_commit(conn)
+        conn.close()
+        msg = f"Risultati importati: {aggiornate} partite aggiornate."
+        if non_trovate:
+            msg += f" Non trovate: {', '.join(non_trovate)} — aggiorna manualmente."
+        flash(msg, "success" if not non_trovate else "warning")
+    except Exception as e:
+        flash(f"Errore durante l importazione: {str(e)}", "danger")
+    return redirect(url_for("admin_home"))
+
 @app.route("/admin/importa-giornata", methods=["GET", "POST"])
 def admin_importa_giornata():
     if require_admin(): return "Accesso negato.", 403
