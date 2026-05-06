@@ -9,6 +9,8 @@ import pytz
 
 # --- DATABASE: SQLite in locale, PostgreSQL su Render ---
 DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 if DATABASE_URL:
     import psycopg2
     import psycopg2.extras
@@ -743,3 +745,10 @@ def admin_ricalcola_tutta_la_classifica():
 if __name__ == "__main__":
     create_tables()
     app.run(debug=True)
+
+# Esegui create_tables all'avvio anche con gunicorn
+with app.app_context():
+    try:
+        create_tables()
+    except Exception as e:
+        print(f"ERRORE create_tables: {e}", flush=True)
