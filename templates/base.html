@@ -87,7 +87,7 @@
     </a>
     <div>
       {% if 'nome_utente' in session %}
-        <a class="fsa-avatar" href="{{ url_for('home') }}" title="{{ session.nome_utente }}">{{ session.nome_utente[:2].upper() }}</a>
+        <a class="fsa-avatar" href="{{ url_for('profilo') }}" title="Il mio profilo">{{ session.nome_utente[:2].upper() }}</a>
       {% else %}
         <a class="fsa-nav-link" href="{{ url_for('login') }}">Accedi</a>
       {% endif %}
@@ -140,6 +140,10 @@
     <a href="{{ url_for('archivio_giornate') }}" class="fsa-tab {% if request.endpoint == 'archivio_giornate' or request.endpoint == 'visualizza_giornata' %}active{% endif %}">
       <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5H17V8H3V5Z" fill="currentColor" opacity="0.6"/><path d="M4 8H16V16H4V8Z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M8 11H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
       <div class="fsa-tab-label">Archivio</div>
+    </a>
+    <a href="{{ url_for('profilo') }}" class="fsa-tab {% if request.endpoint == 'profilo' %}active{% endif %}">
+      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="fsa-tab-label">Profilo</div>
     </a>
     <a href="{{ url_for('logout') }}" class="fsa-tab">
       <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8 4H5C4.45 4 4 4.45 4 5V15C4 15.55 4.45 16 5 16H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 8L16 10M16 10L12 12M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>

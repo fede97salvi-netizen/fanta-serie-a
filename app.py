@@ -2,6 +2,9 @@ import sys
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import hashlib
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import random
 import string
 from datetime import datetime, timedelta
@@ -124,7 +127,13 @@ def create_tables():
             id SERIAL PRIMARY KEY,
             nome_utente TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
-            is_temp_password BOOLEAN NOT NULL DEFAULT FALSE)""")
+            is_temp_password BOOLEAN NOT NULL DEFAULT FALSE,
+            email TEXT)""")
+        # Migrazione: aggiungi email se non esiste
+        try:
+            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT")
+        except Exception:
+            pass
         db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_iniziali (
             id SERIAL PRIMARY KEY,
             id_utente INTEGER NOT NULL REFERENCES utenti(id),
@@ -167,7 +176,7 @@ def create_tables():
         db_execute(conn, "INSERT INTO stato_pronostici_iniziali (id, is_locked) VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
         db_execute(conn, "INSERT INTO risultati_finali (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
     else:
-        conn.execute("CREATE TABLE IF NOT EXISTS utenti (id INTEGER PRIMARY KEY AUTOINCREMENT, nome_utente TEXT NOT NULL UNIQUE, password TEXT NOT NULL, is_temp_password BOOLEAN NOT NULL DEFAULT 0)")
+        conn.execute("CREATE TABLE IF NOT EXISTS utenti (id INTEGER PRIMARY KEY AUTOINCREMENT, nome_utente TEXT NOT NULL UNIQUE, password TEXT NOT NULL, is_temp_password BOOLEAN NOT NULL DEFAULT 0, email TEXT)")
         conn.execute("CREATE TABLE IF NOT EXISTS pronostici_iniziali (id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL, squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT, capocannoniere TEXT, FOREIGN KEY(id_utente) REFERENCES utenti(id))")
         conn.execute("CREATE TABLE IF NOT EXISTS pronostici_giornata (id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL, id_partita INTEGER NOT NULL, esito_pronosticato TEXT, risultato_casa_pronosticato INTEGER, risultato_ospite_pronosticato INTEGER, marcatore_pronosticato TEXT, FOREIGN KEY(id_utente) REFERENCES utenti(id), FOREIGN KEY(id_partita) REFERENCES partite(id))")
         conn.execute("CREATE TABLE IF NOT EXISTS partite (id INTEGER PRIMARY KEY AUTOINCREMENT, giornata INTEGER NOT NULL, squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL, risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER, marcatore_reale TEXT, pronosticabile BOOLEAN NOT NULL DEFAULT 0, data_ora_partita TEXT)")
@@ -181,6 +190,92 @@ def create_tables():
     db_commit(conn)
     conn.close()
 
+
+
+# ─────────────────────────────────────────────
+# EMAIL
+# ─────────────────────────────────────────────
+
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def invia_email(destinatari, oggetto, corpo_html):
+    """Invia email tramite Gmail SMTP. Restituisce (successi, errori)."""
+    if not EMAIL_PASSWORD:
+        return 0, ["Email non configurata (EMAIL_PASSWORD mancante)"]
+    successi = 0
+    errori = []
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(EMAIL_FROM, EMAIL_PASSWORD)
+        for dest in destinatari:
+            try:
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = oggetto
+                msg['From'] = f'FantaSerieA <{EMAIL_FROM}>'
+                msg['To'] = dest
+                msg.attach(MIMEText(corpo_html, 'html'))
+                server.sendmail(EMAIL_FROM, dest, msg.as_string())
+                successi += 1
+            except Exception as e:
+                errori.append(f"{dest}: {str(e)}")
+        server.quit()
+    except Exception as e:
+        errori.append(f"Connessione SMTP fallita: {str(e)}")
+    return successi, errori
+
+def build_email_giornata(giornata, partite):
+    """Costruisce il corpo HTML dell email di notifica giornata."""
+    partite_html = ""
+    for p in partite:
+        data_str = p['data_ora_partita'] or ''
+        partite_html += f"""
+        <tr>
+          <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;">
+            <strong style="font-size:16px;color:#1e3a5f;">{p['squadra_casa']} vs {p['squadra_ospite']}</strong>
+            <div style="font-size:13px;color:#6b7280;margin-top:4px;">📅 {data_str}</div>
+          </td>
+        </tr>"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+        <tr><td align="center">
+          <table width="100%" style="max-width:520px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+            <tr>
+              <td style="background:linear-gradient(135deg,#003f8a,#0f4a1e);padding:28px 24px;text-align:center;">
+                <div style="font-size:32px;margin-bottom:8px;">🏆</div>
+                <h1 style="color:white;margin:0;font-size:24px;letter-spacing:1px;">FantaSerieA</h1>
+                <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Giornata {giornata} — Inserisci i tuoi pronostici!</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="color:#374151;font-size:15px;margin:0 0 16px;">Le partite della <strong>giornata {giornata}</strong> sono pronte. Hai tempo fino all'inizio di ogni match per inserire i tuoi pronostici.</p>
+                <h2 style="color:#1e3a5f;font-size:16px;margin:0 0 12px;text-transform:uppercase;letter-spacing:1px;">Le 3 partite da pronosticare</h2>
+                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+                  {partite_html}
+                </table>
+                <div style="text-align:center;margin-top:24px;">
+                  <a href="https://fanta-serie-a-1.onrender.com/pronostici-giornata/{giornata}"
+                     style="background:linear-gradient(135deg,#1565c0,#0090d4);color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
+                    Inserisci i pronostici →
+                  </a>
+                </div>
+                <p style="color:#9ca3af;font-size:12px;text-align:center;margin-top:24px;">
+                  Ricevi questa email perché sei iscritto a FantaSerieA.<br>
+                  <a href="https://fanta-serie-a-1.onrender.com" style="color:#0090d4;">Vai all'app</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </body>
+    </html>"""
 
 # ─────────────────────────────────────────────
 # ROUTE PUBBLICHE
@@ -267,6 +362,26 @@ def classifica():
     classifica_utenti = db_fetchall(conn, "SELECT u.nome_utente, p.punteggio_totale FROM utenti u JOIN punteggi p ON u.id = p.id_utente ORDER BY p.punteggio_totale DESC")
     conn.close()
     return render_template("classifica.html", classifica=classifica_utenti, session=session)
+
+
+@app.route("/profilo", methods=["GET", "POST"])
+def profilo():
+    if 'nome_utente' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    user = db_fetchone(conn, "SELECT * FROM utenti WHERE nome_utente = ?", (session['nome_utente'],))
+    if request.method == "POST":
+        email = request.form.get('email', '').strip().lower()
+        if not email or '@' not in email:
+            conn.close()
+            return render_template('profilo.html', user=user, errore="Inserisci un indirizzo email valido.", session=session)
+        db_execute(conn, "UPDATE utenti SET email = ? WHERE nome_utente = ?", (email, session['nome_utente']))
+        db_commit(conn)
+        conn.close()
+        flash("Email aggiornata con successo!", "success")
+        return redirect(url_for('home'))
+    conn.close()
+    return render_template('profilo.html', user=user, session=session)
 
 @app.route("/giornate")
 def archivio_giornate():
@@ -511,8 +626,75 @@ FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
 FOOTBALL_API_BASE = 'https://api.football-data.org/v4'
 SERIE_A_CODE = 'SA'
 
+# Config email
+GMAIL_USER = os.environ.get('GMAIL_USER', '')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
+APP_URL = os.environ.get('APP_URL', 'https://fanta-serie-a-1.onrender.com')
+
+# Email config
+EMAIL_FROM = os.environ.get('EMAIL_FROM', 'fantaseriea.notifiche@gmail.com')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '')
+
 def api_headers():
     return {'X-Auth-Token': FOOTBALL_API_KEY}
+
+def send_email(to_list, subject, html_body):
+    """Invia email a una lista di destinatari via Gmail SMTP."""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        return False, "Credenziali Gmail non configurate."
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        for to_email in to_list:
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f'FantaSerieA <{GMAIL_USER}>'
+            msg['To'] = to_email
+            msg.attach(MIMEText(html_body, 'html'))
+            server.sendmail(GMAIL_USER, to_email, msg.as_string())
+        server.quit()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+def build_email_pronostici(giornata, partite):
+    """Costruisce il corpo HTML dell email di reminder pronostici."""
+    partite_html = ''
+    for p in partite:
+        data_fmt = p['data_ora_partita'] if p['data_ora_partita'] else 'Data da definire'
+        partite_html += f'''
+        <tr>
+          <td style="padding:12px 16px;border-bottom:1px solid #e8edf5;">
+            <div style="font-weight:700;font-size:16px;color:#111d33;">{p['squadra_casa']} vs {p['squadra_ospite']}</div>
+            <div style="font-size:13px;color:#7a8ba8;margin-top:2px;">{data_fmt}</div>
+          </td>
+        </tr>'''
+    return f'''<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:Arial,sans-serif;">
+  <div style="max-width:480px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#003f8a 0%,#0f4a1e 100%);padding:28px 24px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">🏆</div>
+      <h1 style="color:white;margin:0;font-size:24px;letter-spacing:1px;">FantaSerieA</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Giornata {giornata} — Inserisci i tuoi pronostici!</p>
+    </div>
+    <div style="padding:24px;">
+      <p style="color:#111d33;font-size:15px;margin:0 0 16px;">Ciao! Le partite della <strong>Giornata {giornata}</strong> sono pronte. Inserisci i tuoi pronostici prima del fischio d'inizio!</p>
+      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+        {partite_html}
+      </table>
+      <div style="text-align:center;">
+        <a href="{APP_URL}/pronostici-giornata/{giornata}"
+          style="display:inline-block;background:linear-gradient(135deg,#1565c0,#0090d4);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:16px;letter-spacing:0.5px;">
+          Inserisci i pronostici →
+        </a>
+      </div>
+      <p style="color:#7a8ba8;font-size:12px;text-align:center;margin:20px 0 0;">Ricevi questa email perché sei registrato su FantaSerieA.<br>Per modificare le tue preferenze accedi al tuo profilo.</p>
+    </div>
+  </div>
+</body>
+</html>'''
 
 def get_matches_giornata(giornata):
     """Scarica i match di una giornata di Serie A dall API."""
@@ -730,8 +912,27 @@ def admin_importa_giornata():
                                 (giornata_selezionata,))
 
                         db_commit(conn)
+
+                        # Invia email di notifica a tutti gli utenti con email registrata
+                        partite_per_email = db_fetchall(conn,
+                            "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE ORDER BY data_ora_partita",
+                            (giornata_selezionata,))
                         conn.close()
-                        session['flash_message'] = f"Giornata {giornata_selezionata}: {len(partite_sel)} partite e rose giocatori importate con successo!"
+                        email_rows = get_db_connection()
+                        destinatari_rows = db_fetchall(email_rows,
+                            "SELECT email FROM utenti WHERE email IS NOT NULL AND email != ''")
+                        email_rows.close()
+                        destinatari = [row_get(r, 'email') for r in destinatari_rows if row_get(r, 'email')]
+                        if destinatari:
+                            corpo = build_email_giornata(giornata_selezionata, [dict(p) if hasattr(p, 'keys') else p for p in partite_per_email])
+                            oggetto = f"🏆 FantaSerieA — Giornata {giornata_selezionata}: inserisci i tuoi pronostici!"
+                            successi, errori_email = invia_email(destinatari, oggetto, corpo)
+                            msg_email = f" Email inviate: {successi}/{len(destinatari)}."
+                            if errori_email:
+                                msg_email += f" Errori: {'; '.join(errori_email[:2])}"
+                        else:
+                            msg_email = " Nessun utente con email registrata."
+                        session['flash_message'] = f"Giornata {giornata_selezionata}: {len(partite_sel)} partite importate.{msg_email}"
                         return redirect(url_for('admin_home'))
                 except Exception as e:
                     errore = f"Errore durante il salvataggio: {str(e)}"
@@ -743,6 +944,44 @@ def admin_importa_giornata():
         selezionate=selezionate,
         errore=errore,
         session=session)
+
+# ─────────────────────────────────────────────
+# ROUTE PROFILO UTENTE
+# ─────────────────────────────────────────────
+
+@app.route("/profilo", methods=["GET", "POST"])
+def profilo():
+    if 'nome_utente' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    user = db_fetchone(conn, "SELECT * FROM utenti WHERE nome_utente = ?", (session['nome_utente'],))
+    email_attuale = row_get(user, 'email') if user else None
+
+    if request.method == "POST":
+        azione = request.form.get('azione')
+        if azione == 'email':
+            nuova_email = request.form.get('email', '').strip()
+            if nuova_email:
+                db_execute(conn, "UPDATE utenti SET email = ? WHERE nome_utente = ?", (nuova_email, session['nome_utente']))
+                db_commit(conn)
+                flash("Email aggiornata con successo!", "success")
+            conn.close()
+            return redirect(url_for('profilo'))
+        elif azione == 'password':
+            nuova_pw = request.form.get('nuova_password', '')
+            conferma = request.form.get('conferma_password', '')
+            if nuova_pw != conferma:
+                conn.close()
+                return render_template('profilo.html', email=email_attuale, session=session, errore="Le password non coincidono.")
+            pw_hash = hashlib.sha256(nuova_pw.encode()).hexdigest()
+            db_execute(conn, "UPDATE utenti SET password = ?, is_temp_password = FALSE WHERE nome_utente = ?", (pw_hash, session['nome_utente']))
+            db_commit(conn)
+            conn.close()
+            flash("Password aggiornata con successo!", "success")
+            return redirect(url_for('profilo'))
+
+    conn.close()
+    return render_template('profilo.html', email=email_attuale, session=session)
 
 # ─────────────────────────────────────────────
 # ROUTE ADMIN
@@ -777,6 +1016,25 @@ def admin_home():
     return render_template("admin.html", giornata_attiva=giornata_attiva, partite_attive=partite_attive,
         pronostici_inseriti=pronostici_inseriti, flash_message=flash_message,
         giocatori_per_partita=giocatori_per_partita, session=session)
+
+@app.route("/admin/email-utenti", methods=["GET", "POST"])
+def admin_email_utenti():
+    if require_admin(): return "Accesso negato.", 403
+    conn = get_db_connection()
+    if request.method == "POST":
+        utenti = db_fetchall(conn, "SELECT id FROM utenti")
+        for utente in utenti:
+            uid = row_get(utente, 'id')
+            email = request.form.get(f"email_{uid}", "").strip()
+            if email:
+                db_execute(conn, "UPDATE utenti SET email = ? WHERE id = ?", (email, uid))
+        db_commit(conn)
+        conn.close()
+        flash("Email utenti aggiornate con successo!", "success")
+        return redirect(url_for('admin_email_utenti'))
+    utenti = db_fetchall(conn, "SELECT id, nome_utente, email FROM utenti ORDER BY nome_utente")
+    conn.close()
+    return render_template("admin_email_utenti.html", utenti=utenti, session=session)
 
 @app.route("/admin/utenti")
 def admin_utenti():
@@ -959,6 +1217,29 @@ def admin_gestisci_finalizzazione():
     is_locked = row_get(lock_row, 'is_locked') if lock_row else False
     conn.close()
     return render_template("admin_finalizzazione.html", is_locked=is_locked, session=session)
+
+
+@app.route("/admin/gestisci-email", methods=["GET", "POST"])
+def admin_gestisci_email():
+    if require_admin(): return "Accesso negato.", 403
+    conn = get_db_connection()
+    if request.method == "POST":
+        utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti")
+        aggiornati = 0
+        for utente in utenti:
+            uid = row_get(utente, 'id')
+            nome = row_get(utente, 'nome_utente')
+            email = request.form.get(f"email_{uid}", "").strip().lower()
+            if email and '@' in email:
+                db_execute(conn, "UPDATE utenti SET email = ? WHERE id = ?", (email, uid))
+                aggiornati += 1
+        db_commit(conn)
+        conn.close()
+        flash(f"Email aggiornate per {aggiornati} utenti.", "success")
+        return redirect(url_for('admin_gestisci_email'))
+    utenti = db_fetchall(conn, "SELECT id, nome_utente, email FROM utenti ORDER BY nome_utente")
+    conn.close()
+    return render_template('admin_gestisci_email.html', utenti=utenti, session=session)
 
 @app.route("/admin/blocca-pronostici-iniziali", methods=["POST"])
 def blocca_pronostici_iniziali():

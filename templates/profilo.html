@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><span class="page-title">Profilo</span></div>
+<div class="fsa-section" style="padding-top:8px;">
+
+  <div class="fsa-card" style="text-align:center;padding:24px 16px 16px;">
+    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue-mid),var(--azzurro));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:28px;font-weight:700;color:white;margin:0 auto 12px;">
+      {{ session.nome_utente[:2].upper() }}
+    </div>
+    <div style="font-family:var(--font-d);font-size:22px;font-weight:700;">{{ session.nome_utente }}</div>
+    {% if email %}
+    <div style="font-size:13px;color:var(--azzurro);margin-top:4px;">{{ email }}</div>
+    {% else %}
+    <div style="font-size:13px;color:#ffb74d;margin-top:4px;">⚠️ Email non impostata</div>
+    {% endif %}
+  </div>
+
+  {% if not email %}
+  <div class="alert alert-warning">Inserisci la tua email per ricevere i reminder sui pronostici.</div>
+  {% endif %}
+
+  <div class="fsa-card">
+    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Aggiorna email</div>
+    <form method="post" action="{{ url_for('profilo') }}">
+      <input type="hidden" name="azione" value="email">
+      <div class="form-group">
+        <label class="form-label">Indirizzo email</label>
+        <input type="email" name="email" class="form-control" value="{{ email or '' }}" placeholder="tua@email.com" required>
+      </div>
+      <button type="submit" class="btn-primary">Salva email</button>
+    </form>
+  </div>
+
+  <div class="fsa-card">
+    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Cambia password</div>
+    <form method="post" action="{{ url_for('profilo') }}">
+      <input type="hidden" name="azione" value="password">
+      <div class="form-group">
+        <label class="form-label">Nuova password</label>
+        <input type="password" name="nuova_password" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conferma password</label>
+        <input type="password" name="conferma_password" class="form-control" required>
+      </div>
+      <button type="submit" class="btn-primary">Cambia password</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
