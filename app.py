@@ -787,14 +787,14 @@ def admin_risultati_giornata(giornata):
     partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
     for partita in partite:
         pid = row_get(partita, 'id')
-        r_casa = request.form.get(f"risultato_casa_{pid}")
-        r_osp = request.form.get(f"risultato_ospite_{pid}")
-        # Combina marcatore dal dropdown + eventuali extra scritti a mano
-        marcatore_principale = request.form.get(f"marcatore_{pid}", "").strip()
-        marcatore_extra = request.form.get(f"marcatore_extra_{pid}", "").strip()
-        tutti = [m.strip() for m in [marcatore_principale] + marcatore_extra.split(",") if m.strip()]
-        marcatori = ", ".join(tutti)
-        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?", (r_casa, r_osp, marcatori, pid))
+        # Converti stringhe vuote in None per i campi interi (PostgreSQL non accetta '')
+        r_casa_raw = request.form.get(f"risultato_casa_{pid}", "").strip()
+        r_osp_raw = request.form.get(f"risultato_ospite_{pid}", "").strip()
+        r_casa = int(r_casa_raw) if r_casa_raw else None
+        r_osp = int(r_osp_raw) if r_osp_raw else None
+        # Marcatore: solo dropdown singolo (1 marcatore per partita)
+        marcatore = request.form.get(f"marcatore_{pid}", "").strip() or None
+        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?", (r_casa, r_osp, marcatore, pid))
     db_commit(conn)
     conn.close()
     flash("Risultati salvati con successo!", "success")

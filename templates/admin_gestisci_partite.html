@@ -1,18 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-header"><span class="page-title">Gestione</span><span class="page-subtitle">partite</span></div>
-<div class="fsa-section" style="padding-top:8px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-  <div style="font-family:var(--font-d);font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Strumenti</div>
+<div class="page-header">
+  <span class="page-title">Gestione</span>
+  <span class="page-subtitle">partite</span>
 </div>
-<a href="{{ url_for('admin_importa_giornata') }}" class="btn-primary" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:14px 16px;border-radius:12px;text-decoration:none;">
-  <div style="font-size:22px;">🌐</div>
-  <div>
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;">Importa da API Serie A</div>
-    <div style="font-size:12px;opacity:0.8;">Scarica partite e rose giocatori automaticamente</div>
-  </div>
-</a>
-<div class="fsa-section-title">Aggiungi partita manuale</div>
+<div class="fsa-section" style="padding-top:8px;">
+
+  <a href="{{ url_for('admin_importa_giornata') }}" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:16px;">
+    <div style="font-size:24px;">🌐</div>
+    <div>
+      <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Importa da API Serie A</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.75);">Scarica partite e rose giocatori automaticamente</div>
+    </div>
+  </a>
+
+  <div class="fsa-section-title">Aggiungi partita manuale</div>
   <div class="fsa-card">
     <form method="post" action="{{ url_for('aggiungi_partita') }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -34,7 +36,7 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <input type="checkbox" name="pronosticabile" id="pronosticabile" value="1" style="width:18px;height:18px;accent-color:var(--azzurro);" checked>
+        <input type="checkbox" name="pronosticabile" id="pronosticabile" value="on" style="width:18px;height:18px;accent-color:var(--azzurro);" checked>
         <label for="pronosticabile" style="font-size:14px;color:var(--text);">Pronosticabile</label>
       </div>
       <button type="submit" class="btn-primary">Aggiungi partita</button>
@@ -42,6 +44,27 @@
   </div>
 
   <div class="fsa-section-title">Partite esistenti</div>
+
+  {% if giornate_disponibili %}
+  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">
+    <a href="{{ url_for('admin_gestisci_partite') }}" style="white-space:nowrap;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;text-decoration:none;
+      {% if not giornata_selezionata %}background:var(--azzurro);color:white;{% else %}background:var(--card2);color:var(--muted);border:1px solid var(--border);{% endif %}">Tutte</a>
+    {% for g in giornate_disponibili %}
+    <a href="{{ url_for('admin_gestisci_partite', giornata=g) }}" style="white-space:nowrap;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;text-decoration:none;
+      {% if giornata_selezionata == g %}background:var(--azzurro);color:white;{% else %}background:var(--card2);color:var(--muted);border:1px solid var(--border);{% endif %}">G{{ g }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% set partite_per_giornata = {} %}
+  {% for p in tutte_le_partite %}
+    {% set g = p['giornata'] %}
+    {% if g not in partite_per_giornata %}
+      {% set _ = partite_per_giornata.update({g: []}) %}
+    {% endif %}
+    {% set _ = partite_per_giornata[g].append(p) %}
+  {% endfor %}
+
   {% for giornata_num, partite_g in partite_per_giornata.items() %}
   <div style="margin-bottom:16px;">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:var(--azzurro);margin-bottom:8px;">Giornata {{ giornata_num }}</div>
@@ -49,31 +72,35 @@
     <div class="fsa-card" style="margin-bottom:8px;padding:12px 14px;">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;">
         <div style="flex:1;">
-          <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">{{ partita.data_ora_partita | fuso_orario_italia }} · {% if partita.pronosticabile %}<span style="color:#4caf50;">Pronosticabile</span>{% else %}<span style="color:var(--muted);">Non pronosticabile</span>{% endif %}</div>
+          <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">{{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+            {{ partita['data_ora_partita'] | fuso_orario_italia }} ·
+            {% if partita['pronosticabile'] %}<span style="color:#4caf50;">Pronosticabile</span>{% else %}<span style="color:var(--muted);">Non pronosticabile</span>{% endif %}
+          </div>
         </div>
-        <form method="post" action="{{ url_for('admin_elimina_partita', id_partita=partita.id) }}" style="display:inline;">
+        <form method="post" action="{{ url_for('admin_elimina_partita', id_partita=partita['id']) }}" style="display:inline;">
           <button type="submit" class="btn-danger" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Eliminare questa partita?')">Elimina</button>
         </form>
       </div>
-      <form method="post" action="{{ url_for('admin_modifica_partita', id_partita=partita.id) }}" style="margin-top:10px;">
+      <form method="post" action="{{ url_for('admin_modifica_partita', id_partita=partita['id']) }}" style="margin-top:10px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <div>
             <div class="form-label">Squadra Casa</div>
-            <input type="text" name="squadra_casa" class="form-control" style="height:38px;" value="{{ partita.squadra_casa }}">
+            <input type="text" name="squadra_casa" class="form-control" style="height:38px;" value="{{ partita['squadra_casa'] }}">
           </div>
           <div>
             <div class="form-label">Squadra Ospite</div>
-            <input type="text" name="squadra_ospite" class="form-control" style="height:38px;" value="{{ partita.squadra_ospite }}">
+            <input type="text" name="squadra_ospite" class="form-control" style="height:38px;" value="{{ partita['squadra_ospite'] }}">
           </div>
           <div>
             <div class="form-label">Data e ora</div>
-            <input type="datetime-local" name="data_ora_partita" class="form-control" style="height:38px;" value="{{ partita.data_ora_partita }}">
+            <input type="datetime-local" name="data_ora_partita" class="form-control" style="height:38px;" value="{{ partita['data_ora_partita'] }}">
           </div>
           <div style="display:flex;align-items:flex-end;padding-bottom:4px;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" name="pronosticabile" id="p_{{ partita.id }}" value="1" style="width:16px;height:16px;accent-color:var(--azzurro);" {% if partita.pronosticabile %}checked{% endif %}>
-              <label for="p_{{ partita.id }}" style="font-size:13px;color:var(--text);">Pronosticabile</label>
+              <input type="number" name="giornata" value="{{ partita['giornata'] }}" style="display:none;">
+              <input type="checkbox" name="pronosticabile" id="p_{{ partita['id'] }}" value="on" style="width:16px;height:16px;accent-color:var(--azzurro);" {% if partita['pronosticabile'] %}checked{% endif %}>
+              <label for="p_{{ partita['id'] }}" style="font-size:13px;color:var(--text);">Pronosticabile</label>
             </div>
           </div>
         </div>
@@ -81,6 +108,12 @@
       </form>
     </div>
     {% endfor %}
+  </div>
+  {% else %}
+  <div class="fsa-card" style="text-align:center;padding:24px;">
+    <div style="font-size:28px;margin-bottom:8px;">📭</div>
+    <div style="font-family:var(--font-d);font-size:18px;font-weight:700;margin-bottom:4px;">Nessuna partita trovata</div>
+    <div style="font-size:14px;color:var(--muted);">Importa dalla API o aggiungile manualmente.</div>
   </div>
   {% endfor %}
 </div>
