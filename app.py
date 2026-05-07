@@ -197,7 +197,6 @@ def create_tables():
 # EMAIL
 # ─────────────────────────────────────────────
 
-import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -649,24 +648,7 @@ EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '')
 def api_headers():
     return {'X-Auth-Token': FOOTBALL_API_KEY}
 
-def send_email(to_list, subject, html_body):
-    """Invia email a una lista di destinatari via Gmail SMTP."""
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        return False, "Credenziali Gmail non configurate."
-    try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        for to_email in to_list:
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = f'FantaSerieA <{GMAIL_USER}>'
-            msg['To'] = to_email
-            msg.attach(MIMEText(html_body, 'html'))
-            server.sendmail(GMAIL_USER, to_email, msg.as_string())
-        server.quit()
-        return True, None
-    except Exception as e:
-        return False, str(e)
+
 
 def build_email_pronostici(giornata, partite):
     """Costruisce il corpo HTML dell email di reminder pronostici."""
@@ -984,6 +966,15 @@ def admin_importa_giornata():
 # ROUTE PROFILO UTENTE
 # ─────────────────────────────────────────────
 
+@app.route("/api/profilo-info")
+def api_profilo_info():
+    if 'nome_utente' not in session:
+        return {'email': None}
+    conn = get_db_connection()
+    user = db_fetchone(conn, "SELECT email FROM utenti WHERE nome_utente = ?", (session['nome_utente'],))
+    conn.close()
+    return {'email': row_get(user, 'email') if user else None}
+
 @app.route("/profilo", methods=["GET", "POST"])
 def profilo():
     if 'nome_utente' not in session:
@@ -1120,8 +1111,27 @@ def admin_gestisci_partite():
         partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? ORDER BY data_ora_partita", (giornata_sel,))
     else:
         partite = db_fetchall(conn, "SELECT * FROM partite ORDER BY giornata, data_ora_partita")
+    # Carica partite attive e giocatori per la sezione risultati
+    giornata_attiva_row = db_fetchone(conn, "SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE")
+    partite_attive = []
+    giocatori_per_partita = {}
+    giornata_attiva_dict = None
+    if giornata_attiva_row:
+        g = row_get(giornata_attiva_row, 'giornata')
+        giornata_attiva_dict = {'giornata': g}
+        partite_attive = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (g,))
+        for partita in partite_attive:
+            pid = row_get(partita, 'id')
+            sc = (row_get(partita, 'squadra_casa') or '').upper()
+            so = (row_get(partita, 'squadra_ospite') or '').upper()
+            giocatori_per_partita[pid] = db_fetchall(conn,
+                "SELECT nome_giocatore, squadra FROM giocatori WHERE UPPER(squadra) = ? OR UPPER(squadra) = ? ORDER BY squadra, nome_giocatore",
+                (sc, so))
     conn.close()
-    return render_template("admin_gestisci_partite.html", tutte_le_partite=partite, giornate_disponibili=giornate_disponibili, giornata_selezionata=giornata_sel, session=session)
+    return render_template("admin_gestisci_partite.html", tutte_le_partite=partite,
+        giornate_disponibili=giornate_disponibili, giornata_selezionata=giornata_sel,
+        giornata_attiva=giornata_attiva_dict, partite_attive=partite_attive,
+        giocatori_per_partita=giocatori_per_partita, session=session)
 
 @app.route("/admin/aggiungi-partita", methods=["POST"])
 def aggiungi_partita():

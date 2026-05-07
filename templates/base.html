@@ -22,11 +22,11 @@
     .fsa-nav { background: linear-gradient(135deg, var(--blue) 0%, var(--green-dark) 100%); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--azzurro); position: sticky; top: 0; z-index: 100; }
     .fsa-brand { font-family: var(--font-d); font-size: 22px; font-weight: 700; letter-spacing: 1px; color: white; text-decoration: none; display: flex; align-items: center; gap: 8px; }
     .fsa-brand-icon { width: 28px; height: 28px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-    .fsa-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--azzurro); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; text-decoration: none; }
-    .fsa-nav-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
-    main { padding-bottom: 84px; }
-    .fsa-tab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 16px; z-index: 100; }
-    .fsa-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 16px; border-radius: 10px; position: relative; }
+    .fsa-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--azzurro); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: border-color 0.15s; user-select: none; }
+    .fsa-avatar:hover { border-color: rgba(255,255,255,0.5); }
+    main { padding-bottom: 80px; }
+    .fsa-tab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); z-index: 100; }
+    .fsa-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 16px; border-radius: 10px; }
     .fsa-tab.active { background: rgba(0,144,212,0.15); }
     .fsa-tab-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
     .fsa-tab.active .fsa-tab-icon { color: var(--azzurro); }
@@ -66,17 +66,31 @@
     .badge-saved { background: rgba(0,144,212,0.2); color: var(--azzurro); border: 1px solid rgba(0,144,212,0.3); }
     .badge-archived { background: rgba(122,139,168,0.15); color: var(--muted); border: 1px solid var(--border); }
     .rank-1 { color: var(--gold); } .rank-2 { color: #b0bec5; } .rank-3 { color: #a1887f; }
-    .admin-nav { background: rgba(198,40,40,0.12); border-bottom: 1px solid rgba(239,83,80,0.2); padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .admin-nav a { color: #ef9a9a; font-size: 12px; font-weight: 500; text-decoration: none; padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(239,83,80,0.2); }
     .page-header { padding: 20px 16px 4px; display: flex; align-items: baseline; gap: 10px; }
     .page-title { font-family: var(--font-d); font-size: 24px; font-weight: 700; color: white; }
     .page-subtitle { font-family: var(--font-d); font-size: 16px; color: var(--azzurro); font-weight: 600; }
     .text-muted { color: var(--muted); } .text-center { text-align: center; }
     .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
     .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; }
-    .p-16 { padding: 16px; } .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; } .gap-2 { gap: 8px; } .w-full { width: 100%; }
-    .divider { height: 1px; background: var(--border); margin: 12px 0; }
     .overflow-x { overflow-x: auto; }
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+    /* ── PROFILO DRAWER ── */
+    .profile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; backdrop-filter: blur(2px); }
+    .profile-overlay.open { display: block; }
+    .profile-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-radius: 20px 20px 0 0; padding: 0 0 max(24px, env(safe-area-inset-bottom)); z-index: 201; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); max-height: 80vh; overflow-y: auto; }
+    .profile-drawer.open { transform: translateY(0); }
+    .drawer-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 8px; }
+    .drawer-header { padding: 8px 20px 16px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--border); }
+    .drawer-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--blue-mid), var(--azzurro)); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-size: 22px; font-weight: 700; color: white; flex-shrink: 0; }
+    .drawer-name { font-family: var(--font-d); font-size: 20px; font-weight: 700; color: white; }
+    .drawer-email { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .drawer-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; text-decoration: none; color: var(--text); border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; width: 100%; background: none; border-left: none; border-right: none; border-top: none; font-family: var(--font-b); font-size: 15px; text-align: left; }
+    .drawer-item:hover { background: rgba(255,255,255,0.04); }
+    .drawer-item:last-child { border-bottom: none; }
+    .drawer-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .drawer-item-label { font-size: 15px; font-weight: 500; }
+    .drawer-item-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
   </style>
 </head>
 <body>
@@ -85,23 +99,56 @@
       <div class="fsa-brand-icon">🏆</div>
       FantaSerieA
     </a>
-    <div>
-      {% if 'nome_utente' in session %}
-        <a class="fsa-avatar" href="{{ url_for('profilo') }}" title="Il mio profilo">{{ session.nome_utente[:2].upper() }}</a>
-      {% else %}
-        <a class="fsa-nav-link" href="{{ url_for('login') }}">Accedi</a>
-      {% endif %}
+    {% if 'nome_utente' in session %}
+    <div class="fsa-avatar" id="profileBtn" onclick="toggleDrawer()">
+      {{ session.nome_utente[:2].upper() }}
     </div>
+    {% else %}
+    <a href="{{ url_for('login') }}" style="color:rgba(255,255,255,0.8);text-decoration:none;font-size:14px;font-weight:500;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);">Accedi</a>
+    {% endif %}
   </nav>
 
-  {% if 'nome_utente' in session and session.nome_utente == 'mirko' and request.endpoint and request.endpoint.startswith('admin') %}
-  <div class="admin-nav">
-    <a href="{{ url_for('admin_home') }}">⚡ Dashboard</a>
-    <a href="{{ url_for('admin_gestisci_partite') }}">Partite</a>
-    <a href="{{ url_for('admin_utenti') }}">Utenti</a>
-    <a href="{{ url_for('admin_gestisci_pronostici_iniziali') }}">Pronostici Iniziali</a>
-    <a href="{{ url_for('admin_gestisci_finalizzazione') }}">Finalizzazione</a>
-    <a href="{{ url_for('home') }}">← Esci da Admin</a>
+  {% if 'nome_utente' in session %}
+  <!-- Profile Drawer Overlay -->
+  <div class="profile-overlay" id="profileOverlay" onclick="closeDrawer()"></div>
+  <div class="profile-drawer" id="profileDrawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-header">
+      <div class="drawer-avatar">{{ session.nome_utente[:2].upper() }}</div>
+      <div>
+        <div class="drawer-name">{{ session.nome_utente }}</div>
+        <div class="drawer-email" id="drawerEmail">Caricamento...</div>
+      </div>
+    </div>
+    <a href="{{ url_for('profilo') }}" class="drawer-item" onclick="closeDrawer()">
+      <div class="drawer-icon" style="background:rgba(0,144,212,0.15);">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="#0090d4" stroke-width="1.5"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#0090d4" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="drawer-item-label">Profilo</div>
+        <div class="drawer-item-sub">Modifica email e password</div>
+      </div>
+    </a>
+    {% if session.nome_utente == 'mirko' %}
+    <a href="{{ url_for('admin_home') }}" class="drawer-item" onclick="closeDrawer()">
+      <div class="drawer-icon" style="background:rgba(198,40,40,0.15);">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.4 7.2L18 8.1L14 12L15.1 17.6L10 15L4.9 17.6L6 12L2 8.1L7.6 7.2L10 2Z" stroke="#ef5350" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="drawer-item-label" style="color:#ef9a9a;">Area Admin</div>
+        <div class="drawer-item-sub">Gestione partite e risultati</div>
+      </div>
+    </a>
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="drawer-item">
+      <div class="drawer-icon" style="background:rgba(122,139,168,0.15);">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M8 4H5C4.45 4 4 4.45 4 5V15C4 15.55 4.45 16 5 16H8" stroke="#7a8ba8" stroke-width="1.5" stroke-linecap="round"/><path d="M12 8L16 10M16 10L12 12M16 10H8" stroke="#7a8ba8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="drawer-item-label" style="color:var(--muted);">Esci</div>
+        <div class="drawer-item-sub">Disconnetti account</div>
+      </div>
+    </a>
   </div>
   {% endif %}
 
@@ -141,15 +188,30 @@
       <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5H17V8H3V5Z" fill="currentColor" opacity="0.6"/><path d="M4 8H16V16H4V8Z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M8 11H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
       <div class="fsa-tab-label">Archivio</div>
     </a>
-    <a href="{{ url_for('profilo') }}" class="fsa-tab {% if request.endpoint == 'profilo' %}active{% endif %}">
-      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-      <div class="fsa-tab-label">Profilo</div>
-    </a>
-    <a href="{{ url_for('logout') }}" class="fsa-tab">
-      <div class="fsa-tab-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8 4H5C4.45 4 4 4.45 4 5V15C4 15.55 4.45 16 5 16H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 8L16 10M16 10L12 12M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="fsa-tab-label">Esci</div>
-    </a>
   </div>
   {% endif %}
+
+  <script>
+    function toggleDrawer() {
+      document.getElementById('profileOverlay').classList.toggle('open');
+      document.getElementById('profileDrawer').classList.toggle('open');
+    }
+    function closeDrawer() {
+      document.getElementById('profileOverlay').classList.remove('open');
+      document.getElementById('profileDrawer').classList.remove('open');
+    }
+    // Carica email utente nel drawer
+    {% if 'nome_utente' in session %}
+    fetch('/api/profilo-info')
+      .then(r => r.json())
+      .then(d => {
+        const el = document.getElementById('drawerEmail');
+        if (el) el.textContent = d.email || 'Email non impostata';
+      }).catch(() => {
+        const el = document.getElementById('drawerEmail');
+        if (el) el.textContent = 'Email non impostata';
+      });
+    {% endif %}
+  </script>
 </body>
 </html>
