@@ -251,11 +251,25 @@ def invia_email(destinatari, oggetto, corpo_html):
             print(f"[EMAIL] Eccezione per {dest}: {e}", flush=True)
     return successi, errori
 
+def converti_data_email(data_ora_utc_str):
+    """Converte data UTC in formato leggibile per l'email (fuso orario Italia)."""
+    if not data_ora_utc_str:
+        return 'Data da definire'
+    try:
+        roma_tz = pytz.timezone('Europe/Rome')
+        orario_naive = parse_flexible_datetime(str(data_ora_utc_str))
+        if orario_naive is None:
+            return str(data_ora_utc_str)
+        orario_utc = pytz.utc.localize(orario_naive)
+        return orario_utc.astimezone(roma_tz).strftime("%d/%m/%Y alle %H:%M")
+    except Exception:
+        return str(data_ora_utc_str)
+
 def build_email_giornata(giornata, partite):
     """Costruisce il corpo HTML dell email di notifica giornata."""
     partite_html = ""
     for p in partite:
-        data_str = p['data_ora_partita'] or ''
+        data_str = converti_data_email(p.get('data_ora_partita') or '')
         partite_html += f"""
         <tr>
           <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;">
@@ -440,7 +454,21 @@ def visualizza_giornata(giornata):
         classifica_giornata.append({'nome_utente': row_get(utente, 'nome_utente'), 'punti_totali': punti_utente, 'punti_per_partita': punti_per_partita})
     conn.close()
     classifica_giornata.sort(key=lambda x: x['punti_totali'], reverse=True)
-    return render_template("visualizza_giornata.html", giornata=giornata, partite=partite_reali, classifica=classifica_giornata, session=session)
+    # Costruisci dizionario pronostici per partita e utente per la sezione pronostici
+    pronostici_per_partita = {}
+    for partita in partite_reali:
+        pid = row_get(partita, 'id')
+        rows = db_fetchall(conn, "SELECT u.nome_utente, pg.esito_pronosticato, pg.risultato_casa_pronosticato, pg.risultato_ospite_pronosticato, pg.marcatore_pronosticato FROM pronostici_giornata pg JOIN utenti u ON pg.id_utente = u.id WHERE pg.id_partita = ?", (pid,))
+        pronostici_per_partita[pid] = {
+            row_get(r, 'nome_utente'): {
+                'esito': row_get(r, 'esito_pronosticato'),
+                'r_casa': row_get(r, 'risultato_casa_pronosticato'),
+                'r_osp': row_get(r, 'risultato_ospite_pronosticato'),
+                'marcatore': row_get(r, 'marcatore_pronosticato'),
+            } for r in rows
+        }
+    conn.close()
+    return render_template("visualizza_giornata.html", giornata=giornata, partite=partite_reali, classifica=classifica_giornata, pronostici_per_partita=pronostici_per_partita, session=session)
 
 @app.route("/pronostici-iniziali", methods=["GET", "POST"])
 def pronostici_iniziali():
@@ -1317,6 +1345,39 @@ def admin_calcola_punti_finali():
     rf = db_fetchone(conn, "SELECT * FROM risultati_finali WHERE id = 1")
     conn.close()
     return render_template("admin_calcola_punti_finali.html", risultati_finali=rf, messaggio=messaggio, session=session)
+
+@app.route("/admin/modifica-giornata-archiviata/<int:giornata>", methods=["GET", "POST"])
+def admin_modifica_giornata_archiviata(giornata):
+    if require_admin(): return "Accesso negato.", 403
+    conn = get_db_connection()
+    if request.method == "POST":
+        partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+        for partita in partite:
+            pid = row_get(partita, 'id')
+            r_casa_raw = request.form.get(f"risultato_casa_{pid}", "").strip()
+            r_osp_raw = request.form.get(f"risultato_ospite_{pid}", "").strip()
+            r_casa = int(r_casa_raw) if r_casa_raw else None
+            r_osp = int(r_osp_raw) if r_osp_raw else None
+            marcatore = request.form.get(f"marcatore_{pid}", "").strip() or None
+            db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
+                (r_casa, r_osp, marcatore, pid))
+        db_commit(conn)
+        conn.close()
+        flash(f"Risultati giornata {giornata} aggiornati.", "success")
+        return redirect(url_for('admin_modifica_giornata_archiviata', giornata=giornata))
+    partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+    giocatori_per_partita = {}
+    for partita in partite:
+        pid = row_get(partita, 'id')
+        sc = (row_get(partita, 'squadra_casa') or '').upper()
+        so = (row_get(partita, 'squadra_ospite') or '').upper()
+        giocatori_per_partita[pid] = db_fetchall(conn,
+            "SELECT nome_giocatore, squadra FROM giocatori WHERE UPPER(squadra) = ? OR UPPER(squadra) = ? ORDER BY squadra, nome_giocatore",
+            (sc, so))
+    conn.close()
+    return render_template("admin_modifica_giornata_archiviata.html",
+        giornata=giornata, partite=partite,
+        giocatori_per_partita=giocatori_per_partita, session=session)
 
 @app.route("/admin/ricalcola-tutto")
 def admin_ricalcola_tutta_la_classifica():

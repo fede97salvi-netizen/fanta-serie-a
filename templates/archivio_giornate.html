@@ -3,14 +3,21 @@
 <div class="page-header"><span class="page-title">Archivio</span><span class="page-subtitle">giornate</span></div>
 <div class="fsa-section" style="padding-top:8px;">
   {% for giornata in giornate %}
-  <a href="{{ url_for('visualizza_giornata', giornata=giornata.giornata) }}" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:10px;">
-    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--blue-mid),var(--azzurro));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:20px;font-weight:700;color:white;">{{ giornata.giornata }}</div>
-    <div>
-      <div style="font-family:var(--font-d);font-size:17px;font-weight:700;color:white;">Giornata {{ giornata.giornata }}</div>
-      <div style="font-size:12px;color:var(--muted);">Archiviata · Clicca per i dettagli</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;">
+    <a href="{{ url_for('visualizza_giornata', giornata=giornata.giornata) }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;text-decoration:none;">
+      <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--blue-mid),var(--azzurro));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:20px;font-weight:700;color:white;flex-shrink:0;">{{ giornata.giornata }}</div>
+      <div>
+        <div style="font-family:var(--font-d);font-size:17px;font-weight:700;color:white;">Giornata {{ giornata.giornata }}</div>
+        <div style="font-size:12px;color:var(--muted);">Archiviata · Clicca per i dettagli</div>
+      </div>
+      <div style="margin-left:auto;color:var(--muted);font-size:18px;">›</div>
+    </a>
+    {% if session.nome_utente == 'mirko' %}
+    <div style="border-top:1px solid var(--border);padding:8px 16px;">
+      <a href="{{ url_for('admin_modifica_giornata_archiviata', giornata=giornata.giornata) }}" class="btn-warning" style="font-size:12px;padding:5px 12px;">✏️ Modifica risultati</a>
     </div>
-    <div style="margin-left:auto;color:var(--muted);font-size:18px;">›</div>
-  </a>
+    {% endif %}
+  </div>
   {% else %}
   <div class="fsa-card" style="text-align:center;padding:32px;">
     <div style="font-size:32px;margin-bottom:8px;">📂</div>
