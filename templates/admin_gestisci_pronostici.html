@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-header"><span class="page-title">Pronostici</span><span class="page-subtitle">giornata {{ giornata }}</span></div>
+<div class="page-header"><span class="page-title">Pronostici giornata {{ giornata }}</span></div>
 <div class="fsa-section" style="padding-top:8px;">
   {% for partita in partite %}
   <div class="fsa-section-title">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>

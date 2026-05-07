@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-header"><span class="page-title">Giornata</span><span class="page-subtitle">{{ giornata }}</span></div>
+<div class="page-header"><span class="page-title">Giornata {{ giornata }}</span></div>
 <div class="fsa-section" style="padding-top:8px;">
 
   <div class="fsa-section-title">Risultati reali</div>
@@ -66,14 +66,14 @@
       {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
     </div>
     <div class="overflow-x">
-      <table class="fsa-table">
+      <table class="fsa-table" style="table-layout:fixed;width:100%;">
         <thead>
           <tr>
-            <th>Utente</th>
-            <th style="text-align:center;">Esito</th>
-            <th style="text-align:center;">Risultato</th>
-            <th>Marcatore</th>
-            <th style="text-align:center;">Punti</th>
+            <th style="width:22%;">Utente</th>
+            <th style="width:12%;text-align:center;">Esito</th>
+            <th style="width:18%;text-align:center;">Risultato</th>
+            <th style="width:30%;">Marcatore</th>
+            <th style="width:18%;text-align:center;">Punti</th>
           </tr>
         </thead>
         <tbody>

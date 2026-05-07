@@ -1350,11 +1350,13 @@ def admin_modifica_giornata_archiviata(giornata):
     if require_admin(): return "Accesso negato.", 403
     conn = get_db_connection()
     if request.method == "POST":
-        partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+        partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? ORDER BY data_ora_partita", (giornata,))
         for partita in partite:
             pid = row_get(partita, 'id')
             r_casa_raw = request.form.get(f"risultato_casa_{pid}", "").strip()
             r_osp_raw = request.form.get(f"risultato_ospite_{pid}", "").strip()
+            if not r_casa_raw and not r_osp_raw:
+                continue  # salta partite non compilate
             r_casa = int(r_casa_raw) if r_casa_raw else None
             r_osp = int(r_osp_raw) if r_osp_raw else None
             marcatore = request.form.get(f"marcatore_{pid}", "").strip() or None
