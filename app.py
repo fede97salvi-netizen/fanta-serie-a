@@ -452,7 +452,6 @@ def visualizza_giornata(giornata):
             punti_per_partita[pid] = punti_dettaglio
             punti_utente += punti_dettaglio['totale']
         classifica_giornata.append({'nome_utente': row_get(utente, 'nome_utente'), 'punti_totali': punti_utente, 'punti_per_partita': punti_per_partita})
-    conn.close()
     classifica_giornata.sort(key=lambda x: x['punti_totali'], reverse=True)
     # Costruisci dizionario pronostici per partita e utente per la sezione pronostici
     pronostici_per_partita = {}
@@ -1365,7 +1364,7 @@ def admin_modifica_giornata_archiviata(giornata):
         conn.close()
         flash(f"Risultati giornata {giornata} aggiornati.", "success")
         return redirect(url_for('admin_modifica_giornata_archiviata', giornata=giornata))
-    partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+    partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? ORDER BY data_ora_partita", (giornata,))
     giocatori_per_partita = {}
     for partita in partite:
         pid = row_get(partita, 'id')
