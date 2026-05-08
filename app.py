@@ -776,6 +776,10 @@ def get_risultati_giornata(giornata):
         score = m.get('score', {}).get('fullTime', {})
         gol_home = score.get('home')
         gol_away = score.get('away')
+        # Debug: log prima partita per verificare campo goals
+        if not risultati:
+            print(f"[API DEBUG] Chiavi: {list(m.keys())}", flush=True)
+            print(f"[API DEBUG] goals: {m.get('goals', 'ASSENTE')}", flush=True)
         # Estrai tutti i marcatori (escludi autogol come marcatori validi)
         marcatori = []
         for g in m.get('goals', []):
@@ -869,43 +873,53 @@ def admin_invia_reminder(giornata):
 
 @app.route("/admin/aggiorna-risultati-massivo", methods=["POST"])
 def admin_aggiorna_risultati_massivo():
-    """Scarica e salva i risultati di tutte le giornate archiviate dall API."""
+    """Lancia l aggiornamento massivo in background per evitare timeout gunicorn."""
     if require_admin(): return "Accesso negato.", 403
-    try:
-        conn = get_db_connection()
-        giornate = db_fetchall(conn, "SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE ORDER BY giornata")
-        aggiornate = 0
-        errori_list = []
-        for g_row in giornate:
-            g = row_get(g_row, 'giornata')
-            try:
-                risultati_api, errore = get_risultati_giornata(g)
-                if errore or not risultati_api:
-                    errori_list.append(f"G{g}: {errore or 'nessun risultato'}")
-                    continue
-                partite_db = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ?", (g,))
-                for partita in partite_db:
-                    sc = row_get(partita, 'squadra_casa').upper()
-                    so = row_get(partita, 'squadra_ospite').upper()
-                    match_api = None
-                    for r in risultati_api:
-                        if (sc in r['home'] or r['home'] in sc) and (so in r['away'] or r['away'] in so):
-                            match_api = r
-                            break
-                    if match_api:
-                        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
-                            (match_api['gol_home'], match_api['gol_away'], match_api['marcatori_str'], row_get(partita, 'id')))
-                aggiornate += 1
-            except Exception as e:
-                errori_list.append(f"G{g}: {str(e)[:50]}")
-        db_commit(conn)
-        conn.close()
-        msg = f"Aggiornate {aggiornate}/{len(giornate)} giornate."
-        if errori_list:
-            msg += f" Errori: {'; '.join(errori_list[:3])}"
-        flash(msg, "success" if not errori_list else "warning")
-    except Exception as e:
-        flash(f"Errore: {str(e)}", "danger")
+
+    def _esegui_massivo():
+        import time
+        print("[MASSIVO] Avvio aggiornamento storico risultati...", flush=True)
+        try:
+            conn = get_db_connection()
+            giornate = db_fetchall(conn, "SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE ORDER BY giornata")
+            aggiornate = 0
+            for i, g_row in enumerate(giornate):
+                g = row_get(g_row, 'giornata')
+                if i > 0 and i % 9 == 0:
+                    print(f"[MASSIVO] Pausa rate limit dopo {i} chiamate...", flush=True)
+                    time.sleep(62)
+                try:
+                    risultati_api, errore = get_risultati_giornata(g)
+                    if errore or not risultati_api:
+                        print(f"[MASSIVO] G{g} saltata: {errore or 'nessun risultato'}", flush=True)
+                        continue
+                    partite_db = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ?", (g,))
+                    for partita in partite_db:
+                        sc = row_get(partita, 'squadra_casa').upper()
+                        so = row_get(partita, 'squadra_ospite').upper()
+                        match_api = None
+                        for r in risultati_api:
+                            if (sc in r['home'] or r['home'] in sc) and (so in r['away'] or r['away'] in so):
+                                match_api = r
+                                break
+                        if match_api:
+                            db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
+                                (match_api['gol_home'], match_api['gol_away'], match_api['marcatori_str'], row_get(partita, 'id')))
+                    db_commit(conn)
+                    aggiornate += 1
+                    print(f"[MASSIVO] G{g} aggiornata ({aggiornate}/{len(giornate)})", flush=True)
+                    time.sleep(7)  # ~7s tra una chiamata e l'altra = max 8-9 req/min
+                except Exception as e:
+                    print(f"[MASSIVO] Errore G{g}: {e}", flush=True)
+            conn.close()
+            print(f"[MASSIVO] Completato: {aggiornate}/{len(giornate)} giornate aggiornate.", flush=True)
+        except Exception as e:
+            print(f"[MASSIVO] Errore generale: {e}", flush=True)
+
+    t = threading.Thread(target=_esegui_massivo)
+    t.daemon = True
+    t.start()
+    flash("Aggiornamento storico avviato in background. Controlla i log di Render per il progresso (~4 minuti).", "info")
     return redirect(url_for('admin_gestisci_partite'))
 
 @app.route("/admin/importa-giornata", methods=["GET", "POST"])
