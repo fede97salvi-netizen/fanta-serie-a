@@ -811,7 +811,7 @@ def admin_importa_risultati(giornata):
             return redirect(url_for("admin_home"))
         conn = get_db_connection()
         partite_db = db_fetchall(conn,
-            "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+            "SELECT * FROM partite WHERE giornata = ?", (giornata,))
         aggiornate = 0
         non_trovate = []
         for partita in partite_db:
@@ -866,6 +866,47 @@ def admin_invia_reminder(giornata):
     except Exception as e:
         flash(f"Errore invio reminder: {str(e)}", "danger")
     return redirect(url_for('admin_home'))
+
+@app.route("/admin/aggiorna-risultati-massivo", methods=["POST"])
+def admin_aggiorna_risultati_massivo():
+    """Scarica e salva i risultati di tutte le giornate archiviate dall API."""
+    if require_admin(): return "Accesso negato.", 403
+    try:
+        conn = get_db_connection()
+        giornate = db_fetchall(conn, "SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE ORDER BY giornata")
+        aggiornate = 0
+        errori_list = []
+        for g_row in giornate:
+            g = row_get(g_row, 'giornata')
+            try:
+                risultati_api, errore = get_risultati_giornata(g)
+                if errore or not risultati_api:
+                    errori_list.append(f"G{g}: {errore or 'nessun risultato'}")
+                    continue
+                partite_db = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ?", (g,))
+                for partita in partite_db:
+                    sc = row_get(partita, 'squadra_casa').upper()
+                    so = row_get(partita, 'squadra_ospite').upper()
+                    match_api = None
+                    for r in risultati_api:
+                        if (sc in r['home'] or r['home'] in sc) and (so in r['away'] or r['away'] in so):
+                            match_api = r
+                            break
+                    if match_api:
+                        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
+                            (match_api['gol_home'], match_api['gol_away'], match_api['marcatori_str'], row_get(partita, 'id')))
+                aggiornate += 1
+            except Exception as e:
+                errori_list.append(f"G{g}: {str(e)[:50]}")
+        db_commit(conn)
+        conn.close()
+        msg = f"Aggiornate {aggiornate}/{len(giornate)} giornate."
+        if errori_list:
+            msg += f" Errori: {'; '.join(errori_list[:3])}"
+        flash(msg, "success" if not errori_list else "warning")
+    except Exception as e:
+        flash(f"Errore: {str(e)}", "danger")
+    return redirect(url_for('admin_gestisci_partite'))
 
 @app.route("/admin/importa-giornata", methods=["GET", "POST"])
 def admin_importa_giornata():
