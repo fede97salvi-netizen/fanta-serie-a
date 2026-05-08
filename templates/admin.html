@@ -30,6 +30,13 @@
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">da API Serie A</div>
       </button>
     </form>
+    <form method="post" action="{{ url_for('admin_importa_marcatori', giornata=g) }}">
+      <button type="submit" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer;color:var(--text);font-family:var(--font-b);" onclick="return confirm('Importare marcatori da API-Football per le 3 partite pronosticabili?')">
+        <div style="font-size:24px;margin-bottom:6px;">⚽</div>
+        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;">Importa marcatori</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">da API-Football</div>
+      </button>
+    </form>
     <a href="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" style="background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;display:block;" onclick="return confirm('Calcolare punteggi giornata {{ g }}?')">
       <div style="font-size:24px;margin-bottom:6px;">⚡</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Calcola punteggi</div>

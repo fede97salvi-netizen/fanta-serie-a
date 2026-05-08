@@ -665,6 +665,9 @@ GMAIL_USER = os.environ.get('GMAIL_USER', '')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 APP_URL = os.environ.get('APP_URL', 'https://fanta-serie-a-1.onrender.com')
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+API_FOOTBALL_KEY = os.environ.get('API_FOOTBALL_KEY', '')
+API_FOOTBALL_BASE = 'https://v3.football.api-sports.io'
+SERIE_A_ID = 135  # ID Serie A su API-Football
 EMAIL_FROM_NAME = 'FantaSerieA'
 EMAIL_FROM_ADDRESS = 'onboarding@resend.dev'  # Mittente verificato Resend gratuito
 
@@ -715,6 +718,89 @@ def build_email_pronostici(giornata, partite):
   </div>
 </body>
 </html>'''
+
+def af_headers():
+    return {
+        'x-apisports-key': API_FOOTBALL_KEY
+    }
+
+def get_marcatori_partita_af(squadra_casa, squadra_ospite, data_ora_utc_str):
+    """Scarica i marcatori di una partita da API-Football cercando per squadre e data."""
+    if not API_FOOTBALL_KEY:
+        return None, "API_FOOTBALL_KEY non configurata"
+    try:
+        # Estrai la data dalla stringa UTC
+        if not data_ora_utc_str:
+            return None, "Data partita mancante"
+        orario_naive = parse_flexible_datetime(str(data_ora_utc_str))
+        if not orario_naive:
+            return None, "Formato data non valido"
+        data_str = orario_naive.strftime('%Y-%m-%d')
+
+        # Cerca fixtures per data e lega
+        url = f"{API_FOOTBALL_BASE}/fixtures"
+        params = {
+            'league': SERIE_A_ID,
+            'season': orario_naive.year if orario_naive.month >= 8 else orario_naive.year - 1,
+            'date': data_str
+        }
+        r = http_requests.get(url, headers=af_headers(), params=params, timeout=10)
+        if r.status_code != 200:
+            return None, f"Errore API-Football ({r.status_code})"
+        data = r.json()
+        fixtures = data.get('response', [])
+
+        # Cerca la partita corrispondente per nome squadra
+        fixture_id = None
+        for f in fixtures:
+            home = f['teams']['home']['name'].upper()
+            away = f['teams']['away']['name'].upper()
+            sc = squadra_casa.upper()
+            so = squadra_ospite.upper()
+            if (sc in home or home in sc) and (so in away or away in so):
+                fixture_id = f['fixture']['id']
+                break
+
+        if not fixture_id:
+            return None, f"Partita {squadra_casa} vs {squadra_ospite} non trovata per {data_str}"
+
+        # Scarica gli eventi della partita
+        r2 = http_requests.get(f"{API_FOOTBALL_BASE}/fixtures/events",
+            headers=af_headers(),
+            params={'fixture': fixture_id},
+            timeout=10)
+        if r2.status_code != 200:
+            return None, f"Errore eventi ({r2.status_code})"
+        eventi = r2.json().get('response', [])
+
+        # Filtra solo i gol (escludi autogol)
+        marcatori = []
+        for ev in eventi:
+            if ev.get('type') == 'Goal' and ev.get('detail') != 'Own Goal':
+                nome = ev.get('player', {}).get('name', '').strip()
+                if nome:
+                    marcatori.append(nome)
+
+        return marcatori, None
+    except Exception as e:
+        return None, str(e)
+
+def get_marcatori_giornata_af(giornata, partite_pronosticabili):
+    """Scarica marcatori per le partite pronosticabili di una giornata. Usa 2 chiamate per partita."""
+    risultati = {}
+    errori = []
+    for partita in partite_pronosticabili:
+        pid = row_get(partita, 'id')
+        sc = row_get(partita, 'squadra_casa')
+        so = row_get(partita, 'squadra_ospite')
+        dop = row_get(partita, 'data_ora_partita')
+        marcatori, errore = get_marcatori_partita_af(sc, so, dop)
+        if errore:
+            errori.append(f"{sc} vs {so}: {errore}")
+            risultati[pid] = None
+        else:
+            risultati[pid] = ', '.join(marcatori) if marcatori else ''
+    return risultati, errori
 
 def get_matches_giornata(giornata):
     """Scarica i match di una giornata di Serie A dall API."""
@@ -903,9 +989,23 @@ def admin_aggiorna_risultati_massivo():
                                 match_api = r
                                 break
                         if match_api:
-                            db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
-                                (match_api['gol_home'], match_api['gol_away'], match_api['marcatori_str'], row_get(partita, 'id')))
+                            db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=? WHERE id=?",
+                                (match_api['gol_home'], match_api['gol_away'], row_get(partita, 'id')))
                     db_commit(conn)
+                    # Importa marcatori da API-Football per le partite pronosticabili
+                    if API_FOOTBALL_KEY:
+                        partite_pron = db_fetchall(conn,
+                            "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (g,))
+                        if partite_pron:
+                            time.sleep(2)
+                            marc_ris, marc_err = get_marcatori_giornata_af(g, partite_pron)
+                            for pid_m, marc_str in marc_ris.items():
+                                if marc_str is not None:
+                                    db_execute(conn, "UPDATE partite SET marcatore_reale = ? WHERE id = ?",
+                                        (marc_str, pid_m))
+                            db_commit(conn)
+                            if marc_err:
+                                print(f"[MASSIVO] G{g} marcatori: {marc_err}", flush=True)
                     aggiornate += 1
                     print(f"[MASSIVO] G{g} aggiornata ({aggiornate}/{len(giornate)})", flush=True)
                     time.sleep(7)  # ~7s tra una chiamata e l'altra = max 8-9 req/min
@@ -921,6 +1021,38 @@ def admin_aggiorna_risultati_massivo():
     t.start()
     flash("Aggiornamento storico avviato in background. Controlla i log di Render per il progresso (~4 minuti).", "info")
     return redirect(url_for('admin_gestisci_partite'))
+
+@app.route("/admin/importa-marcatori/<int:giornata>", methods=["POST"])
+def admin_importa_marcatori(giornata):
+    """Importa marcatori da API-Football per le partite pronosticabili della giornata."""
+    if require_admin(): return "Accesso negato.", 403
+    if not API_FOOTBALL_KEY:
+        flash("API_FOOTBALL_KEY non configurata su Render.", "danger")
+        return redirect(url_for('admin_home'))
+    try:
+        conn = get_db_connection()
+        partite = db_fetchall(conn,
+            "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
+        if not partite:
+            conn.close()
+            flash(f"Nessuna partita pronosticabile per giornata {giornata}.", "warning")
+            return redirect(url_for('admin_home'))
+        risultati, errori = get_marcatori_giornata_af(giornata, partite)
+        aggiornate = 0
+        for pid, marcatori_str in risultati.items():
+            if marcatori_str is not None:
+                db_execute(conn, "UPDATE partite SET marcatore_reale = ? WHERE id = ?",
+                    (marcatori_str, pid))
+                aggiornate += 1
+        db_commit(conn)
+        conn.close()
+        msg = f"Marcatori importati: {aggiornate}/{len(partite)} partite aggiornate."
+        if errori:
+            msg += f" Errori: {'; '.join(errori[:2])}"
+        flash(msg, "success" if not errori else "warning")
+    except Exception as e:
+        flash(f"Errore importazione marcatori: {str(e)}", "danger")
+    return redirect(url_for('admin_home'))
 
 @app.route("/admin/importa-giornata", methods=["GET", "POST"])
 def admin_importa_giornata():
