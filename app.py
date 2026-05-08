@@ -739,9 +739,13 @@ def get_marcatori_partita_af(squadra_casa, squadra_ospite, data_ora_utc_str):
 
         # Cerca fixtures per data e lega
         url = f"{API_FOOTBALL_BASE}/fixtures"
+        # Serie A season: es. 2025-26 = season 2025 (inizia agosto 2025)
+        # Se mese >= 8 (agosto-dicembre) → season = anno corrente
+        # Se mese < 8 (gennaio-luglio) → season = anno precedente
+        season = orario_naive.year if orario_naive.month >= 8 else orario_naive.year - 1
         params = {
             'league': SERIE_A_ID,
-            'season': orario_naive.year if orario_naive.month >= 8 else orario_naive.year - 1,
+            'season': season,
             'date': data_str
         }
         r = http_requests.get(url, headers=af_headers(), params=params, timeout=10)
@@ -749,6 +753,11 @@ def get_marcatori_partita_af(squadra_casa, squadra_ospite, data_ora_utc_str):
             return None, f"Errore API-Football ({r.status_code})"
         data = r.json()
         fixtures = data.get('response', [])
+        print(f'[AF DEBUG] Status:{r.status_code} Season:{season} Date:{data_str} Fixtures:{len(fixtures)}', flush=True)
+        if fixtures:
+            [print(f'[AF DEBUG] Disponibile: {f["teams"]["home"]["name"]} vs {f["teams"]["away"]["name"]}', flush=True) for f in fixtures[:5]]
+        if data.get('errors'):
+            return None, f'Errore API: {data["errors"]}'
 
         # Cerca la partita corrispondente per nome squadra
         fixture_id = None
