@@ -1251,18 +1251,26 @@ def admin_risultati_giornata(giornata):
     partite = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE", (giornata,))
     for partita in partite:
         pid = row_get(partita, 'id')
-        # Converti stringhe vuote in None per i campi interi (PostgreSQL non accetta '')
         r_casa_raw = request.form.get(f"risultato_casa_{pid}", "").strip()
         r_osp_raw = request.form.get(f"risultato_ospite_{pid}", "").strip()
         r_casa = int(r_casa_raw) if r_casa_raw else None
         r_osp = int(r_osp_raw) if r_osp_raw else None
-        # Marcatore: solo dropdown singolo (1 marcatore per partita)
-        marcatore = request.form.get(f"marcatore_{pid}", "").strip() or None
-        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?", (r_casa, r_osp, marcatore, pid))
+        # Marcatori multipli: array di valori dal form
+        marcatori_lista = request.form.getlist(f"marcatore_{pid}[]")
+        # Filtra "Nessun marcatore" se ci sono altri marcatori reali
+        marcatori_validi = [m.strip() for m in marcatori_lista if m.strip() and m.strip() != 'Nessun marcatore']
+        if not marcatori_validi:
+            # Controlla se c'è almeno un "Nessun marcatore" o "Autogol"
+            speciali = [m.strip() for m in marcatori_lista if m.strip() in ('Nessun marcatore', 'Autogol')]
+            marcatore_finale = speciali[0] if speciali else None
+        else:
+            marcatore_finale = ', '.join(marcatori_validi)
+        db_execute(conn, "UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?",
+            (r_casa, r_osp, marcatore_finale, pid))
     db_commit(conn)
     conn.close()
     flash("Risultati salvati con successo!", "success")
-    return redirect(url_for("admin_home"))
+    return redirect(url_for("admin_gestisci_partite"))
 
 @app.route("/admin/archivia-giornata/<int:giornata>")
 def archivia_giornata(giornata):

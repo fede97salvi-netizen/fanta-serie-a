@@ -6,20 +6,39 @@
 
 <div class="fsa-section" style="padding-top:8px;">
 
-  <!-- SEZIONE 1: Risultati reali giornata attiva -->
+  <!-- SEZIONE 1: Importazione + Risultati -->
   {% if giornata_attiva %}
   {% set g = giornata_attiva['giornata'] if giornata_attiva is mapping else giornata_attiva %}
+
+  <div class="fsa-section-title">Importazione — Giornata {{ g }}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <a href="{{ url_for('admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
+      <div style="font-size:24px;margin-bottom:4px;">📅</div>
+      <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Importa partite</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
+    </a>
+    <form method="post" action="{{ url_for('admin_importa_risultati', giornata=g) }}">
+      <button type="submit" style="width:100%;height:100%;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;font-family:var(--font-b);"
+        onclick="return confirm('Importare risultati dalla API per la giornata {{ g }}?')">
+        <div style="font-size:24px;margin-bottom:4px;">🌐</div>
+        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Importa risultati</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Punteggi da API Serie A</div>
+      </button>
+    </form>
+  </div>
+
   <div class="fsa-section-title">Risultati reali — Giornata {{ g }}</div>
   <div class="fsa-card">
     <form method="post" action="{{ url_for('admin_risultati_giornata', giornata=g) }}">
       {% for partita in partite_attive %}
       {% set pid = partita['id'] %}
       {% set giocatori = giocatori_per_partita.get(pid, []) %}
+      {% set marcatori_salvati = partita['marcatore_reale'].split(',') | map('trim') | list if partita['marcatore_reale'] else [] %}
       <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
         <div style="font-size:14px;font-weight:600;color:var(--azzurro);margin-bottom:10px;">
           {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
           <div>
             <div class="form-label">Gol {{ partita['squadra_casa'][:8] }}</div>
             <input type="number" name="risultato_casa_{{ pid }}" class="form-control"
@@ -37,47 +56,87 @@
               placeholder="0">
           </div>
         </div>
-        <div>
-          <div class="form-label">Marcatore</div>
-          {% if giocatori %}
-          <select name="marcatore_{{ pid }}" class="form-select">
-            <option value="">-- Nessun marcatore --</option>
-            <optgroup label="{{ partita['squadra_casa'] }}">
-              {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_casa']|upper %}
-              <option value="{{ g_row['nome_giocatore'] }}" {% if partita['marcatore_reale'] and g_row['nome_giocatore'] in partita['marcatore_reale'] %}selected{% endif %}>{{ g_row['nome_giocatore'] }}</option>
-              {% endif %}{% endfor %}
-            </optgroup>
-            <optgroup label="{{ partita['squadra_ospite'] }}">
-              {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_ospite']|upper %}
-              <option value="{{ g_row['nome_giocatore'] }}" {% if partita['marcatore_reale'] and g_row['nome_giocatore'] in partita['marcatore_reale'] %}selected{% endif %}>{{ g_row['nome_giocatore'] }}</option>
-              {% endif %}{% endfor %}
-            </optgroup>
-          </select>
-          {% else %}
-          <input type="text" name="marcatore_{{ pid }}" class="form-control" style="height:40px;"
-            value="{{ partita['marcatore_reale'] or '' }}" placeholder="Scrivi manualmente">
-          {% endif %}
+
+        <div class="form-label">Marcatori</div>
+        <div id="marcatori_{{ pid }}" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+          {% set righe = marcatori_salvati if marcatori_salvati else [''] %}
+          {% for marc in righe %}
+          <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
+            <select name="marcatore_{{ pid }}[]" class="form-select" style="flex:1;">
+              <option value="Nessun marcatore" {% if marc == 'Nessun marcatore' or marc == '' %}selected{% endif %}>— Nessun marcatore (0-0) —</option>
+              <option value="Autogol" {% if marc == 'Autogol' %}selected{% endif %}>— Autogol —</option>
+              {% if giocatori %}
+              <optgroup label="{{ partita['squadra_casa'] }}">
+                {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_casa']|upper %}
+                <option value="{{ g_row['nome_giocatore'] }}" {% if marc == g_row['nome_giocatore'] %}selected{% endif %}>{{ g_row['nome_giocatore'] }}</option>
+                {% endif %}{% endfor %}
+              </optgroup>
+              <optgroup label="{{ partita['squadra_ospite'] }}">
+                {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_ospite']|upper %}
+                <option value="{{ g_row['nome_giocatore'] }}" {% if marc == g_row['nome_giocatore'] %}selected{% endif %}>{{ g_row['nome_giocatore'] }}</option>
+                {% endif %}{% endfor %}
+              </optgroup>
+              {% endif %}
+            </select>
+            <button type="button" onclick="rimuoviMarcatore(this)"
+              style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;font-size:20px;flex-shrink:0;font-family:var(--font-b);">×</button>
+          </div>
+          {% endfor %}
         </div>
+
+        <template id="tpl_{{ pid }}">
+          <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
+            <select name="marcatore_{{ pid }}[]" class="form-select" style="flex:1;">
+              <option value="Nessun marcatore" selected>— Nessun marcatore (0-0) —</option>
+              <option value="Autogol">— Autogol —</option>
+              {% if giocatori %}
+              <optgroup label="{{ partita['squadra_casa'] }}">
+                {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_casa']|upper %}
+                <option value="{{ g_row['nome_giocatore'] }}">{{ g_row['nome_giocatore'] }}</option>
+                {% endif %}{% endfor %}
+              </optgroup>
+              <optgroup label="{{ partita['squadra_ospite'] }}">
+                {% for g_row in giocatori %}{% if g_row['squadra']|upper == partita['squadra_ospite']|upper %}
+                <option value="{{ g_row['nome_giocatore'] }}">{{ g_row['nome_giocatore'] }}</option>
+                {% endif %}{% endfor %}
+              </optgroup>
+              {% endif %}
+            </select>
+            <button type="button" onclick="rimuoviMarcatore(this)"
+              style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;font-size:20px;flex-shrink:0;font-family:var(--font-b);">×</button>
+          </div>
+        </template>
+
+        <button type="button" onclick="aggiungiMarcatore('{{ pid }}')"
+          style="display:flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--azzurro);border-radius:8px;padding:7px 14px;color:var(--azzurro);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-b);margin-top:4px;">
+          + Aggiungi marcatore
+        </button>
       </div>
       {% else %}
       <div style="text-align:center;padding:16px;color:var(--muted);">Nessuna partita pronosticabile per questa giornata.</div>
       {% endfor %}
       {% if partite_attive %}
-      <button type="submit" class="btn-success">Salva risultati</button>
+      <button type="submit" class="btn-success" style="margin-top:8px;">Salva risultati</button>
       {% endif %}
     </form>
   </div>
   {% endif %}
 
-  <!-- SEZIONE 2: Importa da API -->
-  <div class="fsa-section-title">Importazione</div>
-  <a href="{{ url_for('admin_importa_giornata') }}" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:12px;">
-    <div style="font-size:24px;">🌐</div>
-    <div>
-      <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Importa da API Serie A</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.75);">Scarica partite e rose giocatori automaticamente</div>
-    </div>
-  </a>
+  <script>
+  function aggiungiMarcatore(pid) {
+    const container = document.getElementById('marcatori_' + pid);
+    const tpl = document.getElementById('tpl_' + pid);
+    const clone = tpl.content.cloneNode(true);
+    container.appendChild(clone);
+  }
+  function rimuoviMarcatore(btn) {
+    const row = btn.closest('.marcatore-row');
+    const container = row.parentElement;
+    if (container.querySelectorAll('.marcatore-row').length > 1) {
+      row.remove();
+    }
+  }
+  </script>
 
   <!-- SEZIONE 3: Aggiungi manuale -->
   <div class="fsa-section-title">Aggiungi partita manuale</div>
