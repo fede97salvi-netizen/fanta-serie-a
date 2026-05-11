@@ -102,6 +102,22 @@ def parse_flexible_datetime(date_string):
         except ValueError:
             return None
 
+@app.template_filter('datetime_local_italia')
+def datetime_local_italia(data_ora_utc_str):
+    """Converte UTC in ora italiana nel formato per input datetime-local (YYYY-MM-DDTHH:MM)."""
+    if not data_ora_utc_str:
+        return ''
+    try:
+        roma_tz = pytz.timezone('Europe/Rome')
+        orario_naive = parse_flexible_datetime(str(data_ora_utc_str))
+        if orario_naive is None:
+            return str(data_ora_utc_str)
+        orario_utc = pytz.utc.localize(orario_naive)
+        orario_roma = orario_utc.astimezone(roma_tz)
+        return orario_roma.strftime('%Y-%m-%dT%H:%M')
+    except Exception:
+        return str(data_ora_utc_str)
+
 @app.template_filter('fuso_orario_italia')
 def fuso_orario_italia(data_ora_utc_str):
     if not data_ora_utc_str:
@@ -418,14 +434,17 @@ def visualizza_giornata(giornata):
     if 'nome_utente' not in session:
         return redirect(url_for("login"))
     conn = get_db_connection()
-    partite_reali = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND risultato_casa_reale IS NOT NULL", (giornata,))
+    # Tutte le partite per la sezione risultati reali
+    partite_reali = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? ORDER BY pronosticabile DESC, data_ora_partita", (giornata,))
+    # Solo le pronosticabili per classifica e tabella pronostici
+    partite_pron = db_fetchall(conn, "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE AND risultato_casa_reale IS NOT NULL", (giornata,))
     utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti")
     classifica_giornata = []
     for utente in utenti:
         uid = row_get(utente, 'id')
         punti_utente = 0
         punti_per_partita = {}
-        for partita in partite_reali:
+        for partita in partite_pron:
             pid = row_get(partita, 'id')
             pronostico = db_fetchone(conn, "SELECT * FROM pronostici_giornata WHERE id_utente = ? AND id_partita = ?", (uid, pid))
             punti_dettaglio = {'esito': 0, 'risultato': 0, 'marcatore': 0, 'bonus': 0}
@@ -455,7 +474,7 @@ def visualizza_giornata(giornata):
     classifica_giornata.sort(key=lambda x: x['punti_totali'], reverse=True)
     # Costruisci dizionario pronostici per partita e utente per la sezione pronostici
     pronostici_per_partita = {}
-    for partita in partite_reali:
+    for partita in partite_pron:
         pid = row_get(partita, 'id')
         rows = db_fetchall(conn, "SELECT u.nome_utente, pg.esito_pronosticato, pg.risultato_casa_pronosticato, pg.risultato_ospite_pronosticato, pg.marcatore_pronosticato FROM pronostici_giornata pg JOIN utenti u ON pg.id_utente = u.id WHERE pg.id_partita = ?", (pid,))
         pronostici_per_partita[pid] = {
@@ -467,7 +486,10 @@ def visualizza_giornata(giornata):
             } for r in rows
         }
     conn.close()
-    return render_template("visualizza_giornata.html", giornata=giornata, partite=partite_reali, classifica=classifica_giornata, pronostici_per_partita=pronostici_per_partita, session=session)
+    return render_template("visualizza_giornata.html", giornata=giornata,
+        partite=partite_reali, partite_pron=partite_pron,
+        classifica=classifica_giornata, pronostici_per_partita=pronostici_per_partita,
+        session=session)
 
 @app.route("/pronostici-iniziali", methods=["GET", "POST"])
 def pronostici_iniziali():
