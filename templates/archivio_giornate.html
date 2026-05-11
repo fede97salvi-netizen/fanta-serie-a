@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+<div style="padding:12px 16px 0;"><a href="{{ url_for('home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Home</a></div>
 <div class="page-header"><span class="page-title">Archivio giornate</span></div>
 <div class="fsa-section" style="padding-top:8px;">
   {% for giornata in giornate %}
@@ -26,4 +27,5 @@
   </div>
   {% endfor %}
 </div>
+  <div style="margin-top:8px;"><a href="{{ url_for('home') }}" class="btn-secondary">← Home</a></div>
 {% endblock %}

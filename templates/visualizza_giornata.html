@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
+<div style="padding:12px 16px 0;">
+  <a href="{{ url_for('archivio_giornate') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Archivio</a>
+</div>
 <div class="page-header"><span class="page-title">Giornata {{ giornata }}</span></div>
 <div class="fsa-section" style="padding-top:8px;">
 
@@ -23,7 +26,17 @@
   </div>
   {% endfor %}
 
-  <div class="fsa-section-title" style="margin-top:8px;">Classifica di giornata</div>
+  <button onclick="toggleSezione('classifica')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;margin-bottom:8px;font-family:var(--font-b);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">📊</span>
+      <div style="text-align:left;">
+        <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Classifica di giornata</div>
+        <div style="font-size:11px;color:var(--muted);">Basata sulle 3 partite pronosticabili</div>
+      </div>
+    </div>
+    <span id="arrow-classifica" style="color:var(--muted);font-size:18px;transition:transform 0.2s;">›</span>
+  </button>
+  <div id="sezione-classifica" style="display:none;margin-bottom:12px;">
   <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Basata sulle 3 partite pronosticabili ⭐</p>
   <div class="fsa-card" style="padding:0;">
     <div class="overflow-x">
@@ -66,7 +79,19 @@
     </div>
   </div>
 
-  <div class="fsa-section-title" style="margin-top:8px;">Pronostici inseriti</div>
+  </div><!-- fine sezione classifica -->
+
+  <button onclick="toggleSezione('pronostici')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;margin-bottom:8px;font-family:var(--font-b);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">📋</span>
+      <div style="text-align:left;">
+        <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Pronostici inseriti</div>
+        <div style="font-size:11px;color:var(--muted);">Solo le 3 partite pronosticabili</div>
+      </div>
+    </div>
+    <span id="arrow-pronostici" style="color:var(--muted);font-size:18px;transition:transform 0.2s;">›</span>
+  </button>
+  <div id="sezione-pronostici" style="display:none;margin-bottom:12px;">
   <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Solo le 3 partite pronosticabili ⭐</p>
   {% for partita in partite_pron %}
   <div class="fsa-card" style="margin-bottom:12px;">
@@ -93,17 +118,17 @@
             <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};">{{ utente.nome_utente }}</td>
             <td style="text-align:center;">
               {% if pron %}
-              <strong style="font-family:var(--font-d);font-size:16px;{% if p.esito > 0 %}color:#4caf50;{% else %}color:var(--muted);{% endif %}">{{ pron.esito or '–' }}</strong>
+              <strong style="font-family:var(--font-d);font-size:16px;{% if p.esito > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.esito or '–' }}</strong>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}
             </td>
             <td style="text-align:center;font-family:var(--font-d);font-size:14px;">
               {% if pron and pron.r_casa is not none %}
-              <span style="{% if p.risultato > 0 %}color:#4caf50;{% else %}color:var(--muted);{% endif %}">{{ pron.r_casa }}–{{ pron.r_osp }}</span>
+              <span style="{% if p.risultato > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.r_casa }}–{{ pron.r_osp }}</span>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}
             </td>
             <td style="font-size:12px;">
               {% if pron and pron.marcatore %}
-              <span style="{% if p.marcatore > 0 %}color:#4caf50;{% else %}color:var(--muted);{% endif %}">{{ pron.marcatore }}</span>
+              <span style="{% if p.marcatore > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.marcatore }}</span>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}
             </td>
             <td style="text-align:center;font-family:var(--font-d);font-size:16px;font-weight:700;
@@ -118,8 +143,36 @@
   </div>
   {% endfor %}
 
-  <div style="margin-top:8px;">
+  </div><!-- fine sezione pronostici -->
+
+  <a href="{{ url_for('classifica_cumulativa_giornata', giornata=giornata) }}"
+    style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:8px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">🏆</span>
+      <div>
+        <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Classifica generale alla giornata {{ giornata }}</div>
+        <div style="font-size:11px;color:var(--muted);">Punteggi cumulativi dalla G1 alla G{{ giornata }}</div>
+      </div>
+    </div>
+    <span style="color:var(--muted);font-size:18px;">›</span>
+  </a>
+
+  <div style="margin-top:12px;">
     <a href="{{ url_for('archivio_giornate') }}" class="btn-secondary">← Torna all'archivio</a>
   </div>
 </div>
+
+<script>
+function toggleSezione(nome) {
+  const el = document.getElementById('sezione-' + nome);
+  const arrow = document.getElementById('arrow-' + nome);
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    arrow.style.transform = 'rotate(90deg)';
+  } else {
+    el.style.display = 'none';
+    arrow.style.transform = '';
+  }
+}
+</script>
 {% endblock %}
