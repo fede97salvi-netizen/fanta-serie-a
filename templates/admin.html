@@ -22,26 +22,25 @@
 
   <!-- Azioni rapide giornata attiva -->
   <div class="fsa-section-title">Giornata {{ g }}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-    <a href="{{ url_for('admin_gestisci_partite') }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;align-items:stretch;">
+    <a href="{{ url_for('admin_gestisci_partite') }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--border);">
       <div style="font-size:24px;margin-bottom:6px;">⚽</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Gestione partite</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">Giornata {{ g }}</div>
     </a>
-
-    <a href="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" style="background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;" onclick="return confirm('Calcolare punteggi giornata {{ g }}?')">
+    <a href="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);" onclick="return confirm('Calcolare punteggi giornata {{ g }}?')">
       <div style="font-size:24px;margin-bottom:6px;">⚡</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Calcola punteggi</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Giornata {{ g }}</div>
     </a>
-    <form method="post" action="{{ url_for('admin_invia_reminder', giornata=g) }}">
-      <button type="submit" style="width:100%;min-height:90px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer;color:var(--text);font-family:var(--font-b);display:flex;flex-direction:column;align-items:center;justify-content:center;" onclick="return confirm('Inviare email di reminder a tutti gli utenti?')">
+    <form method="post" action="{{ url_for('admin_invia_reminder', giornata=g) }}" style="display:contents;">
+      <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;background:var(--card);border:1px solid var(--border);cursor:pointer;color:var(--text);font-family:var(--font-b);" onclick="return confirm('Inviare email di reminder a tutti gli utenti?')">
         <div style="font-size:24px;margin-bottom:6px;">📧</div>
         <div style="font-family:var(--font-d);font-size:14px;font-weight:700;">Invia reminder</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">Email a tutti gli utenti</div>
       </button>
     </form>
-    <a href="{{ url_for('archivia_giornata', giornata=g) }}" style="background:var(--card);border:1px solid rgba(239,83,80,0.25);border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;" onclick="return confirm('Archiviare la giornata {{ g }}? Questa azione non è reversibile.')">
+    <a href="{{ url_for('archivia_giornata', giornata=g) }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:var(--card);border:1px solid rgba(239,83,80,0.25);" onclick="return confirm('Archiviare la giornata {{ g }}? Questa azione non è reversibile.')">
       <div style="font-size:24px;margin-bottom:6px;">📦</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#ef9a9a;">Archivia giornata</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">Chiudi giornata {{ g }}</div>
