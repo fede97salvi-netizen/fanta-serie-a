@@ -43,11 +43,13 @@
       <table class="fsa-table">
         <thead>
           <tr>
-            <th style="padding-left:14px;width:36px;">Pos.</th>
-            <th style="width:30%;">Utente</th>
-            <th style="text-align:center;width:50px;">Tot</th>
+            <th style="padding-left:10px;width:28px;font-size:10px;">Pos.</th>
+            <th style="width:28%;font-size:10px;">Utente</th>
+            <th style="text-align:center;width:36px;font-size:10px;">Tot</th>
             {% for partita in partite_pron %}
-            <th style="text-align:center;">{{ partita['squadra_casa'][:3] }}-{{ partita['squadra_ospite'][:3] }}</th>
+            <th style="text-align:center;font-size:9px;line-height:1.2;padding:6px 3px;">
+              {{ partita['squadra_casa'][:4] }}<br>{{ partita['squadra_ospite'][:4] }}
+            </th>
             {% endfor %}
           </tr>
         </thead>
@@ -102,11 +104,11 @@
       <table class="fsa-table" style="table-layout:fixed;width:100%;">
         <thead>
           <tr>
-            <th style="width:20%;">Utente</th>
-            <th style="width:10%;text-align:center;">Esito</th>
-            <th style="width:16%;text-align:center;">Risultato</th>
-            <th style="width:34%;">Marcatore</th>
-            <th style="width:20%;text-align:center;">Punti</th>
+            <th style="width:22%;font-size:10px;padding:6px 6px;">Utente</th>
+            <th style="width:10%;text-align:center;font-size:10px;padding:6px 2px;">Esito</th>
+            <th style="width:14%;text-align:center;font-size:10px;padding:6px 2px;">Ris.</th>
+            <th style="width:36%;font-size:10px;padding:6px 4px;">Marcatore</th>
+            <th style="width:18%;text-align:center;font-size:10px;padding:6px 2px;">Pt</th>
           </tr>
         </thead>
         <tbody>
@@ -116,17 +118,17 @@
           {% set pron = pronostici_per_partita.get(pid, {}).get(utente.nome_utente) %}
           <tr {% if utente.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
             <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};">{{ utente.nome_utente }}</td>
-            <td style="text-align:center;">
+            <td style="text-align:center;padding:8px 2px;">
               {% if pron %}
-              <strong style="font-family:var(--font-d);font-size:16px;{% if p.esito > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.esito or '–' }}</strong>
+              <strong style="font-family:var(--font-d);font-size:14px;{% if p.esito > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.esito or '–' }}</strong>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}
             </td>
-            <td style="text-align:center;font-family:var(--font-d);font-size:14px;">
+            <td style="text-align:center;font-family:var(--font-d);font-size:12px;padding:8px 2px;">
               {% if pron and pron.r_casa is not none %}
               <span style="{% if p.risultato > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.r_casa }}–{{ pron.r_osp }}</span>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}
             </td>
-            <td style="font-size:12px;">
+            <td style="font-size:11px;padding:8px 4px;overflow-wrap:break-word;word-break:break-word;">
               {% if pron and pron.marcatore %}
               <span style="{% if p.marcatore > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.marcatore }}</span>
               {% else %}<span style="color:var(--muted);">–</span>{% endif %}

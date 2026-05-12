@@ -1463,54 +1463,66 @@ def admin_modifica_giornata_archiviata(giornata):
 
 @app.route("/giornata/<int:giornata>/classifica-cumulativa")
 def classifica_cumulativa_giornata(giornata):
-    """Classifica generale cumulativa fino alla giornata indicata."""
+    """Classifica cumulativa fino alla giornata indicata — calcolo ottimizzato SQL."""
     if 'nome_utente' not in session:
         return redirect(url_for('login'))
     conn = get_db_connection()
-    # Prendi tutte le giornate archiviate fino a quella indicata
-    giornate_arch = db_fetchall(conn,
-        "SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE AND giornata <= ? ORDER BY giornata",
-        (giornata,))
-    utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti")
-    classifica = []
-    for utente in utenti:
-        uid = row_get(utente, 'id')
-        punti_totali = 0
-        for g_row in giornate_arch:
-            g = row_get(g_row, 'giornata')
-            partite = db_fetchall(conn,
-                "SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE AND risultato_casa_reale IS NOT NULL", (g,))
-            for partita in partite:
-                pid = row_get(partita, 'id')
-                pronostico = db_fetchone(conn,
-                    "SELECT * FROM pronostici_giornata WHERE id_utente = ? AND id_partita = ?", (uid, pid))
-                if pronostico:
-                    r_casa = row_get(partita, 'risultato_casa_reale')
-                    r_osp = row_get(partita, 'risultato_ospite_reale')
-                    esito_reale = "1" if r_casa > r_osp else "X" if r_casa == r_osp else "2"
-                    ec = row_get(pronostico, 'esito_pronosticato') == esito_reale
-                    rc = (row_get(pronostico, 'risultato_casa_pronosticato') == r_casa and
-                          row_get(pronostico, 'risultato_ospite_pronosticato') == r_osp)
-                    pm = (row_get(pronostico, 'marcatore_pronosticato') or '').strip().lower()
-                    mr_raw = row_get(partita, 'marcatore_reale') or ''
-                    marcatori_reali = [m.strip().lower() for m in mr_raw.split(',') if m.strip()]
-                    mc = False
-                    if pm == "nessun marcatore":
-                        mc = (r_casa == 0 and r_osp == 0)
-                    elif pm:
-                        mc = pm in marcatori_reali
-                    punti = 0
-                    if ec: punti += 1
-                    if rc: punti += 3
-                    if mc: punti += 2
-                    if ec and rc and mc: punti += 1
-                    punti_totali += punti
-        classifica.append({
-            'nome_utente': row_get(utente, 'nome_utente'),
-            'punti_totali': punti_totali
-        })
+
+    # Recupera tutti i dati necessari in 2 query invece di centinaia di loop
+    # Query 1: tutti i pronostici su partite pronosticabili fino alla giornata indicata
+    pronostici = db_fetchall(conn, """
+        SELECT
+            u.id as uid, u.nome_utente,
+            p.risultato_casa_reale as r_casa,
+            p.risultato_ospite_reale as r_osp,
+            p.marcatore_reale,
+            pg.esito_pronosticato,
+            pg.risultato_casa_pronosticato as p_casa,
+            pg.risultato_ospite_pronosticato as p_osp,
+            pg.marcatore_pronosticato as p_marc
+        FROM pronostici_giornata pg
+        JOIN utenti u ON pg.id_utente = u.id
+        JOIN partite p ON pg.id_partita = p.id
+        JOIN stato_giornata sg ON p.giornata = sg.giornata
+        WHERE p.pronosticabile = TRUE
+          AND p.risultato_casa_reale IS NOT NULL
+          AND sg.is_in_archivio = TRUE
+          AND p.giornata <= ?
+    """, (giornata,))
+
+    # Query 2: tutti gli utenti (anche chi non ha pronostici)
+    utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti ORDER BY nome_utente")
     conn.close()
-    classifica.sort(key=lambda x: x['punti_totali'], reverse=True)
+
+    # Calcola punteggi in Python con i dati già in memoria
+    punteggi = {row_get(u, 'id'): {'nome_utente': row_get(u, 'nome_utente'), 'punti_totali': 0} for u in utenti}
+
+    for row in pronostici:
+        uid = row_get(row, 'uid')
+        r_casa = row_get(row, 'r_casa')
+        r_osp = row_get(row, 'r_osp')
+        if r_casa is None or r_osp is None:
+            continue
+        esito_reale = "1" if r_casa > r_osp else "X" if r_casa == r_osp else "2"
+        ec = row_get(row, 'esito_pronosticato') == esito_reale
+        rc = (row_get(row, 'p_casa') == r_casa and row_get(row, 'p_osp') == r_osp)
+        pm = (row_get(row, 'p_marc') or '').strip().lower()
+        mr_raw = row_get(row, 'marcatore_reale') or ''
+        marcatori_reali = [m.strip().lower() for m in mr_raw.split(',') if m.strip()]
+        mc = False
+        if pm == "nessun marcatore":
+            mc = (r_casa == 0 and r_osp == 0)
+        elif pm:
+            mc = pm in marcatori_reali
+        punti = 0
+        if ec: punti += 1
+        if rc: punti += 3
+        if mc: punti += 2
+        if ec and rc and mc: punti += 1
+        if uid in punteggi:
+            punteggi[uid]['punti_totali'] += punti
+
+    classifica = sorted(punteggi.values(), key=lambda x: x['punti_totali'], reverse=True)
     return render_template("classifica_cumulativa.html",
         giornata=giornata, classifica=classifica, session=session)
 
