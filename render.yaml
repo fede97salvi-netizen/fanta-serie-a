@@ -11,6 +11,14 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
+      - key: FOOTBALL_API_KEY
+        sync: false       # imposta a mano nella dashboard di Render
+      - key: RESEND_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
 
 databases:
   - name: fanta-serie-a-db

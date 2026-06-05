@@ -5,6 +5,7 @@
   <div class="alert alert-info">Inserisci le email degli utenti esistenti. Lascia vuoto per non modificare.</div>
   <div class="fsa-card" style="padding:0;">
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for utente in utenti %}
       <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);">
         <div style="font-weight:600;font-size:14px;">{{ utente['nome_utente'] }}</div>

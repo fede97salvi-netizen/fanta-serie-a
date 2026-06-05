@@ -5,10 +5,12 @@
   <div style="display:flex;gap:10px;margin-bottom:16px;">
     {% if is_locked %}
     <form method="post" action="{{ url_for('sblocca_pronostici_iniziali') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-secondary">🔓 Sblocca modifiche</button>
     </form>
     {% else %}
     <form method="post" action="{{ url_for('blocca_pronostici_iniziali') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-danger">🔒 Blocca modifiche</button>
     </form>
     {% endif %}
@@ -25,7 +27,10 @@
             <td>{{ p.squadra_1 }}</td><td>{{ p.squadra_2 }}</td><td>{{ p.squadra_3 }}</td><td>{{ p.squadra_4 }}</td>
             <td>{{ p.capocannoniere }}</td>
             <td>
-              <a href="{{ url_for('admin_elimina_pronostico_iniziale', id_pronostico=p.id) }}" class="btn-danger" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Eliminare?')">Elimina</a>
+              <form method="post" action="{{ url_for('admin_elimina_pronostico_iniziale', id_pronostico=p.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-danger" style="font-size:11px;padding:4px 8px;cursor:pointer;font-family:var(--font-b);" onclick="return confirm('Eliminare?')">Elimina</button>
+              </form>
             </td>
           </tr>
           {% else %}

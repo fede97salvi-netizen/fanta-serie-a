@@ -10,6 +10,7 @@
       <div class="alert alert-danger">{{ errore }}</div>
     {% endif %}
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label class="form-label">Nome Utente</label>
         <input type="text" name="nome_utente" class="form-control" autocomplete="username" required autofocus>

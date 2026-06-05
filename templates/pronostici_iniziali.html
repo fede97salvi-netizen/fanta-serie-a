@@ -27,6 +27,7 @@
     <div class="alert alert-info">Inserisci i tuoi pronostici per la classifica finale. Potrai modificarli finché l'admin non blocca le scommesse.</div>
     <div class="fsa-card">
       <form action="{{ url_for('pronostici_iniziali') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for i in range(1,5) %}
         <div class="form-group">
           <label class="form-label">{{ i }}° Classificato</label>

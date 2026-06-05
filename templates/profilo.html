@@ -23,6 +23,7 @@
   <div class="fsa-card">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Aggiorna email</div>
     <form method="post" action="{{ url_for('profilo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="email">
       <div class="form-group">
         <label class="form-label">Indirizzo email</label>
@@ -35,6 +36,7 @@
   <div class="fsa-card">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Cambia password</div>
     <form method="post" action="{{ url_for('profilo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="password">
       <div class="form-group">
         <label class="form-label">Nuova password</label>

@@ -21,6 +21,7 @@
 {% endif %}
 
 <form action="{{ url_for('pronostici_giornata', giornata=giornata) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div style="padding:0 16px;">
   {% for partita in partite %}
     {% set pronostico_salvato = pronostici_per_partita.get(partita.id) %}

@@ -8,6 +8,7 @@
   <div class="alert alert-warning">⚠️ Stai modificando una giornata già archiviata. Dopo aver salvato usa "Ricalcola tutto" per aggiornare la classifica.</div>
   <div class="fsa-card">
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for partita in partite %}
       {% set pid = partita['id'] %}
       {% set giocatori = giocatori_per_partita.get(pid, []) %}
@@ -60,14 +61,20 @@
     </form>
   </div>
   <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-    <a href="{{ url_for('admin_calcola_punti_giornata', giornata=giornata) }}" class="btn-primary"
-      onclick="return confirm('Ricalcolare i punteggi per la giornata {{ giornata }}?')">
-      ⚡ Ricalcola punti giornata {{ giornata }}
-    </a>
-    <a href="{{ url_for('calcola_punteggi') }}" class="btn-secondary"
-      onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
-      🔄 Ricalcola classifica completa
-    </a>
+    <form method="post" action="{{ url_for('admin_calcola_punti_giornata', giornata=giornata) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary" style="cursor:pointer;font-family:var(--font-b);"
+        onclick="return confirm('Ricalcolare i punteggi per la giornata {{ giornata }}?')">
+        ⚡ Ricalcola punti giornata {{ giornata }}
+      </button>
+    </form>
+    <form method="post" action="{{ url_for('calcola_punteggi') }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary" style="cursor:pointer;font-family:var(--font-b);"
+        onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
+        🔄 Ricalcola classifica completa
+      </button>
+    </form>
     <a href="{{ url_for('archivio_giornate') }}" class="btn-secondary">← Archivio</a>
   </div>
 </div>

@@ -21,6 +21,7 @@
       <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
     </a>
     <form method="post" action="{{ url_for('admin_importa_risultati', giornata=g) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="width:100%;height:100%;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;font-family:var(--font-b);"
         onclick="return confirm('Importare risultati dalla API per la giornata {{ g }}?')">
         <div style="font-size:24px;margin-bottom:4px;">🌐</div>
@@ -33,6 +34,7 @@
   <div class="fsa-section-title">Risultati reali — Giornata {{ g }}</div>
   <div class="fsa-card">
     <form method="post" action="{{ url_for('admin_risultati_giornata', giornata=g) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for partita in partite_attive %}
       {% set pid = partita['id'] %}
       {% set giocatori = giocatori_per_partita.get(pid, []) %}
@@ -145,6 +147,7 @@
   <div class="fsa-section-title">Aggiungi partita manuale</div>
   <div class="fsa-card">
     <form method="post" action="{{ url_for('aggiungi_partita') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div class="form-group" style="margin:0;">
           <label class="form-label">Giornata</label>
@@ -227,6 +230,7 @@
         </div>
       </div>
       <form method="post" action="{{ url_for('admin_modifica_partita', id_partita=partita['id']) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="giornata" value="{{ partita['giornata'] }}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <div>

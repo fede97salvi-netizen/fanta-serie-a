@@ -1,30 +1,39 @@
-# 🏆 FantaSerieA
+# Script di utility
 
-Gioco di pronostici sul campionato italiano di Serie A per gruppi di amici.
+Questi script sono utilità di manutenzione **una tantum** o **occasionali**.
+Non vengono caricati dall'app principale e sono pensati per girare in locale
+su `database.db` (SQLite).
 
-## Funzionalità
+## Configurazione
 
-- Pronostici su 3 partite per ogni giornata (esito 1/X/2, risultato esatto, marcatore)
-- Classifica generale aggiornata ogni giornata
-- Pronostici iniziali di stagione (Top 4 + Capocannoniere)
-- Area admin per gestire partite, risultati e utenti
-- Design mobile-first ottimizzato per smartphone
-
-## Stack
-
-- **Backend:** Python / Flask
-- **Database:** SQLite
-- **Frontend:** HTML + CSS (design custom, mobile-first)
-
-## Installazione locale
+Prima di lanciarli, imposta la chiave API della Football-Data:
 
 ```bash
-pip install -r requirements.txt
-python app.py
+export FOOTBALL_API_KEY="la_tua_chiave"
 ```
 
-Al primo avvio il database viene creato automaticamente.
+Su Windows PowerShell:
 
-## Deploy
+```powershell
+$env:FOOTBALL_API_KEY="la_tua_chiave"
+```
 
-L'app è compatibile con PythonAnywhere e Render (piano gratuito).
+## Elenco
+
+| Script                  | Cosa fa                                                            |
+|-------------------------|--------------------------------------------------------------------|
+| `importa_calendario.py` | Scarica il calendario Serie A da football-data.org                 |
+| `importa_da_api.py`     | Importa partite + risultati da API (variante con dettagli)         |
+| `importa_giocatori.py`  | Importa i giocatori da un CSV di quotazioni Fantacalcio            |
+| `pulisci_vecchie.py`    | Cancella partite vecchie (stagioni precedenti)                     |
+| `fix_pronostici.py`     | Ripara pronostici "orfani" rimasti senza partita di riferimento    |
+| `fix_niko.py`           | Una tantum: trasferimento dati tra due ID utente                   |
+
+## Avvio
+
+Lancia gli script **dalla cartella radice del progetto** (non da `scripts/`),
+in modo che `database.db` venga trovato correttamente:
+
+```bash
+python scripts/importa_calendario.py
+```

@@ -14,6 +14,7 @@
   <div class="fsa-card">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:12px;">Seleziona giornata da importare</div>
     <form method="post" action="{{ url_for('admin_importa_giornata') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="carica">
       <div style="display:flex;gap:10px;align-items:flex-end;">
         <div style="flex:1;">
@@ -34,6 +35,7 @@
   <div class="alert alert-info" style="margin-bottom:12px;">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
 
   <form method="post" action="{{ url_for('admin_importa_giornata') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="azione" value="salva">
     <input type="hidden" name="giornata" value="{{ giornata_selezionata }}">
 

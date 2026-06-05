@@ -13,9 +13,15 @@
           <td><strong>{{ utente.nome_utente }}</strong>{% if utente.is_temp_password %} <span class="badge badge-locked" style="font-size:10px;">temp</span>{% endif %}</td>
           <td>
             <div style="display:flex;gap:6px;">
-              <a href="{{ url_for('admin_resetta_password', id_utente=utente.id) }}" class="btn-warning" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</a>
-              {% if utente.nome_utente != 'mirko' %}
-              <a href="{{ url_for('admin_elimina_utente', id_utente=utente.id) }}" class="btn-danger" style="font-size:11px;padding:4px 8px;" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</a>
+              <form method="post" action="{{ url_for('admin_resetta_password', id_utente=utente.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-warning" style="font-size:11px;padding:4px 8px;cursor:pointer;font-family:var(--font-b);" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</button>
+              </form>
+              {% if not utente.is_admin %}
+              <form method="post" action="{{ url_for('admin_elimina_utente', id_utente=utente.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-danger" style="font-size:11px;padding:4px 8px;cursor:pointer;font-family:var(--font-b);" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</button>
+              </form>
               {% endif %}
             </div>
           </td>
