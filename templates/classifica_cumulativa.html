@@ -1,27 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;">
-  <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Giornata {{ giornata }}</a>
+<div class="u-section-hd">
+  <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary" class="u-btn-sm">← Giornata {{ giornata }}</a>
 </div>
 <div class="page-header">
   <span class="page-title">Classifica generale alla giornata {{ giornata }}</span>
 </div>
-<div class="fsa-section" style="padding-top:8px;">
-  <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Punteggi cumulativi basati sulle partite pronosticabili dalla giornata 1 alla {{ giornata }}.</p>
+<div class="fsa-section" class="u-pt-sm">
+  <p class="u-muted-sm u-mb-md">Punteggi cumulativi basati sulle partite pronosticabili dalla giornata 1 alla {{ giornata }}.</p>
   {% for utente in classifica %}
   <div style="display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);gap:12px;{% if utente.nome_utente == session.nome_utente %}background:rgba(0,144,212,0.08);border-left:3px solid var(--azzurro);padding-left:10px;border-radius:0 8px 8px 0;{% endif %}">
-    <div style="font-family:var(--font-d);font-size:20px;font-weight:700;width:32px;text-align:center;
-      {% if loop.index == 1 %}color:var(--gold);{% elif loop.index == 2 %}color:#b0bec5;{% elif loop.index == 3 %}color:#a1887f;{% else %}color:var(--muted);{% endif %}">
+    <div class="u-icon-md" style="font-family:var(--font-d);font-weight:700;width:32px;text-align:center;{% if loop.index == 1 %}color:var(--gold);{% elif loop.index == 2 %}color:#b0bec5;{% elif loop.index == 3 %}color:#a1887f;{% else %}color:var(--muted);{% endif %};">
       {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
     </div>
-    <div style="flex:1;font-size:15px;font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};color:var(--text);">
+    <div class="u-flex-1" style="font-size:15px;font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};color:var(--text);">
       {{ utente.nome_utente }}
       {% if utente.nome_utente == session.nome_utente %}<span style="font-size:11px;color:var(--azzurro);margin-left:4px;">✦ tu</span>{% endif %}
     </div>
     <div style="font-family:var(--font-d);font-size:22px;font-weight:700;color:white;">{{ utente.punti_totali }}</div>
   </div>
   {% endfor %}
-  <div style="margin-top:16px;">
+  <div class="u-mt-lg">
     <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary">← Torna alla giornata {{ giornata }}</a>
   </div>
 </div>

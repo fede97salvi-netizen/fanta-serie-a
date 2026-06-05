@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Dashboard</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-btn-sm">← Dashboard</a></div>
 <div class="page-header"><span class="page-title">Punteggi finali stagione</span></div>
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
   {% if messaggio %}<div class="alert alert-success">{{ messaggio }}</div>{% endif %}
   <div class="fsa-card">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Risultati reali fine stagione</div>
+    <div class="u-hero-mb">Risultati reali fine stagione</div>
     <form method="post" action="{{ url_for('admin.admin_calcola_punti_finali') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for i in range(1,5) %}
@@ -21,6 +21,6 @@
       <button type="submit" class="btn-success" onclick="return confirm('Calcolare i punteggi finali? Questo aggiornerà la classifica.')">Calcola punteggi finali</button>
     </form>
   </div>
-  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" style="margin-top:8px;">← Dashboard</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-mt-sm">← Dashboard</a>
 </div>
 {% endblock %}

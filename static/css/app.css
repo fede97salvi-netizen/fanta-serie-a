@@ -80,3 +80,71 @@
     .drawer-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .drawer-item-label { font-size: 15px; font-weight: 500; }
     .drawer-item-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       UTILITY CLASSES — V4 (estratte dagli stili inline)
+       ═══════════════════════════════════════════════════════════ */
+
+    /* Testo */
+    .u-muted-xs     { font-size:11px; color:var(--muted); }
+    .u-muted-xs-mt2 { font-size:11px; color:var(--muted); margin-top:2px; }
+    .u-muted-xs-mt3 { font-size:11px; color:var(--muted); margin-top:3px; }
+    .u-muted-sm     { font-size:12px; color:var(--muted); }
+    .u-muted-md     { font-size:14px; color:var(--muted); }
+    .u-muted        { color:var(--muted); }
+    .u-label        { font-size:11px; font-weight:600; letter-spacing:0.5px;
+                      text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+
+    .u-hero         { font-family:var(--font-d); font-size:16px; font-weight:700; color:white; }
+    .u-hero-mb      { font-family:var(--font-d); font-size:16px; font-weight:700; margin-bottom:14px; }
+    .u-hero-md      { font-family:var(--font-d); font-size:18px; }
+    .u-hero-md-az   { font-family:var(--font-d); font-size:18px; color:var(--azzurro); }
+    .u-hero-lg      { font-family:var(--font-d); font-size:24px; font-weight:700; }
+    .u-hero-xl      { font-family:var(--font-d); font-size:26px; font-weight:700; }
+    .u-hero-xxl     { font-family:var(--font-d); font-size:28px; font-weight:700; }
+    .u-hero-xs      { font-family:var(--font-d); font-size:14px; font-weight:700; color:white; }
+
+    .u-form-val     { height:40px; text-align:center; font-family:var(--font-d);
+                      font-size:20px; font-weight:700; }
+    .u-h38          { height:38px; }
+    .u-h40          { height:40px; }
+
+    /* Layout */
+    .u-contents     { display:contents; }
+    .u-inline       { display:inline; }
+    .u-flex-1       { flex:1; }
+    .u-flex-row     { display:flex; align-items:center; gap:10px; }
+    .u-grid-2       { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+    /* Spaziatura */
+    .u-pt-sm        { padding-top:8px; }
+    .u-pt-md        { padding-top:16px; }
+    .u-pl-sm        { padding-left:14px; }
+    .u-mt-0         { margin:0; }
+    .u-mt-sm        { margin-top:8px; }
+    .u-mt-md        { margin-top:12px; }
+    .u-mt-lg        { margin-top:16px; }
+    .u-mb-sm        { margin-bottom:8px; }
+    .u-mb-md        { margin-bottom:12px; }
+    .u-p-0          { padding:0; }
+    .u-section-hd   { padding:12px 16px 0; }
+
+    /* Card varianti */
+    .u-card-center  { text-align:center; padding:24px; }
+    .u-card-empty   { text-align:center; color:var(--muted); padding:20px; }
+    .u-card-form    { max-width:400px; margin:32px auto; padding:0 16px; }
+    .u-card-link    { text-decoration:none; padding:18px 14px; }
+
+    /* Icone */
+    .u-icon-md      { font-size:20px; }
+    .u-icon-lg      { font-size:24px; margin-bottom:6px; }
+    .u-icon-xl      { font-size:28px; margin-bottom:8px; }
+    .u-icon-xxl     { font-size:32px; margin-bottom:8px; }
+
+    /* Bottoni admin */
+    .u-btn-sm       { font-size:12px; padding:6px 14px; }
+    .u-btn-xs       { font-size:11px; padding:4px 8px; cursor:pointer;
+                      font-family:var(--font-b); }
+
+    /* Testo centrato */
+    .u-center-mb    { text-align:center; margin-bottom:24px; }

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('auth.home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary" class="u-btn-sm">← Home</a></div>
 <div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
   {% if is_locked %}
     <div class="alert alert-info">🔒 Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div>
     <div class="fsa-card">
@@ -17,7 +17,7 @@
               <td>{{ p.capocannoniere }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Nessun pronostico inserito.</td></tr>
+            <tr><td colspan="6" class="u-card-empty">Nessun pronostico inserito.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -43,5 +43,5 @@
     </div>
   {% endif %}
 </div>
-  <div style="margin-top:12px;"><a href="{{ url_for('auth.home') }}" class="btn-secondary">← Home</a></div>
+  <div class="u-mt-md"><a href="{{ url_for('auth.home') }}" class="btn-secondary">← Home</a></div>
 {% endblock %}

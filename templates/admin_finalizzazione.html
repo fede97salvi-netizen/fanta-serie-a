@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Dashboard</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-btn-sm">← Dashboard</a></div>
 <div class="page-header"><span class="page-title">Finalizzazione stagione</span></div>
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
   <div class="alert alert-warning">⚠️ Questa sezione gestisce la chiusura della stagione. Procedi con cautela.</div>
   <div style="display:flex;flex-direction:column;gap:10px;">
     <a href="{{ url_for('admin.admin_calcola_punti_finali') }}" class="btn-primary" style="text-align:center;">🏁 Calcola punteggi finali stagione</a>
-    <form method="post" action="{{ url_for('admin.admin_ricalcola_tutta_la_classifica') }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.admin_ricalcola_tutta_la_classifica') }}" class="u-contents">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-secondary" style="text-align:center;justify-content:center;cursor:pointer;font-family:var(--font-b);" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">🔄 Ricalcola classifica completa</button>
     </form>

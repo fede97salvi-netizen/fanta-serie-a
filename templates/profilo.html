@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('auth.home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary" class="u-btn-sm">← Home</a></div>
 <div class="page-header"><span class="page-title">Profilo</span></div>
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
 
   <div class="fsa-card" style="text-align:center;padding:24px 16px 16px;">
-    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue-mid),var(--azzurro));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:28px;font-weight:700;color:white;margin:0 auto 12px;">
+    <div class="u-hero-xxl" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue-mid),var(--azzurro));display:flex;align-items:center;justify-content:center;color:white;margin:0 auto 12px;">
       {{ session.nome_utente[:2].upper() }}
     </div>
     <div style="font-family:var(--font-d);font-size:22px;font-weight:700;">{{ session.nome_utente }}</div>
@@ -21,7 +21,7 @@
   {% endif %}
 
   <div class="fsa-card">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Aggiorna email</div>
+    <div class="u-hero-mb">Aggiorna email</div>
     <form method="post" action="{{ url_for('auth.profilo') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="email">
@@ -34,7 +34,7 @@
   </div>
 
   <div class="fsa-card">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:14px;">Cambia password</div>
+    <div class="u-hero-mb">Cambia password</div>
     <form method="post" action="{{ url_for('auth.profilo') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="password">

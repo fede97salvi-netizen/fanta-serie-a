@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;">
-  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Dashboard</a>
+<div class="u-section-hd">
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-btn-sm">← Dashboard</a>
 </div>
 <div class="page-header">
   <span class="page-title">Gestione partite</span>
 </div>
 
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
 
   <!-- SEZIONE 1: Importazione + Risultati -->
   {% if giornata_attiva %}
@@ -17,7 +17,7 @@
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
     <a href="{{ url_for('admin.admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
       <div style="font-size:24px;margin-bottom:4px;">📅</div>
-      <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Importa partite</div>
+      <div class="u-hero-xs">Importa partite</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
     </a>
     <form method="post" action="{{ url_for('admin.admin_importa_risultati', giornata=g) }}">
@@ -25,8 +25,8 @@
       <button type="submit" style="width:100%;height:100%;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;font-family:var(--font-b);"
         onclick="return confirm('Importare risultati dalla API per la giornata {{ g }}?')">
         <div style="font-size:24px;margin-bottom:4px;">🌐</div>
-        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Importa risultati</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Punteggi da API Serie A</div>
+        <div class="u-hero-xs">Importa risultati</div>
+        <div class="u-muted-xs-mt2">Punteggi da API Serie A</div>
       </button>
     </form>
   </div>
@@ -43,11 +43,11 @@
         <div style="font-size:14px;font-weight:600;color:var(--azzurro);margin-bottom:10px;">
           {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="u-mb-md" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div>
             <div class="form-label">Gol {{ partita['squadra_casa'][:8] }}</div>
             <input type="number" name="risultato_casa_{{ pid }}" class="form-control"
-              style="height:40px;text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
+              class="u-form-val"
               min="0" max="20"
               value="{{ partita['risultato_casa_reale'] if partita['risultato_casa_reale'] is not none else '' }}"
               placeholder="0">
@@ -55,7 +55,7 @@
           <div>
             <div class="form-label">Gol {{ partita['squadra_ospite'][:8] }}</div>
             <input type="number" name="risultato_ospite_{{ pid }}" class="form-control"
-              style="height:40px;text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
+              class="u-form-val"
               min="0" max="20"
               value="{{ partita['risultato_ospite_reale'] if partita['risultato_ospite_reale'] is not none else '' }}"
               placeholder="0">
@@ -63,11 +63,11 @@
         </div>
 
         <div class="form-label">Marcatori</div>
-        <div id="marcatori_{{ pid }}" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+        <div id="marcatori_{{ pid }}" class="u-mb-sm" style="display:flex;flex-direction:column;gap:8px;">
           {% set righe = marcatori_salvati if marcatori_salvati else [''] %}
           {% for marc in righe %}
           <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
-            <select name="marcatore_{{ pid }}[]" class="form-select" style="flex:1;">
+            <select name="marcatore_{{ pid }}[]" class="form-select" class="u-flex-1">
               <option value="Nessun marcatore" {% if marc == 'Nessun marcatore' or marc == '' %}selected{% endif %}>— Nessun marcatore (0-0) —</option>
               <option value="Autogol" {% if marc == 'Autogol' %}selected{% endif %}>— Autogol —</option>
               {% if giocatori %}
@@ -84,14 +84,14 @@
               {% endif %}
             </select>
             <button type="button" onclick="rimuoviMarcatore(this)"
-              style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;font-size:20px;flex-shrink:0;font-family:var(--font-b);">×</button>
+              class="u-icon-md" style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;flex-shrink:0;font-family:var(--font-b);">×</button>
           </div>
           {% endfor %}
         </div>
 
         <template id="tpl_{{ pid }}">
           <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
-            <select name="marcatore_{{ pid }}[]" class="form-select" style="flex:1;">
+            <select name="marcatore_{{ pid }}[]" class="form-select" class="u-flex-1">
               <option value="Nessun marcatore" selected>— Nessun marcatore (0-0) —</option>
               <option value="Autogol">— Autogol —</option>
               {% if giocatori %}
@@ -108,7 +108,7 @@
               {% endif %}
             </select>
             <button type="button" onclick="rimuoviMarcatore(this)"
-              style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;font-size:20px;flex-shrink:0;font-family:var(--font-b);">×</button>
+              class="u-icon-md" style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;flex-shrink:0;font-family:var(--font-b);">×</button>
           </div>
         </template>
 
@@ -118,10 +118,10 @@
         </button>
       </div>
       {% else %}
-      <div style="text-align:center;padding:16px;color:var(--muted);">Nessuna partita pronosticabile per questa giornata.</div>
+      <div class="u-muted" style="text-align:center;padding:16px;">Nessuna partita pronosticabile per questa giornata.</div>
       {% endfor %}
       {% if partite_attive %}
-      <button type="submit" class="btn-success" style="margin-top:8px;">Salva risultati</button>
+      <button type="submit" class="btn-success" class="u-mt-sm">Salva risultati</button>
       {% endif %}
     </form>
   </div>
@@ -149,24 +149,24 @@
     <form method="post" action="{{ url_for('admin.aggiungi_partita') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div class="form-group" style="margin:0;">
+        <div class="form-group" class="u-mt-0">
           <label class="form-label">Giornata</label>
-          <input type="number" name="giornata" class="form-control" style="height:40px;" required min="1" max="38">
+          <input type="number" name="giornata" class="form-control" class="u-h40" required min="1" max="38">
         </div>
-        <div class="form-group" style="margin:0;">
+        <div class="form-group" class="u-mt-0">
           <label class="form-label">Data e ora</label>
-          <input type="datetime-local" name="data_ora_partita" class="form-control" style="height:40px;" required>
+          <input type="datetime-local" name="data_ora_partita" class="form-control" class="u-h40" required>
         </div>
-        <div class="form-group" style="margin:0;">
+        <div class="form-group" class="u-mt-0">
           <label class="form-label">Squadra Casa</label>
-          <input type="text" name="squadra_casa" class="form-control" style="height:40px;" required placeholder="es. INTER">
+          <input type="text" name="squadra_casa" class="form-control" class="u-h40" required placeholder="es. INTER">
         </div>
-        <div class="form-group" style="margin:0;">
+        <div class="form-group" class="u-mt-0">
           <label class="form-label">Squadra Ospite</label>
-          <input type="text" name="squadra_ospite" class="form-control" style="height:40px;" required placeholder="es. JUVENTUS">
+          <input type="text" name="squadra_ospite" class="form-control" class="u-h40" required placeholder="es. JUVENTUS">
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <div class="u-mb-md" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="pronosticabile" id="pronosticabile" value="on" style="width:18px;height:18px;accent-color:var(--azzurro);" checked>
         <label for="pronosticabile" style="font-size:14px;color:var(--text);">Pronosticabile</label>
       </div>
@@ -178,8 +178,8 @@
   <div class="fsa-section-title">Partite esistenti</div>
 
   {% if not giornate_disponibili %}
-  <div class="fsa-card" style="text-align:center;padding:24px;">
-    <div style="font-size:28px;margin-bottom:8px;">📭</div>
+  <div class="fsa-card" class="u-card-center">
+    <div class="u-icon-xl">📭</div>
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;">Nessuna partita nel database</div>
   </div>
   {% else %}
@@ -188,18 +188,17 @@
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;">
     {% for gn in giornate_disponibili %}
     <a href="{{ url_for('admin.admin_gestisci_partite', giornata=gn) }}"
-      style="padding:6px 4px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;text-align:center;
-      {% if giornata_selezionata == gn %}background:var(--azzurro);color:white;{% else %}background:var(--card2);color:var(--muted);border:1px solid var(--border);{% endif %}">
+      class="u-muted-sm" style="padding:6px 4px;border-radius:8px;font-weight:600;text-decoration:none;text-align:center;{% if giornata_selezionata == gn %}background:var(--azzurro);color:white;{% else %}background:var(--card2);border:1px solid var(--border);{% endif %};">
       G{{ gn }}
     </a>
     {% endfor %}
   </div>
 
   {% if not giornata_selezionata %}
-  <div class="fsa-card" style="text-align:center;padding:24px;">
-    <div style="font-size:28px;margin-bottom:8px;">👆</div>
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Seleziona una giornata</div>
-    <div style="font-size:13px;color:var(--muted);margin-top:4px;">Clicca su un numero di giornata per vedere le partite</div>
+  <div class="fsa-card" class="u-card-center">
+    <div class="u-icon-xl">👆</div>
+    <div class="u-hero">Seleziona una giornata</div>
+    <div class="u-muted" style="font-size:13px;margin-top:4px;">Clicca su un numero di giornata per vedere le partite</div>
   </div>
 
   {% else %}
@@ -213,18 +212,18 @@
   {% for giornata_num, partite_g in partite_per_giornata.items() %}
   <div style="margin-bottom:16px;">
     {% for partita in partite_g %}
-    <div class="fsa-card" style="margin-bottom:8px;padding:12px 14px;">
+    <div class="fsa-card" class="u-mb-sm" style="padding:12px 14px;">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px;">
-        <div style="flex:1;">
+        <div class="u-flex-1">
           <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">
             {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
             {% if partita['pronosticabile'] %}<span class="badge badge-open" style="font-size:10px;margin-left:6px;">Pronosticabile</span>{% endif %}
           </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ partita['data_ora_partita'] | fuso_orario_italia }}</div>
+          <div class="u-muted-sm" style="margin-top:3px;">{{ partita['data_ora_partita'] | fuso_orario_italia }}</div>
           {% if partita['risultato_casa_reale'] is not none %}
           <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
-            <span style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">{{ partita['risultato_casa_reale'] }} – {{ partita['risultato_ospite_reale'] }}</span>
-            {% if partita['marcatore_reale'] %}<span style="font-size:12px;color:var(--muted);">⚽ {{ partita['marcatore_reale'] }}</span>{% endif %}
+            <span class="u-hero">{{ partita['risultato_casa_reale'] }} – {{ partita['risultato_ospite_reale'] }}</span>
+            {% if partita['marcatore_reale'] %}<span class="u-muted-sm">⚽ {{ partita['marcatore_reale'] }}</span>{% endif %}
           </div>
           {% endif %}
         </div>
@@ -232,18 +231,18 @@
       <form method="post" action="{{ url_for('admin.admin_modifica_partita', id_partita=partita['id']) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="giornata" value="{{ partita['giornata'] }}">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="u-mb-sm" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div>
             <div class="form-label">Squadra Casa</div>
-            <input type="text" name="squadra_casa" class="form-control" style="height:38px;" value="{{ partita['squadra_casa'] }}">
+            <input type="text" name="squadra_casa" class="form-control" class="u-h38" value="{{ partita['squadra_casa'] }}">
           </div>
           <div>
             <div class="form-label">Squadra Ospite</div>
-            <input type="text" name="squadra_ospite" class="form-control" style="height:38px;" value="{{ partita['squadra_ospite'] }}">
+            <input type="text" name="squadra_ospite" class="form-control" class="u-h38" value="{{ partita['squadra_ospite'] }}">
           </div>
           <div>
             <div class="form-label">Data e ora</div>
-            <input type="datetime-local" name="data_ora_partita" class="form-control" style="height:38px;" value="{{ partita['data_ora_partita'] | datetime_local_italia }}">
+            <input type="datetime-local" name="data_ora_partita" class="form-control" class="u-h38" value="{{ partita['data_ora_partita'] | datetime_local_italia }}">
           </div>
           <div style="display:flex;align-items:flex-end;padding-bottom:4px;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -254,7 +253,7 @@
             </div>
           </div>
         </div>
-        <button type="submit" class="btn-secondary" style="font-size:12px;padding:6px 14px;">Salva modifiche</button>
+        <button type="submit" class="btn-secondary" class="u-btn-sm">Salva modifiche</button>
       </form>
     </div>
     {% endfor %}

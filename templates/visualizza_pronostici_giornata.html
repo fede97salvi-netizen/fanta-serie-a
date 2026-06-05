@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header"><span class="page-title">I tuoi pronostici</span></div>
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
   {% for item in pronostici %}
   <div class="fsa-card">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:8px;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>
+    <div class="u-mb-sm" style="font-family:var(--font-d);font-size:16px;font-weight:700;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
-      <div><span style="font-size:11px;color:var(--muted);">Esito </span><strong style="font-family:var(--font-d);font-size:18px;color:var(--azzurro);">{{ item.esito_pronosticato or '–' }}</strong></div>
-      <div><span style="font-size:11px;color:var(--muted);">Risultato </span><strong style="font-family:var(--font-d);font-size:18px;">{% if item.risultato_casa_pronosticato is not none %}{{ item.risultato_casa_pronosticato }}–{{ item.risultato_ospite_pronosticato }}{% else %}–{% endif %}</strong></div>
-      <div><span style="font-size:11px;color:var(--muted);">Marcatore </span><strong style="font-size:13px;">{{ item.marcatore_pronosticato or '–' }}</strong></div>
+      <div><span class="u-muted-xs">Esito </span><strong class="u-hero-md-az">{{ item.esito_pronosticato or '–' }}</strong></div>
+      <div><span class="u-muted-xs">Risultato </span><strong class="u-hero-md">{% if item.risultato_casa_pronosticato is not none %}{{ item.risultato_casa_pronosticato }}–{{ item.risultato_ospite_pronosticato }}{% else %}–{% endif %}</strong></div>
+      <div><span class="u-muted-xs">Marcatore </span><strong style="font-size:13px;">{{ item.marcatore_pronosticato or '–' }}</strong></div>
     </div>
   </div>
   {% endfor %}

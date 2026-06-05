@@ -183,17 +183,33 @@ def admin_gestisci_partite():
                 conn,
                 'SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE',
                 (g,))
+            # Carica tutti i giocatori delle squadre attive in UNA sola query (no N+1)
+            squadre = set()
             for p in partite_attive:
-                pid = row_get(p, 'id')
-                sc  = (row_get(p, 'squadra_casa')   or '').upper()
-                so  = (row_get(p, 'squadra_ospite') or '').upper()
-                giocatori_per_partita[pid] = db_fetchall(
+                squadre.add((row_get(p, 'squadra_casa')   or '').upper())
+                squadre.add((row_get(p, 'squadra_ospite') or '').upper())
+            if squadre:
+                ph = ','.join(['?'] * len(squadre))
+                tutti_giocatori = db_fetchall(
                     conn,
-                    'SELECT nome_giocatore, squadra FROM giocatori '
-                    'WHERE UPPER(squadra) = ? OR UPPER(squadra) = ? '
-                    'ORDER BY squadra, nome_giocatore',
-                    (sc, so),
+                    f'SELECT nome_giocatore, squadra FROM giocatori '
+                    f'WHERE UPPER(squadra) IN ({ph}) '
+                    f'ORDER BY squadra, nome_giocatore',
+                    tuple(squadre),
                 )
+                # Raggruppa per partita
+                giocatori_per_squadra = {}
+                for g_row in tutti_giocatori:
+                    s = (row_get(g_row, 'squadra') or '').upper()
+                    giocatori_per_squadra.setdefault(s, []).append(g_row)
+                for p in partite_attive:
+                    pid = row_get(p, 'id')
+                    sc  = (row_get(p, 'squadra_casa')   or '').upper()
+                    so  = (row_get(p, 'squadra_ospite') or '').upper()
+                    giocatori_per_partita[pid] = (
+                        giocatori_per_squadra.get(sc, []) +
+                        giocatori_per_squadra.get(so, [])
+                    )
     return render_template('admin_gestisci_partite.html',
                            tutte_le_partite=partite,
                            giornate_disponibili=giornate_disponibili,
@@ -699,15 +715,21 @@ def admin_gestisci_pronostici(giornata: int):
             'SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE',
             (giornata,),
         )
-        pronostici_per_partita = {}
-        for partita in partite:
-            pid = row_get(partita, 'id')
-            pronostici_per_partita[pid] = db_fetchall(
+        pids = [row_get(p, 'id') for p in partite]
+        pronostici_per_partita = {row_get(p, 'id'): [] for p in partite}
+        if pids:
+            # Carica tutti i pronostici della giornata in UNA query (no N+1)
+            ph = ','.join(['?'] * len(pids))
+            rows = db_fetchall(
                 conn,
-                'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
-                'JOIN utenti u ON pg.id_utente = u.id WHERE pg.id_partita = ?',
-                (pid,),
+                f'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
+                f'JOIN utenti u ON pg.id_utente = u.id '
+                f'WHERE pg.id_partita IN ({ph})',
+                tuple(pids),
             )
+            for r in rows:
+                pid = row_get(r, 'id_partita')
+                pronostici_per_partita.setdefault(pid, []).append(r)
     return render_template('admin_gestisci_pronostici.html',
                            giornata=giornata, partite=partite,
                            pronostici_per_partita=pronostici_per_partita,
@@ -846,17 +868,30 @@ def admin_modifica_giornata_archiviata(giornata: int):
             (giornata,),
         )
         giocatori_per_partita = {}
-        for partita in partite:
-            pid = row_get(partita, 'id')
-            sc  = (row_get(partita, 'squadra_casa')   or '').upper()
-            so  = (row_get(partita, 'squadra_ospite') or '').upper()
-            giocatori_per_partita[pid] = db_fetchall(
+        squadre = set()
+        for p in partite:
+            squadre.add((row_get(p, 'squadra_casa')   or '').upper())
+            squadre.add((row_get(p, 'squadra_ospite') or '').upper())
+        if squadre:
+            ph = ','.join(['?'] * len(squadre))
+            tutti = db_fetchall(
                 conn,
-                'SELECT nome_giocatore, squadra FROM giocatori '
-                'WHERE UPPER(squadra) = ? OR UPPER(squadra) = ? '
-                'ORDER BY squadra, nome_giocatore',
-                (sc, so),
+                f'SELECT nome_giocatore, squadra FROM giocatori '
+                f'WHERE UPPER(squadra) IN ({ph}) '
+                f'ORDER BY squadra, nome_giocatore',
+                tuple(squadre),
             )
+            per_squadra = {}
+            for g in tutti:
+                s = (row_get(g, 'squadra') or '').upper()
+                per_squadra.setdefault(s, []).append(g)
+            for p in partite:
+                pid = row_get(p, 'id')
+                sc  = (row_get(p, 'squadra_casa')   or '').upper()
+                so  = (row_get(p, 'squadra_ospite') or '').upper()
+                giocatori_per_partita[pid] = (
+                    per_squadra.get(sc, []) + per_squadra.get(so, [])
+                )
     return render_template('admin_modifica_giornata_archiviata.html',
                            giornata=giornata, partite=partite,
                            giocatori_per_partita=giocatori_per_partita,

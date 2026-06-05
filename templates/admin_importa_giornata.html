@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('admin.admin_gestisci_partite') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Gestione partite</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_gestisci_partite') }}" class="btn-secondary" class="u-btn-sm">← Gestione partite</a></div>
 <div class="page-header">
   <span class="page-title">Importa da API Serie A</span>
 </div>
 
-<div class="fsa-section" style="padding-top:8px;">
+<div class="fsa-section" class="u-pt-sm">
 
   {% if errore %}
   <div class="alert alert-danger">{{ errore }}</div>
   {% endif %}
 
   <div class="fsa-card">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:12px;">Seleziona giornata da importare</div>
+    <div class="u-mb-md" style="font-family:var(--font-d);font-size:16px;font-weight:700;">Seleziona giornata da importare</div>
     <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="carica">
       <div style="display:flex;gap:10px;align-items:flex-end;">
-        <div style="flex:1;">
+        <div class="u-flex-1">
           <label class="form-label">Numero giornata</label>
           <input type="number" name="giornata" class="form-control" min="1" max="38"
             value="{{ giornata_selezionata or giornata_corrente or '' }}" placeholder="es. 35" required>
@@ -26,13 +26,13 @@
       </div>
     </form>
     {% if giornata_corrente %}
-    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Giornata corrente Serie A: <strong style="color:var(--azzurro);">{{ giornata_corrente }}</strong></div>
+    <div class="u-muted-sm u-mt-sm">Giornata corrente Serie A: <strong style="color:var(--azzurro);">{{ giornata_corrente }}</strong></div>
     {% endif %}
   </div>
 
   {% if partite_api %}
   <div class="fsa-section-title">Partite giornata {{ giornata_selezionata }}</div>
-  <div class="alert alert-info" style="margin-bottom:12px;">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
+  <div class="alert alert-info" class="u-mb-md">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
 
   <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -48,22 +48,22 @@
             style="width:20px;height:20px;accent-color:var(--azzurro);cursor:pointer;"
             {% if partita.id in selezionate %}checked{% endif %}>
         </div>
-        <label for="p_{{ partita.id }}" style="flex:1;cursor:pointer;">
+        <label for="p_{{ partita.id }}" class="u-flex-1" style="cursor:pointer;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">
-              {{ partita.home }} <span style="color:var(--muted);font-weight:400;">vs</span> {{ partita.away }}
+              {{ partita.home }} <span class="u-muted" style="font-weight:400;">vs</span> {{ partita.away }}
             </div>
             <span class="badge badge-archived" style="font-size:10px;">{{ partita.data_ora }}</span>
           </div>
-          <div style="font-size:11px;color:var(--muted);">ID API: {{ partita.id }}</div>
+          <div class="u-muted-xs">ID API: {{ partita.id }}</div>
         </label>
       </div>
     </div>
     {% endfor %}
 
-    <div style="margin-top:16px;">
+    <div class="u-mt-lg">
       <button type="submit" class="btn-success" id="btn-salva">IMPORTA PARTITE SELEZIONATE</button>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;">
+      <div class="u-muted-sm u-mt-sm" style="text-align:center;">
         Verranno importate anche le rose aggiornate delle squadre selezionate.
       </div>
     </div>
@@ -88,7 +88,7 @@
   </script>
   {% endif %}
 
-  <div style="margin-top:12px;">
+  <div class="u-mt-md">
     <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="btn-secondary">← Torna a gestisci partite</a>
   </div>
 </div>
