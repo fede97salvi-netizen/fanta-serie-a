@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="u-section-hd">
-  <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary" class="u-btn-sm">← Giornata {{ giornata }}</a>
+  <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary u-btn-sm">← Giornata {{ giornata }}</a>
 </div>
 <div class="page-header">
   <span class="page-title">Classifica generale alla giornata {{ giornata }}</span>
 </div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   <p class="u-muted-sm u-mb-md">Punteggi cumulativi basati sulle partite pronosticabili dalla giornata 1 alla {{ giornata }}.</p>
   {% for utente in classifica %}
   <div style="display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);gap:12px;{% if utente.nome_utente == session.nome_utente %}background:rgba(0,144,212,0.08);border-left:3px solid var(--azzurro);padding-left:10px;border-radius:0 8px 8px 0;{% endif %}">

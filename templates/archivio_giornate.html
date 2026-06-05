@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary" class="u-btn-sm">← Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary u-btn-sm">← Home</a></div>
 <div class="page-header"><span class="page-title">Archivio giornate</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   {% for giornata in giornate %}
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;">
     <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata.giornata) }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;text-decoration:none;">

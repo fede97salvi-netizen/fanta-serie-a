@@ -133,7 +133,7 @@
     .u-card-center  { text-align:center; padding:24px; }
     .u-card-empty   { text-align:center; color:var(--muted); padding:20px; }
     .u-card-form    { max-width:400px; margin:32px auto; padding:0 16px; }
-    .u-card-link    { text-decoration:none; padding:18px 14px; }
+    .u-card-link    { display:block; text-decoration:none; padding:18px 14px; }
 
     /* Icone */
     .u-icon-md      { font-size:20px; }

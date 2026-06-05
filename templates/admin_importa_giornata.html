@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_gestisci_partite') }}" class="btn-secondary" class="u-btn-sm">← Gestione partite</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_gestisci_partite') }}" class="btn-secondary u-btn-sm">← Gestione partite</a></div>
 <div class="page-header">
   <span class="page-title">Importa da API Serie A</span>
 </div>
 
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
 
   {% if errore %}
   <div class="alert alert-danger">{{ errore }}</div>
@@ -32,7 +32,7 @@
 
   {% if partite_api %}
   <div class="fsa-section-title">Partite giornata {{ giornata_selezionata }}</div>
-  <div class="alert alert-info" class="u-mb-md">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
+  <div class="alert alert-info u-mb-md">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
 
   <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

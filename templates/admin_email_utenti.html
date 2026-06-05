@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary" class="u-btn-sm">← Utenti</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary u-btn-sm">← Utenti</a></div>
 <div class="page-header"><span class="page-title">Gestione email utenti</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   <div class="alert alert-info">Inserisci le email degli utenti esistenti. Lascia vuoto per non modificare.</div>
-  <div class="fsa-card" class="u-p-0">
+  <div class="fsa-card u-p-0">
     <form method="post" action="{{ url_for('admin.admin_email_utenti') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for utente in utenti %}
@@ -31,6 +31,6 @@
       </div>
     </form>
   </div>
-  <a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary" class="u-mt-sm">← Torna a utenti</a>
+  <a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary u-mt-sm">← Torna a utenti</a>
 </div>
 {% endblock %}

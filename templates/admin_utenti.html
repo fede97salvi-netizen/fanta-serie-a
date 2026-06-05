@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-btn-sm">← Dashboard</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a></div>
 <div class="page-header"><span class="page-title">Gestione utenti</span></div>
-<div class="fsa-section" class="u-pt-sm">
-  <div class="fsa-card" class="u-p-0">
+<div class="fsa-section u-pt-sm">
+  <div class="fsa-card u-p-0">
     <table class="fsa-table">
       <thead><tr><th class="u-pl-sm">ID</th><th>Utente</th><th>Azioni</th></tr></thead>
       <tbody>
@@ -15,12 +15,12 @@
             <div style="display:flex;gap:6px;">
               <form method="post" action="{{ url_for('admin.admin_resetta_password', id_utente=utente.id) }}" class="u-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-warning" class="u-btn-xs" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</button>
+                <button type="submit" class="btn-warning u-btn-xs" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</button>
               </form>
               {% if not utente.is_admin %}
               <form method="post" action="{{ url_for('admin.admin_elimina_utente', id_utente=utente.id) }}" class="u-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-danger" class="u-btn-xs" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</button>
+                <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</button>
               </form>
               {% endif %}
             </div>

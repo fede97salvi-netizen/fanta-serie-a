@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary" class="u-btn-sm">← Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary u-btn-sm">← Home</a></div>
 <div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   {% if is_locked %}
     <div class="alert alert-info">🔒 Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div>
     <div class="fsa-card">

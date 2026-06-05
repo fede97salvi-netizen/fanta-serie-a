@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header"><span class="page-title">I tuoi pronostici</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   {% for item in pronostici %}
   <div class="fsa-card">
     <div class="u-mb-sm" style="font-family:var(--font-d);font-size:16px;font-weight:700;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>

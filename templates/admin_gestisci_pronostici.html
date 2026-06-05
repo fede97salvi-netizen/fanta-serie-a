@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" class="u-btn-sm">← Dashboard</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a></div>
 <div class="page-header"><span class="page-title">Pronostici giornata {{ giornata }}</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   {% for partita in partite %}
   <div class="fsa-section-title">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>
-  <div class="fsa-card" class="u-p-0" style="margin-bottom:16px;">
+  <div class="fsa-card u-p-0" style="margin-bottom:16px;">
     <div class="overflow-x">
       <table class="fsa-table">
         <thead><tr><th class="u-pl-sm">Utente</th><th>Esito</th><th>Risultato</th><th>Marcatore</th></tr></thead>

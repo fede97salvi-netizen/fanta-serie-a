@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
   <div style="display:flex;gap:10px;margin-bottom:16px;">
     {% if is_locked %}
     <form method="post" action="{{ url_for('admin.sblocca_pronostici_iniziali') }}">
@@ -16,7 +16,7 @@
     {% endif %}
     <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a>
   </div>
-  <div class="fsa-card" class="u-p-0">
+  <div class="fsa-card u-p-0">
     <div class="overflow-x">
       <table class="fsa-table">
         <thead><tr><th class="u-pl-sm">Utente</th><th>1°</th><th>2°</th><th>3°</th><th>4°</th><th>Capocannoniere</th><th>Azioni</th></tr></thead>
@@ -29,7 +29,7 @@
             <td>
               <form method="post" action="{{ url_for('admin.admin_elimina_pronostico_iniziale', id_pronostico=p.id) }}" class="u-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-danger" class="u-btn-xs" onclick="return confirm('Eliminare?')">Elimina</button>
+                <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare?')">Elimina</button>
               </form>
             </td>
           </tr>

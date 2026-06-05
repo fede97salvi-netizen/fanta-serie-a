@@ -59,31 +59,31 @@
   <div class="fsa-section-title">Funzionalità</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 
-    <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="fsa-card" class="u-card-link">
+    <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">⚽</div>
       <div class="u-hero">Partite</div>
       <div class="u-muted-xs-mt3">Importa, gestisci risultati</div>
     </a>
 
-    <a href="{{ url_for('admin.admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card" class="u-card-link">
+    <a href="{{ url_for('admin.admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">📊</div>
       <div class="u-hero">Pronostici</div>
       <div class="u-muted-xs-mt3">Visualizza inseriti</div>
     </a>
 
-    <a href="{{ url_for('admin.admin_utenti') }}" class="fsa-card" class="u-card-link">
+    <a href="{{ url_for('admin.admin_utenti') }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">👥</div>
       <div class="u-hero">Utenti</div>
       <div class="u-muted-xs-mt3">Gestione e email</div>
     </a>
 
-    <a href="{{ url_for('admin.admin_gestisci_pronostici_iniziali') }}" class="fsa-card" class="u-card-link">
+    <a href="{{ url_for('admin.admin_gestisci_pronostici_iniziali') }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">📋</div>
       <div class="u-hero">Pron. Iniziali</div>
       <div class="u-muted-xs-mt3">Top 4 e capocannoniere</div>
     </a>
 
-    <a href="{{ url_for('admin.admin_gestisci_finalizzazione') }}" class="fsa-card" class="u-card-link">
+    <a href="{{ url_for('admin.admin_gestisci_finalizzazione') }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">🏁</div>
       <div class="u-hero">Finalizzazione</div>
       <div class="u-muted-xs-mt3">Chiusura stagione</div>
@@ -91,7 +91,7 @@
 
     <form method="post" action="{{ url_for('admin.calcola_punteggi') }}" class="u-contents">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="fsa-card" class="u-card-link" style="width:100%;border:1px solid var(--border);cursor:pointer;font-family:var(--font-b);text-align:left;" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
+      <button type="submit" class="fsa-card u-card-link" style="width:100%;border:1px solid var(--border);cursor:pointer;font-family:var(--font-b);text-align:left;" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
         <div class="u-icon-xl">🔄</div>
         <div class="u-hero">Ricalcola tutto</div>
         <div class="u-muted-xs-mt3">Reset classifica generale</div>

@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="u-section-hd">
-  <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary" class="u-btn-sm">← Archivio</a>
+  <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary u-btn-sm">← Archivio</a>
 </div>
 <div class="page-header"><span class="page-title">Giornata {{ giornata }}</span></div>
-<div class="fsa-section" class="u-pt-sm">
+<div class="fsa-section u-pt-sm">
 
   <div class="fsa-section-title">Risultati reali</div>
   {% for partita in partite %}
   {% set is_pron = partita['pronosticabile'] %}
-  <div class="fsa-card" class="u-mb-sm" style="padding:12px 16px;{% if is_pron %}border-left:3px solid var(--azzurro);{% else %}opacity:0.65;{% endif %};">
+  <div class="fsa-card u-mb-sm" style="padding:12px 16px;{% if is_pron %}border-left:3px solid var(--azzurro);{% else %}opacity:0.65;{% endif %};">
     {% if is_pron %}
     <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--azzurro);margin-bottom:4px;">⭐ Pronosticabile</div>
     {% endif %}
@@ -38,7 +38,7 @@
   </button>
   <div id="sezione-classifica" class="u-mb-md" style="display:none;">
   <p class="u-muted-sm u-mb-sm">Basata sulle 3 partite pronosticabili ⭐</p>
-  <div class="fsa-card" class="u-p-0">
+  <div class="fsa-card u-p-0">
     <div class="overflow-x">
       <table class="fsa-table">
         <thead>
@@ -96,7 +96,7 @@
   <div id="sezione-pronostici" class="u-mb-md" style="display:none;">
   <p class="u-muted-sm u-mb-sm">Solo le 3 partite pronosticabili ⭐</p>
   {% for partita in partite_pron %}
-  <div class="fsa-card" class="u-mb-md">
+  <div class="fsa-card u-mb-md">
     <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:var(--azzurro);margin-bottom:10px;">
       {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
     </div>
