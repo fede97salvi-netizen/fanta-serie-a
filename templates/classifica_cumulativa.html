@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div style="padding:12px 16px 0;">
-  <a href="{{ url_for('visualizza_giornata', giornata=giornata) }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Giornata {{ giornata }}</a>
+  <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Giornata {{ giornata }}</a>
 </div>
 <div class="page-header">
   <span class="page-title">Classifica generale alla giornata {{ giornata }}</span>
@@ -22,7 +22,7 @@
   </div>
   {% endfor %}
   <div style="margin-top:16px;">
-    <a href="{{ url_for('visualizza_giornata', giornata=giornata) }}" class="btn-secondary">← Torna alla giornata {{ giornata }}</a>
+    <a href="{{ url_for('gioco.visualizza_giornata', giornata=giornata) }}" class="btn-secondary">← Torna alla giornata {{ giornata }}</a>
   </div>
 </div>
 {% endblock %}

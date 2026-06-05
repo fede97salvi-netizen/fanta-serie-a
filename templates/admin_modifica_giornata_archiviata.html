@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="padding:12px 16px 0;"><a href="{{ url_for('archivio_giornate') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Archivio</a></div>
+<div style="padding:12px 16px 0;"><a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Archivio</a></div>
 <div class="page-header">
   <span class="page-title">Modifica Giornata {{ giornata }}</span>
 </div>
@@ -61,21 +61,21 @@
     </form>
   </div>
   <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-    <form method="post" action="{{ url_for('admin_calcola_punti_giornata', giornata=giornata) }}" style="display:inline;">
+    <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=giornata) }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-primary" style="cursor:pointer;font-family:var(--font-b);"
         onclick="return confirm('Ricalcolare i punteggi per la giornata {{ giornata }}?')">
         ⚡ Ricalcola punti giornata {{ giornata }}
       </button>
     </form>
-    <form method="post" action="{{ url_for('calcola_punteggi') }}" style="display:inline;">
+    <form method="post" action="{{ url_for('admin.calcola_punteggi') }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-secondary" style="cursor:pointer;font-family:var(--font-b);"
         onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
         🔄 Ricalcola classifica completa
       </button>
     </form>
-    <a href="{{ url_for('archivio_giornate') }}" class="btn-secondary">← Archivio</a>
+    <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary">← Archivio</a>
   </div>
 </div>
 {% endblock %}

@@ -23,12 +23,12 @@
   <!-- Azioni rapide giornata attiva -->
   <div class="fsa-section-title">Giornata {{ g }}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;align-items:stretch;">
-    <a href="{{ url_for('admin_gestisci_partite') }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--border);">
+    <a href="{{ url_for('admin.admin_gestisci_partite') }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--border);">
       <div style="font-size:24px;margin-bottom:6px;">⚽</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Gestione partite</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">Giornata {{ g }}</div>
     </a>
-    <form method="post" action="{{ url_for('admin_calcola_punti_giornata', giornata=g) }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=g) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;border:none;cursor:pointer;font-family:var(--font-b);color:white;background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);" onclick="return confirm('Calcolare punteggi giornata {{ g }}?')">
         <div style="font-size:24px;margin-bottom:6px;">⚡</div>
@@ -36,7 +36,7 @@
         <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Giornata {{ g }}</div>
       </button>
     </form>
-    <form method="post" action="{{ url_for('admin_invia_reminder', giornata=g) }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.admin_invia_reminder', giornata=g) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;background:var(--card);border:1px solid var(--border);cursor:pointer;color:var(--text);font-family:var(--font-b);" onclick="return confirm('Inviare email di reminder a tutti gli utenti?')">
         <div style="font-size:24px;margin-bottom:6px;">📧</div>
@@ -44,7 +44,7 @@
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">Email a tutti gli utenti</div>
       </button>
     </form>
-    <form method="post" action="{{ url_for('archivia_giornata', giornata=g) }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.archivia_giornata', giornata=g) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;cursor:pointer;font-family:var(--font-b);color:var(--text);background:var(--card);border:1px solid rgba(239,83,80,0.25);" onclick="return confirm('Archiviare la giornata {{ g }}? Questa azione non è reversibile.')">
         <div style="font-size:24px;margin-bottom:6px;">📦</div>
@@ -59,37 +59,37 @@
   <div class="fsa-section-title">Funzionalità</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 
-    <a href="{{ url_for('admin_gestisci_partite') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
+    <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
       <div style="font-size:28px;margin-bottom:8px;">⚽</div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Partite</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">Importa, gestisci risultati</div>
     </a>
 
-    <a href="{{ url_for('admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
+    <a href="{{ url_for('admin.admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
       <div style="font-size:28px;margin-bottom:8px;">📊</div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Pronostici</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">Visualizza inseriti</div>
     </a>
 
-    <a href="{{ url_for('admin_utenti') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
+    <a href="{{ url_for('admin.admin_utenti') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
       <div style="font-size:28px;margin-bottom:8px;">👥</div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Utenti</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">Gestione e email</div>
     </a>
 
-    <a href="{{ url_for('admin_gestisci_pronostici_iniziali') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
+    <a href="{{ url_for('admin.admin_gestisci_pronostici_iniziali') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
       <div style="font-size:28px;margin-bottom:8px;">📋</div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Pron. Iniziali</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">Top 4 e capocannoniere</div>
     </a>
 
-    <a href="{{ url_for('admin_gestisci_finalizzazione') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
+    <a href="{{ url_for('admin.admin_gestisci_finalizzazione') }}" class="fsa-card" style="text-decoration:none;padding:18px 14px;">
       <div style="font-size:28px;margin-bottom:8px;">🏁</div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Finalizzazione</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">Chiusura stagione</div>
     </a>
 
-    <form method="post" action="{{ url_for('calcola_punteggi') }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.calcola_punteggi') }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="fsa-card" style="text-decoration:none;padding:18px 14px;width:100%;border:1px solid var(--border);cursor:pointer;font-family:var(--font-b);text-align:left;" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
         <div style="font-size:28px;margin-bottom:8px;">🔄</div>
@@ -98,7 +98,7 @@
       </button>
     </form>
 
-    <form method="post" action="{{ url_for('admin_aggiorna_risultati_massivo') }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.admin_aggiorna_risultati_massivo') }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="fsa-card" style="text-align:left;padding:18px 14px;cursor:pointer;border:1px solid var(--border);background:var(--card);width:100%;font-family:var(--font-b);" onclick="return confirm('Aggiornare i risultati di tutte le giornate archiviate dalla API? Può richiedere qualche minuto.')">
         <div style="font-size:28px;margin-bottom:8px;">📥</div>

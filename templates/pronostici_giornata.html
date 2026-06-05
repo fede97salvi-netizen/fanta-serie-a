@@ -20,7 +20,7 @@
   <div style="padding:0 16px 4px;"><div class="alert alert-success">✓ {{ messaggio }}</div></div>
 {% endif %}
 
-<form action="{{ url_for('pronostici_giornata', giornata=giornata) }}" method="post">
+<form action="{{ url_for('gioco.pronostici_giornata', giornata=giornata) }}" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div style="padding:0 16px;">
   {% for partita in partite %}

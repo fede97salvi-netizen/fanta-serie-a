@@ -7,8 +7,8 @@
   <h1 style="font-family:var(--font-d);font-size:36px;font-weight:700;color:white;margin-bottom:10px;letter-spacing:1px;">FantaSerieA</h1>
   <p style="font-size:16px;color:rgba(255,255,255,0.7);max-width:300px;margin:0 auto 32px;">Il gioco di pronostici sul campionato italiano. Sfida i tuoi amici ogni weekend.</p>
   <div style="display:flex;flex-direction:column;gap:12px;max-width:280px;margin:0 auto;">
-    <a href="{{ url_for('registrazione') }}" class="btn-success" style="font-size:16px;">Registrati e inizia a giocare</a>
-    <a href="{{ url_for('login') }}" class="btn-secondary" style="justify-content:center;">Hai già un account? Accedi</a>
+    <a href="{{ url_for('auth.registrazione') }}" class="btn-success" style="font-size:16px;">Registrati e inizia a giocare</a>
+    <a href="{{ url_for('auth.login') }}" class="btn-secondary" style="justify-content:center;">Hai già un account? Accedi</a>
   </div>
 </div>
 {% endblock %}

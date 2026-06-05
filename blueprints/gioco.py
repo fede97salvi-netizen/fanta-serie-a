@@ -52,7 +52,7 @@ def _utente_corrente(conn):
 @gioco_bp.route('/classifica', endpoint='classifica')
 def classifica():
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         classifica_utenti = db_fetchall(
             conn,
@@ -67,7 +67,7 @@ def classifica():
 @gioco_bp.route('/giornate', endpoint='archivio_giornate')
 def archivio_giornate():
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         giornate = db_fetchall(
             conn,
@@ -81,7 +81,7 @@ def archivio_giornate():
 @gioco_bp.route('/giornata/<int:giornata>', endpoint='visualizza_giornata')
 def visualizza_giornata(giornata: int):
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         partite_reali = db_fetchall(
             conn,
@@ -166,7 +166,7 @@ def visualizza_giornata(giornata: int):
                 endpoint='classifica_cumulativa_giornata')
 def classifica_cumulativa_giornata(giornata: int):
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         rows = db_fetchall(
             conn,
@@ -192,14 +192,14 @@ def classifica_cumulativa_giornata(giornata: int):
                 endpoint='pronostici_iniziali')
 def pronostici_iniziali():
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         lock_row  = db_fetchone(
             conn, 'SELECT is_locked FROM stato_pronostici_iniziali WHERE id = 1')
         is_locked = row_get(lock_row, 'is_locked') if lock_row else True
         user      = _utente_corrente(conn)
         if not user:
-            return redirect(url_for('logout'))
+            return redirect(url_for('auth.logout'))
         user_id = row_get(user, 'id')
 
         if is_locked:
@@ -238,7 +238,7 @@ def pronostici_iniziali():
                     (user_id, s1, s2, s3, s4, cc),
                 )
             db_commit(conn)
-            return redirect(url_for('home'))
+            return redirect(url_for('auth.home'))
 
         pronostico = db_fetchone(
             conn, 'SELECT * FROM pronostici_iniziali WHERE id_utente = ?',
@@ -255,11 +255,11 @@ def pronostici_iniziali():
                 endpoint='pronostici_giornata')
 def pronostici_giornata(giornata: int):
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         user = _utente_corrente(conn)
         if not user:
-            return redirect(url_for('logout'))
+            return redirect(url_for('auth.logout'))
         user_id = row_get(user, 'id')
 
         partite = db_fetchall(
@@ -321,7 +321,7 @@ def pronostici_giornata(giornata: int):
                             (user_id, pid, esito, r_casa, r_osp, marc),
                         )
             db_commit(conn)
-            return redirect(url_for('home'))
+            return redirect(url_for('auth.home'))
 
         scadenze_dict           = {}
         pronostici_altri_utenti = {}

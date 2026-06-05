@@ -127,7 +127,7 @@ def admin_resetta_password(id_utente: int):
         db_commit(conn)
     nome = row_get(utente, 'nome_utente') if utente else 'Utente'
     flash(f'Password temporanea per {nome}: {pw_temp}', 'success')
-    return redirect(url_for('admin_utenti'))
+    return redirect(url_for('admin.admin_utenti'))
 
 
 @admin_bp.route('/admin/elimina-utente/<int:id_utente>',
@@ -141,10 +141,10 @@ def admin_elimina_utente(id_utente: int):
             (id_utente,))
         if not utente:
             flash('Utente non trovato.', 'warning')
-            return redirect(url_for('admin_utenti'))
+            return redirect(url_for('admin.admin_utenti'))
         if row_get(utente, 'is_admin'):
             flash('Non puoi eliminare un admin.', 'warning')
-            return redirect(url_for('admin_utenti'))
+            return redirect(url_for('admin.admin_utenti'))
         for tbl in ('punteggi', 'punteggi_giornata',
                     'pronostici_giornata', 'pronostici_iniziali'):
             db_execute(conn, f'DELETE FROM {tbl} WHERE id_utente = ?',
@@ -152,7 +152,7 @@ def admin_elimina_utente(id_utente: int):
         db_execute(conn, 'DELETE FROM utenti WHERE id = ?', (id_utente,))
         db_commit(conn)
     flash(f"Utente {row_get(utente, 'nome_utente')} eliminato.", 'success')
-    return redirect(url_for('admin_utenti'))
+    return redirect(url_for('admin.admin_utenti'))
 
 
 # ─── Gestione partite ─────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ def aggiungi_partita():
     giornata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
     if giornata is None:
         flash('Giornata non valida.', 'warning')
-        return redirect(url_for('admin_gestisci_partite'))
+        return redirect(url_for('admin.admin_gestisci_partite'))
     with db_conn() as conn:
         db_execute(conn,
                    'INSERT INTO partite (giornata, squadra_casa, squadra_ospite, '
@@ -223,7 +223,7 @@ def aggiungi_partita():
                     request.form.get('pronosticabile') == 'on',
                     request.form.get('data_ora_partita')))
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_partite'))
+    return redirect(url_for('admin.admin_gestisci_partite'))
 
 
 @admin_bp.route('/admin/modifica-partita/<int:id_partita>',
@@ -243,7 +243,7 @@ def admin_modifica_partita(id_partita: int):
                     request.form.get('data_ora_partita'),
                     id_partita))
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_partite',
+    return redirect(url_for('admin.admin_gestisci_partite',
                             giornata=request.args.get('giornata')))
 
 
@@ -255,7 +255,7 @@ def admin_elimina_partita(id_partita: int):
     with db_conn() as conn:
         db_execute(conn, 'DELETE FROM partite WHERE id = ?', (id_partita,))
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_partite',
+    return redirect(url_for('admin.admin_gestisci_partite',
                             giornata=request.args.get('giornata')))
 
 
@@ -291,7 +291,7 @@ def admin_risultati_giornata(giornata: int):
                        (r_casa, r_osp, marc_finale, pid))
         db_commit(conn)
     flash('Risultati salvati con successo!', 'success')
-    return redirect(url_for('admin_gestisci_partite'))
+    return redirect(url_for('admin.admin_gestisci_partite'))
 
 
 @admin_bp.route('/admin/importa-risultati/<int:giornata>',
@@ -306,7 +306,7 @@ def admin_importa_risultati(giornata: int):
             f'/competitions/{serie_a}/matches', {'matchday': giornata})
         if err:
             flash(f'Errore API: {err}', 'danger')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin.admin_home'))
         risultati_api = [
             {
                 'home':          (m['homeTeam']['name'] or '').upper(),
@@ -320,7 +320,7 @@ def admin_importa_risultati(giornata: int):
         ]
         if not risultati_api:
             flash(f'Nessuna partita terminata per G{giornata}.', 'warning')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin.admin_home'))
         with db_conn() as conn:
             partite_db  = db_fetchall(
                 conn, 'SELECT * FROM partite WHERE giornata = ?', (giornata,))
@@ -350,7 +350,7 @@ def admin_importa_risultati(giornata: int):
     except Exception as e:
         log.exception('Errore importazione risultati')
         flash(f"Errore durante l'importazione: {e}", 'danger')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/admin/invia-reminder/<int:giornata>',
@@ -374,7 +374,7 @@ def admin_invia_reminder(giornata: int):
                         if row_get(u, 'email')]
         if not destinatari:
             flash('Nessun utente con email registrata.', 'warning')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin.admin_home'))
         partite_list = [
             {'squadra_casa':    row_get(p, 'squadra_casa'),
              'squadra_ospite':  row_get(p, 'squadra_ospite'),
@@ -390,7 +390,7 @@ def admin_invia_reminder(giornata: int):
     except Exception as e:
         log.exception('Errore invio reminder')
         flash(f'Errore invio reminder: {e}', 'danger')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/admin/aggiorna-risultati-massivo',
@@ -462,7 +462,7 @@ def admin_aggiorna_risultati_massivo():
     threading.Thread(target=_esegui, daemon=True).start()
     flash('Aggiornamento storico avviato in background (~4 min). '
           'Controlla i log per il progresso.', 'info')
-    return redirect(url_for('admin_gestisci_partite'))
+    return redirect(url_for('admin.admin_gestisci_partite'))
 
 
 @admin_bp.route('/admin/importa-giornata', methods=['GET', 'POST'],
@@ -476,7 +476,7 @@ def admin_importa_giornata():
         giornata_selezionata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
         if giornata_selezionata is None:
             flash('Giornata non valida.', 'warning')
-            return redirect(url_for('admin_importa_giornata'))
+            return redirect(url_for('admin.admin_importa_giornata'))
         from flask import current_app
         serie_a = current_app.config.get('SERIE_A_CODE', 'SA')
         data, err = _football_api_get(
@@ -485,7 +485,7 @@ def admin_importa_giornata():
         )
         if err:
             flash(f'Errore API: {err}', 'danger')
-            return redirect(url_for('admin_importa_giornata'))
+            return redirect(url_for('admin.admin_importa_giornata'))
         for m in (data or {}).get('matches', []):
             partite_da_importare.append({
                 'squadra_casa':   (m['homeTeam']['name'] or '').upper(),
@@ -552,7 +552,7 @@ def admin_importa_giornata():
                 session['flash_message'] = (
                     f'Giornata {giornata_selezionata}: '
                     f'{len(partite_sel)} partite importate.')
-                return redirect(url_for('admin_home'))
+                return redirect(url_for('admin.admin_home'))
 
     return render_template('admin_importa_giornata.html',
                            partite=partite_da_importare,
@@ -577,7 +577,7 @@ def admin_email_utenti():
                                (email, uid))
             db_commit(conn)
             flash('Email utenti aggiornate con successo!', 'success')
-            return redirect(url_for('admin_email_utenti'))
+            return redirect(url_for('admin.admin_email_utenti'))
         utenti = db_fetchall(
             conn,
             'SELECT id, nome_utente, email FROM utenti ORDER BY nome_utente',
@@ -605,7 +605,7 @@ def admin_gestisci_email():
                     aggiornati += 1
             db_commit(conn)
             flash(f'Email aggiornate per {aggiornati} utenti.', 'success')
-            return redirect(url_for('admin_gestisci_email'))
+            return redirect(url_for('admin.admin_gestisci_email'))
         utenti = db_fetchall(
             conn,
             'SELECT id, nome_utente, email FROM utenti ORDER BY nome_utente',
@@ -639,7 +639,7 @@ def archivia_giornata(giornata: int):
                        'UPDATE stato_giornata SET is_attiva = 1 WHERE giornata = ?',
                        (prossima,))
         db_commit(conn)
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/admin/calcola-punti-giornata/<int:giornata>',
@@ -648,7 +648,7 @@ def admin_calcola_punti_giornata(giornata: int):
     if require_admin():
         return 'Accesso negato.', 403
     flash(calcola_e_aggiorna_punti_giornata(giornata), 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/calcola-punteggi', methods=['POST'],
@@ -657,7 +657,7 @@ def calcola_punteggi():
     if require_admin():
         return 'Accesso negato.', 403
     flash(ricalcola_punteggi_totali(), 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/admin/gestisci-pronostici/<int:giornata>',
@@ -684,7 +684,7 @@ def admin_gestisci_pronostici(giornata: int):
                                       lo=0, hi=20),
                             request.form.get('marcatore'), pid))
                 db_commit(conn)
-                return redirect(url_for('admin_gestisci_pronostici',
+                return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
             elif action == 'cancella':
                 pid = request.form.get('id_pronostico')
@@ -692,7 +692,7 @@ def admin_gestisci_pronostici(giornata: int):
                            'DELETE FROM pronostici_giornata WHERE id = ?',
                            (pid,))
                 db_commit(conn)
-                return redirect(url_for('admin_gestisci_pronostici',
+                return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
         partite = db_fetchall(
             conn,
@@ -743,7 +743,7 @@ def admin_elimina_pronostico_iniziale(id_pronostico: int):
                    'DELETE FROM pronostici_iniziali WHERE id = ?',
                    (id_pronostico,))
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_pronostici_iniziali'))
+    return redirect(url_for('admin.admin_gestisci_pronostici_iniziali'))
 
 
 @admin_bp.route('/admin/gestisci-finalizzazione',
@@ -768,7 +768,7 @@ def blocca_pronostici_iniziali():
         db_execute(conn,
                    'UPDATE stato_pronostici_iniziali SET is_locked = TRUE WHERE id = 1')
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_finalizzazione'))
+    return redirect(url_for('admin.admin_gestisci_finalizzazione'))
 
 
 @admin_bp.route('/admin/sblocca-pronostici-iniziali',
@@ -780,7 +780,7 @@ def sblocca_pronostici_iniziali():
         db_execute(conn,
                    'UPDATE stato_pronostici_iniziali SET is_locked = FALSE WHERE id = 1')
         db_commit(conn)
-    return redirect(url_for('admin_gestisci_finalizzazione'))
+    return redirect(url_for('admin.admin_gestisci_finalizzazione'))
 
 
 @admin_bp.route('/admin/calcola-punti-finali', methods=['GET', 'POST'],
@@ -837,7 +837,7 @@ def admin_modifica_giornata_archiviata(giornata: int):
                            (r_casa, r_osp, marc, pid))
             db_commit(conn)
             flash(f'Risultati giornata {giornata} aggiornati.', 'success')
-            return redirect(url_for('admin_modifica_giornata_archiviata',
+            return redirect(url_for('admin.admin_modifica_giornata_archiviata',
                                     giornata=giornata))
         partite = db_fetchall(
             conn,
@@ -869,4 +869,4 @@ def admin_ricalcola_tutta_la_classifica():
     if require_admin():
         return 'Accesso negato.', 403
     flash(ricalcola_punteggi_totali(), 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin.admin_home'))

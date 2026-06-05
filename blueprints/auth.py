@@ -135,7 +135,7 @@ def registrazione():
                 db_commit(conn)
             session['nome_utente'] = nome_utente
             session['is_admin']    = False
-            return redirect(url_for('home'))
+            return redirect(url_for('auth.home'))
         except Exception:
             log.exception('Errore registrazione')
             return render_template('registrazione.html', session=session,
@@ -175,8 +175,8 @@ def login():
             session['nome_utente'] = nome_utente
             session['is_admin']    = bool(row_get(user, 'is_admin'))
             if row_get(user, 'is_temp_password'):
-                return redirect(url_for('cambia_password'))
-        return redirect(url_for('home'))
+                return redirect(url_for('auth.cambia_password'))
+        return redirect(url_for('auth.home'))
     return render_template('login.html', session=session)
 
 
@@ -184,14 +184,14 @@ def login():
 def logout():
     session.pop('nome_utente', None)
     session.pop('is_admin', None)
-    return redirect(url_for('home'))
+    return redirect(url_for('auth.home'))
 
 
 @auth_bp.route('/cambia-password', methods=['GET', 'POST'],
                endpoint='cambia_password')
 def cambia_password():
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     if request.method == 'POST':
         nuova_pw  = request.form.get('nuova_password') or ''
         conferma  = request.form.get('conferma_password') or ''
@@ -211,18 +211,18 @@ def cambia_password():
                 (hash_password(nuova_pw), session['nome_utente']),
             )
             db_commit(conn)
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     return render_template('cambia_password.html', session=session)
 
 
 @auth_bp.route('/profilo', methods=['GET', 'POST'], endpoint='profilo')
 def profilo():
     if 'nome_utente' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         user         = utente_corrente(conn)
         if not user:
-            return redirect(url_for('logout'))
+            return redirect(url_for('auth.logout'))
         email_attuale = row_get(user, 'email') or ''
         if request.method == 'POST':
             azione = request.form.get('azione')
@@ -239,7 +239,7 @@ def profilo():
                 )
                 db_commit(conn)
                 flash('Email aggiornata.', 'success')
-                return redirect(url_for('profilo'))
+                return redirect(url_for('auth.profilo'))
             elif azione == 'password':
                 nuova_pw = request.form.get('nuova_password') or ''
                 conferma = request.form.get('conferma_password') or ''
@@ -260,7 +260,7 @@ def profilo():
                 )
                 db_commit(conn)
                 flash('Password aggiornata.', 'success')
-                return redirect(url_for('profilo'))
+                return redirect(url_for('auth.profilo'))
     return render_template('profilo.html', email=email_attuale, session=session)
 
 

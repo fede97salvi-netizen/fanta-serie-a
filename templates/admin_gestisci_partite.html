@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div style="padding:12px 16px 0;">
-  <a href="{{ url_for('admin_home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Dashboard</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary" style="font-size:12px;padding:6px 14px;">← Dashboard</a>
 </div>
 <div class="page-header">
   <span class="page-title">Gestione partite</span>
@@ -15,12 +15,12 @@
 
   <div class="fsa-section-title">Importazione — Giornata {{ g }}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-    <a href="{{ url_for('admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
+    <a href="{{ url_for('admin.admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
       <div style="font-size:24px;margin-bottom:4px;">📅</div>
       <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;">Importa partite</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
     </a>
-    <form method="post" action="{{ url_for('admin_importa_risultati', giornata=g) }}">
+    <form method="post" action="{{ url_for('admin.admin_importa_risultati', giornata=g) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="width:100%;height:100%;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;font-family:var(--font-b);"
         onclick="return confirm('Importare risultati dalla API per la giornata {{ g }}?')">
@@ -33,7 +33,7 @@
 
   <div class="fsa-section-title">Risultati reali — Giornata {{ g }}</div>
   <div class="fsa-card">
-    <form method="post" action="{{ url_for('admin_risultati_giornata', giornata=g) }}">
+    <form method="post" action="{{ url_for('admin.admin_risultati_giornata', giornata=g) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for partita in partite_attive %}
       {% set pid = partita['id'] %}
@@ -146,7 +146,7 @@
   <!-- SEZIONE 3: Aggiungi manuale -->
   <div class="fsa-section-title">Aggiungi partita manuale</div>
   <div class="fsa-card">
-    <form method="post" action="{{ url_for('aggiungi_partita') }}">
+    <form method="post" action="{{ url_for('admin.aggiungi_partita') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div class="form-group" style="margin:0;">
@@ -187,7 +187,7 @@
   <!-- Selezione giornata - griglia 7 colonne -->
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;">
     {% for gn in giornate_disponibili %}
-    <a href="{{ url_for('admin_gestisci_partite', giornata=gn) }}"
+    <a href="{{ url_for('admin.admin_gestisci_partite', giornata=gn) }}"
       style="padding:6px 4px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;text-align:center;
       {% if giornata_selezionata == gn %}background:var(--azzurro);color:white;{% else %}background:var(--card2);color:var(--muted);border:1px solid var(--border);{% endif %}">
       G{{ gn }}
@@ -229,7 +229,7 @@
           {% endif %}
         </div>
       </div>
-      <form method="post" action="{{ url_for('admin_modifica_partita', id_partita=partita['id']) }}">
+      <form method="post" action="{{ url_for('admin.admin_modifica_partita', id_partita=partita['id']) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="giornata" value="{{ partita['giornata'] }}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -264,5 +264,5 @@
   {% endif %}
 
 </div>
-<div style="padding:0 16px 16px;"><a href="{{ url_for('admin_home') }}" class="btn-secondary">← Dashboard</a></div>
+<div style="padding:0 16px 16px;"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a></div>
 {% endblock %}

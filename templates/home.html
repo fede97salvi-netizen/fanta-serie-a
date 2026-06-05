@@ -21,7 +21,7 @@
 <div class="fsa-section">
   <div class="fsa-section-title">Azione rapida</div>
   {% if giornata_attiva %}
-  <a href="{{ url_for('pronostici_giornata', giornata=giornata_attiva) }}" style="display:block;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:16px;padding:18px 20px;margin-bottom:12px;text-decoration:none;position:relative;overflow:hidden;">
+  <a href="{{ url_for('gioco.pronostici_giornata', giornata=giornata_attiva) }}" style="display:block;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:16px;padding:18px 20px;margin-bottom:12px;text-decoration:none;position:relative;overflow:hidden;">
     <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
     <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:6px;">⚡ Giornata {{ giornata_attiva }} aperta</div>
     <div style="font-family:var(--font-d);font-size:22px;font-weight:700;color:white;margin-bottom:4px;">Inserisci i pronostici</div>
@@ -36,7 +36,7 @@
   </div>
   {% endif %}
 
-  <a href="{{ url_for('pronostici_iniziali') }}" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:12px;">
+  <a href="{{ url_for('gioco.pronostici_iniziali') }}" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;margin-bottom:12px;">
     <div style="font-size:24px;">📋</div>
     <div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:white;">Pronostici Iniziali</div>
@@ -46,7 +46,7 @@
   </a>
 
   {% if session.nome_utente == 'mirko' %}
-  <a href="{{ url_for('admin_home') }}" style="display:flex;align-items:center;gap:12px;background:rgba(198,40,40,0.12);border:1px solid rgba(239,83,80,0.25);border-radius:12px;padding:14px 16px;text-decoration:none;">
+  <a href="{{ url_for('admin.admin_home') }}" style="display:flex;align-items:center;gap:12px;background:rgba(198,40,40,0.12);border:1px solid rgba(239,83,80,0.25);border-radius:12px;padding:14px 16px;text-decoration:none;">
     <div style="font-size:24px;">⚡</div>
     <div>
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#ef9a9a;">Area Admin</div>
