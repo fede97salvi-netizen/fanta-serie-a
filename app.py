@@ -41,6 +41,7 @@ log = logging.getLogger('fanta')
 CSP = {
     'default-src':  "'self'",
     'style-src':    ["'self'",
+                     "'unsafe-inline'",   # necessario: i template usano stili inline estensivamente
                      'https://fonts.googleapis.com',
                      'https://fonts.gstatic.com'],
     'font-src':     ["'self'",
