@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Importa Rose{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
+  <h2>👕 Importa Rose Squadre</h2>
+</div>
+<div style="padding:0 16px;">
+  <div class="fsa-card-gold" style="margin-bottom:16px;">
+    <div style="font-family:var(--font-d);font-size:14px;color:var(--gold-light);margin-bottom:8px;">ℹ️ Come funziona</div>
+    <div style="font-size:13px;color:var(--text);">
+      Importa le rose di tutte le 48 squadre dall'API football-data.org.<br>
+      Il processo gira in background (~35 secondi con le rose già nel response).<br>
+      Controlla i log di Render per il progresso <code style="background:rgba(255,255,255,0.1);border-radius:4px;padding:1px 5px;">[ROSE]</code>.
+    </div>
+  </div>
+  {% if giocatori_count %}
+  <div class="fsa-card" style="margin-bottom:14px;">
+    <div style="font-size:14px;">Giocatori attualmente nel DB: <strong style="color:var(--gold);">{{ giocatori_count }}</strong></div>
+    <div class="u-muted-xs-mt2">Squadre: {{ squadre_count }}</div>
+  </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.admin_importa_giocatori') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-gold" style="width:100%;justify-content:center;padding:14px;font-size:16px;" onclick="return confirm('Avviare importazione rose? Il DB giocatori verrà svuotato e rimpiazzato.')">
+      🌐 Avvia importazione rose
+    </button>
+  </form>
+  <div class="u-muted-sm" style="margin-top:10px;text-align:center;">⚠️ Operazione irreversibile — sovrascrive tutti i giocatori esistenti</div>
+</div>
+{% endblock %}

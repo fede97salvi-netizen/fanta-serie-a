@@ -1,0 +1,56 @@
+# --- Segreti / configurazione locale ---
+.env
+.env.local
+.local_secret_key
+*.local_secret*
+
+# Token / credenziali (storici / accidentali)
+Token_*.txt
+Docu/Token_*.txt
+Docu/migrazione_*.txt
+Docu/migrazione_*.sql
+
+# --- Database locale ---
+*.db
+*.sqlite
+*.sqlite3
+database.db
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtualenv ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/

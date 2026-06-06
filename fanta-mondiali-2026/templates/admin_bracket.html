@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Admin Bracket{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
+  <h2>🏆 Gestione Bracket</h2>
+</div>
+<div style="padding:0 16px;">
+
+{% for fase in FASI_ORDINE %}
+{% set partite = fasi_partite.get(fase, []) %}
+{% set sf = stati_fasi.get(fase) %}
+<div class="fsa-card" style="margin-bottom:14px;padding:0;">
+  <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-family:var(--font-d);font-size:14px;font-weight:700;color:var(--gold);">{{ FASI_NOMI[fase] }}</span>
+    <span class="u-muted-xs">({{ partite|length }} partite)</span>
+    {% if sf %}
+      {% if sf.is_attiva %}<span style="font-size:10px;color:var(--green);">🟢 Attiva</span>{% endif %}
+      {% if sf.pronostici_locked %}<span style="font-size:10px;color:var(--red);">🔒 Pron. chiusi</span>{% endif %}
+      {% if sf.is_in_archivio %}<span style="font-size:10px;color:var(--muted);">📦 Archiviata</span>{% endif %}
+    {% endif %}
+  </div>
+
+  {% for p in partite %}
+  <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_casa }}</span>
+      <span style="color:var(--muted);font-size:11px;">vs</span>
+      <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_ospite }}</span>
+      {% if p.vincitore %}
+      <span style="font-size:11px;color:var(--gold);margin-left:auto;">✅ {{ p.vincitore }}</span>
+      {% if p.gol_casa_90 is not none %}<span class="u-muted-xs">({{ p.gol_casa_90 }}–{{ p.gol_ospite_90 }} 90')</span>{% endif %}
+      {% endif %}
+    </div>
+    {% if not p.vincitore %}
+    <form method="post" action="{{ url_for('admin.admin_risultato_knockout', id_partita=p.id) }}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="vincitore" class="fsa-select" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px;">
+        <option value="">Vincitore...</option>
+        {% if p.squadra_casa != 'TBD' %}<option value="{{ p.squadra_casa }}">{{ p.squadra_casa }}</option>{% endif %}
+        {% if p.squadra_ospite != 'TBD' %}<option value="{{ p.squadra_ospite }}">{{ p.squadra_ospite }}</option>{% endif %}
+      </select>
+      <input type="number" name="gol_casa_90" min="0" max="20" class="fsa-input" style="width:42px;text-align:center;padding:7px 4px;font-size:14px;font-family:var(--font-d);" placeholder="0">
+      <span style="color:var(--muted);font-size:11px;">–</span>
+      <input type="number" name="gol_ospite_90" min="0" max="20" class="fsa-input" style="width:42px;text-align:center;padding:7px 4px;font-size:14px;font-family:var(--font-d);" placeholder="0">
+      <button type="submit" class="btn-gold" style="padding:7px 12px;font-size:12px;">Salva</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Aggiungi partita -->
+  <div style="padding:10px 16px;background:rgba(255,255,255,0.02);">
+    <form method="post" action="{{ url_for('admin.aggiungi_partita_knockout') }}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="fase" value="{{ fase }}">
+      <input type="text" name="squadra_casa" class="fsa-input" style="flex:1;min-width:100px;padding:7px 10px;font-size:13px;" placeholder="Casa / TBD">
+      <input type="text" name="squadra_ospite" class="fsa-input" style="flex:1;min-width:100px;padding:7px 10px;font-size:13px;" placeholder="Ospite / TBD">
+      <input type="datetime-local" name="data_ora_partita" class="fsa-input" style="flex:1;min-width:140px;padding:7px 10px;font-size:12px;">
+      <button type="submit" class="btn-secondary" style="padding:7px 12px;font-size:12px;">➕ Aggiungi</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Gestione Fasi KO{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
+  <h2>🚀 Attiva Fase Knockout</h2>
+</div>
+<div style="padding:0 16px;">
+  <div class="fsa-card-gold" style="margin-bottom:14px;font-size:13px;">
+    Attiva una fase per renderla visibile agli utenti. Poi apri i pronostici separatamente dalla dashboard.
+  </div>
+  {% for fase in fasi %}
+  {% set sf = stati_fasi.get(fase) %}
+  <div class="fsa-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <div style="font-family:var(--font-d);font-size:16px;font-weight:700;">{{ FASI_NOMI[fase] }}</div>
+        <div class="u-muted-xs">
+          {% if sf %}
+            {% if sf.is_attiva %}<span style="color:var(--green);">🟢 Attiva</span>{% endif %}
+            {% if sf.pronostici_locked %} · <span style="color:var(--red);">🔒 Pron. chiusi</span>{% elif sf %}· <span style="color:var(--azzurro);">🔓 Pron. aperti</span>{% endif %}
+            {% if sf.is_in_archivio %} · <span>📦 Archiviata</span>{% endif %}
+          {% else %}<span style="color:var(--muted);">Non ancora attivata</span>{% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <form method="post" action="{{ url_for('admin.admin_attiva_fase', fase=fase) }}" style="display:contents;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-gold btn-sm" onclick="return confirm('Attivare {{ FASI_NOMI[fase] }}?')">🚀 Attiva</button>
+      </form>
+      {% if sf and not sf.pronostici_locked %}
+      <form method="post" action="{{ url_for('admin.admin_chiudi_pronostici_fase', fase=fase) }}" style="display:contents;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-warning btn-sm">🔒 Chiudi pronostici</button>
+      </form>
+      {% elif sf %}
+      <form method="post" action="{{ url_for('admin.admin_apri_pronostici_fase', fase=fase) }}" style="display:contents;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-secondary btn-sm">🔓 Apri pronostici</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.admin_calcola_punti_fase', fase=fase) }}" style="display:contents;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-primary btn-sm">⚡ Calcola punti</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.admin_archivia_fase', fase=fase) }}" style="display:contents;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-secondary btn-sm">📦 Archivia</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
