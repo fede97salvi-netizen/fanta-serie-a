@@ -309,7 +309,6 @@ def bracket():
                            pron_elim=pron_elim,
                            stati_fase=stati_fase,
                            FASI_NOMI=FASI_NOMI,
-                           FASI_NOMI=FASI_NOMI,
                            session=session)
 
 
