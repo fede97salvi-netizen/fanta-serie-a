@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Bracket – Fanta Mondiali 2026{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🏆 Bracket Eliminazione</h2>
+</div>
+
+<div style="padding:0 16px 8px;">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% for fase in ['r32','r16','qf','sf','finale'] %}
+    {% if fasi_partite[fase] %}
+    <a href="#{{ fase }}" style="background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.25);color:var(--gold);border-radius:20px;padding:5px 14px;font-family:var(--font-d);font-size:12px;font-weight:700;text-decoration:none;">
+      {{ FASI_NOMI[fase] }}
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<div style="padding:0 16px;">
+{% for fase in ['r32','r16','qf','sf','finale','3posto'] %}
+{% if fasi_partite[fase] %}
+{% set fase_stato = stati_fase.get(fase) %}
+{% set is_locked = fase_stato and fase_stato.pronostici_locked %}
+
+<div id="{{ fase }}" class="bracket-fase" style="margin-top:16px;">
+  <div class="bracket-fase-header" style="background:linear-gradient(90deg,rgba(42,145,52,0.2),transparent);border-bottom:1px solid var(--border);">
+    <span style="color:var(--green);">{{ FASI_NOMI[fase] }}</span>
+    <span style="font-size:11px;color:var(--muted);">(+{{ PUNTI_KNOCKOUT[fase]['vincitore'] }}pt /+{{ PUNTI_KNOCKOUT[fase]['risultato_bonus'] }}pt bonus 90')</span>
+    {% if not is_locked %}
+    <a href="{{ url_for('gioco.pronostici_eliminazione', fase=fase) }}" class="btn-gold" style="margin-left:auto;font-size:11px;padding:4px 10px;">Pronostica</a>
+    {% endif %}
+  </div>
+
+  {% for p in fasi_partite[fase] %}
+  {% set pid = p.id %}
+  {% set pron = pron_elim.get(pid) %}
+  {% set ha_risultato = p.vincitore %}
+  <div class="bracket-match">
+    <!-- Squadra casa -->
+    <div class="bracket-team {% if ha_risultato and p.vincitore == p.squadra_casa %}winner{% elif ha_risultato and p.vincitore != p.squadra_casa %}loser{% endif %}">
+      {{ p.squadra_casa or 'TBD' }}
+    </div>
+    <!-- Score 90' -->
+    <div class="bracket-score">
+      {% if ha_risultato and p.gol_casa_90 is not none and p.gol_ospite_90 is not none %}
+        {{ p.gol_casa_90 }}–{{ p.gol_ospite_90 }}
+        <div style="font-size:9px;color:var(--muted);">90'</div>
+      {% else %}
+        <span style="font-size:11px;">vs</span>
+      {% endif %}
+    </div>
+    <!-- Squadra ospite -->
+    <div class="bracket-team {% if ha_risultato and p.vincitore == p.squadra_ospite %}winner{% elif ha_risultato and p.vincitore != p.squadra_ospite %}loser{% endif %}">
+      {{ p.squadra_ospite or 'TBD' }}
+    </div>
+    <!-- Pronostico utente e risultato -->
+    <div style="min-width:52px;text-align:right;flex-shrink:0;">
+      {% if pron %}
+        {% if ha_risultato %}
+          {% if pron.vincitore == p.vincitore %}
+            <span style="font-size:18px;">✅</span>
+          {% else %}
+            <span style="font-size:18px;">❌</span>
+          {% endif %}
+        {% else %}
+          <span style="font-size:11px;color:var(--azzurro);">{{ pron.vincitore|truncate(8,true,'') }}</span>
+        {% endif %}
+      {% elif not is_locked %}
+        <a href="{{ url_for('gioco.pronostici_eliminazione', fase=fase) }}" style="font-size:10px;color:var(--muted);text-decoration:none;">+pron</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+</div>
+<div style="height:20px;"></div>
+{% endblock %}

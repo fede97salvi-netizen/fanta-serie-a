@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Pronostici Torneo{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🌍 Pronostici Torneo</h2>
+  <div class="u-muted-xs" style="margin-top:4px;">Inserisci una volta — bloccati all'inizio del torneo</div>
+</div>
+
+<div style="padding:0 16px;">
+{% if is_locked %}
+<!-- Modalità visualizzazione -->
+<div class="flash-info" style="margin:0 0 12px;">🔒 Pronostici chiusi — inseriti prima del via</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+  <div class="torneo-field">
+    <div class="torneo-field-label">🏆 Vincitore <span class="torneo-punti-badge">+{{ PUNTI_TORNEO.vincitore }}pt</span></div>
+  </div>
+  <div class="torneo-field">
+    <div class="torneo-field-label">🥈 Finalista <span class="torneo-punti-badge">+{{ PUNTI_TORNEO.finalista }}pt</span></div>
+  </div>
+</div>
+
+<div class="fsa-card" style="padding:0;">
+  {% for t in tutti %}
+  <div style="padding:12px 14px;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}">
+    <div style="font-family:var(--font-d);font-size:15px;font-weight:700;color:white;margin-bottom:8px;">
+      {{ t.nome_utente }}{% if t.nome_utente == session.nome_utente %} <span style="font-size:10px;color:var(--azzurro);">tu</span>{% endif %}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+      <div><span style="color:var(--muted);">🏆 Vince:</span> <strong>{{ t.vincitore or '—' }}</strong></div>
+      <div><span style="color:var(--muted);">🥈 Finale:</span> <strong>{{ t.finalista or '—' }}</strong></div>
+      <div><span style="color:var(--muted);">4° Semi:</span> <strong>{{ t.semifinalista_1 or '—' }}</strong></div>
+      <div><span style="color:var(--muted);">4° Semi:</span> <strong>{{ t.semifinalista_2 or '—' }}</strong></div>
+      <div style="grid-column:span 2;"><span style="color:var(--muted);">⚽ Capocannoniere:</span> <strong>{{ t.capocannoniere or '—' }}</strong></div>
+    </div>
+  </div>
+  {% else %}
+  <div class="u-card-empty">Nessun pronostico inserito</div>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Modalità inserimento -->
+<div class="fsa-card-gold" style="margin-bottom:16px;padding:14px;">
+  <div style="font-family:var(--font-d);font-size:13px;color:var(--gold-light);margin-bottom:4px;">💡 Sistema di punti</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;">
+    <div>🏆 Vincitore: <strong style="color:var(--gold);">+{{ PUNTI_TORNEO.vincitore }}pt</strong></div>
+    <div>🥈 Finalista: <strong style="color:var(--gold);">+{{ PUNTI_TORNEO.finalista }}pt</strong></div>
+    <div>4° Semi: <strong style="color:var(--gold);">+{{ PUNTI_TORNEO.semifinalista }}pt</strong> ciascuno</div>
+    <div>⚽ Capocannoniere: <strong style="color:var(--gold);">+{{ PUNTI_TORNEO.capocannoniere }}pt</strong></div>
+    <div style="grid-column:span 2;">🎯 Bonus vinc.+finalista: <strong style="color:var(--gold);">+{{ PUNTI_TORNEO.bonus_vincitore_finalista }}pt</strong></div>
+  </div>
+</div>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  {% set campi = [
+    ('vincitore',      '🏆 Vincitore del torneo'),
+    ('finalista',      '🥈 Finalista'),
+    ('semifinalista_1','4️⃣ Semifinalista (1)'),
+    ('semifinalista_2','4️⃣ Semifinalista (2)'),
+  ] %}
+  {% for campo, label in campi %}
+  <div style="margin-bottom:14px;">
+    <label class="fsa-label">{{ label }}</label>
+    <select name="{{ campo }}" class="fsa-select">
+      <option value="">— Seleziona squadra —</option>
+      {% for s in squadre %}
+      <option value="{{ s }}" {% if pron and pron[campo] == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+
+  <div style="margin-bottom:14px;">
+    <label class="fsa-label">⚽ Capocannoniere</label>
+    <input type="text" name="capocannoniere" class="fsa-input"
+           placeholder="Nome cognome..."
+           value="{{ pron.capocannoniere if pron else '' }}">
+    <div class="u-muted-xs" style="margin-top:4px;">Digita il nome del giocatore che prevedi come top scorer</div>
+  </div>
+
+  <button type="submit" class="btn-gold" style="width:100%;justify-content:center;font-size:17px;padding:15px 20px;margin-bottom:24px;">
+    💾 Salva pronostici torneo
+  </button>
+</form>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ fase_nome }} – Fanta Mondiali{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="u-muted-xs">Pronostici eliminazione</div>
+  <h2>{{ fase_nome }}</h2>
+  <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">
+    <span class="torneo-punti-badge">+{{ PUNTI_KNOCKOUT[fase]['vincitore'] }}pt vincitore</span>
+    <span class="torneo-punti-badge">+{{ PUNTI_KNOCKOUT[fase]['risultato_bonus'] }}pt bonus 90'</span>
+  </div>
+</div>
+
+{% if is_locked %}
+<div class="flash-info" style="margin:0 16px 12px;">🔒 Pronostici chiusi — le partite sono in corso</div>
+{% endif %}
+
+<form method="post" style="padding:0 16px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  {% for p in partite %}
+  {% set pid = p.id %}
+  {% set pron = pron_salvati.get(pid) %}
+  {% set tutti = tutti_pron.get(pid, []) %}
+
+  <div class="fsa-card" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      {% if p.girone %}<span class="girone-badge">{{ p.girone }}</span>{% endif %}
+      {% if p.data_ora_partita %}
+      <span class="u-muted-xs">{{ p.data_ora_partita|datetime_local }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Squadre -->
+    <div style="display:grid;grid-template-columns:1fr 16px 1fr;gap:6px;align-items:center;margin-bottom:14px;">
+      <div style="font-family:var(--font-d);font-size:16px;font-weight:700;text-align:center;padding:10px 6px;background:var(--card-2);border-radius:8px;border:1px solid var(--border);">
+        {{ p.squadra_casa or 'TBD' }}
+      </div>
+      <div style="text-align:center;color:var(--muted);font-size:11px;font-weight:700;">vs</div>
+      <div style="font-family:var(--font-d);font-size:16px;font-weight:700;text-align:center;padding:10px 6px;background:var(--card-2);border-radius:8px;border:1px solid var(--border);">
+        {{ p.squadra_ospite or 'TBD' }}
+      </div>
+    </div>
+
+    {% if not is_locked %}
+    <!-- Chi vince? -->
+    <div class="fsa-label">Chi vince?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      {% for squadra in [p.squadra_casa, p.squadra_ospite] %}
+      {% if squadra and squadra != 'TBD' %}
+      <label style="cursor:pointer;">
+        <input type="radio" name="vincitore_{{ pid }}" value="{{ squadra }}" class="esito-radio"
+               {% if pron and pron.vincitore == squadra %}checked{% endif %}>
+        <div class="esito-btn" style="font-size:13px;padding:10px 4px;">{{ squadra }}</div>
+      </label>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Risultato nei 90' (bonus) -->
+    <div class="fsa-label">Risultato nei 90' (bonus +{{ PUNTI_KNOCKOUT[fase]['risultato_bonus'] }}pt)</div>
+    <div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center;">
+      <input type="number" name="gol_casa_{{ pid }}" min="0" max="20" class="fsa-input"
+             style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
+             placeholder="0" value="{{ pron.gol_casa_90 if pron and pron.gol_casa_90 is not none else '' }}">
+      <div style="text-align:center;color:var(--muted);font-weight:700;">–</div>
+      <input type="number" name="gol_ospite_{{ pid }}" min="0" max="20" class="fsa-input"
+             style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
+             placeholder="0" value="{{ pron.gol_ospite_90 if pron and pron.gol_ospite_90 is not none else '' }}">
+    </div>
+    <div class="u-muted-xs" style="margin-top:4px;">Solo gol nei tempi regolamentari (senza rigori/supplementari)</div>
+
+    {% else %}
+    <!-- View mode: pronostico salvato + pronostici altri -->
+    {% if pron %}
+    <div style="padding:10px;background:rgba(201,162,39,0.06);border-radius:8px;margin-bottom:10px;">
+      <span style="color:var(--gold);font-family:var(--font-d);font-size:14px;">Il tuo: {{ pron.vincitore or '—' }}</span>
+      {% if pron.gol_casa_90 is not none and pron.gol_ospite_90 is not none %}
+      <span class="u-muted-xs"> ({{ pron.gol_casa_90 }}–{{ pron.gol_ospite_90 }} 90')</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if tutti %}
+    <div class="u-muted-xs" style="margin-bottom:6px;">Pronostici gruppo:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      {% for t in tutti %}
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;">
+        <span style="color:var(--muted);">{{ t.nome_utente }}:</span>
+        <span style="font-family:var(--font-d);color:white;">{{ t.vincitore or '—' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if not is_locked and partite %}
+  <button type="submit" class="btn-gold" style="width:100%;justify-content:center;font-size:17px;padding:15px 20px;margin-bottom:24px;">
+    💾 Salva pronostici {{ fase_nome }}
+  </button>
+  {% endif %}
+</form>
+{% endblock %}
