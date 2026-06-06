@@ -155,3 +155,8 @@
     .u-icon-xl      { font-size:28px; margin-bottom:8px; }
     .u-icon-xxl     { font-size:32px; margin-bottom:8px; }
     .u-center-mb    { text-align:center; margin-bottom:24px; }
+
+    /* ── Back button ── */
+    .btn-back { display:inline-flex; align-items:center; gap:6px; color:var(--muted); text-decoration:none; font-family:var(--font-d); font-size:14px; font-weight:600; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; cursor:pointer; transition:all .15s; }
+    .btn-back:hover, .btn-back:active { color:var(--gold); border-color:var(--gold); background:rgba(201,162,39,0.08); }
+    .btn-back-bar { padding:10px 16px 0; }

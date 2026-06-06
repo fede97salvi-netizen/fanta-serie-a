@@ -473,6 +473,117 @@ def admin_ricalcola_tutto():
     return redirect(url_for('admin.admin_home'))
 
 
+# ─── Toggle pronosticabile ───────────────────────────────────────────────────
+
+@admin_bp.route('/admin/toggle-pronosticabile/<int:id_partita>', methods=['POST'],
+                endpoint='admin_toggle_pronosticabile')
+def admin_toggle_pronosticabile(id_partita):
+    if require_admin(): return 'Accesso negato.', 403
+    with db_conn() as conn:
+        p = db_fetchone(conn, 'SELECT pronosticabile, giornata FROM partite WHERE id=?',
+                        (id_partita,))
+        if not p:
+            flash('Partita non trovata.', 'danger')
+            return redirect(url_for('admin.admin_gestisci_partite'))
+        nuovo = not row_get(p, 'pronosticabile')
+        db_execute(conn,
+                   'UPDATE partite SET pronosticabile=? WHERE id=?',
+                   (nuovo, id_partita))
+        db_commit(conn)
+    return redirect(request.referrer or url_for('admin.admin_gestisci_partite'))
+
+
+# ─── Importa risultati da API ─────────────────────────────────────────────────
+
+@admin_bp.route('/admin/importa-risultati/<int:giornata>', methods=['POST'],
+                endpoint='admin_importa_risultati')
+def admin_importa_risultati(giornata):
+    """Scarica e aggiorna i risultati delle partite pronosticabili da football-data.org."""
+    if require_admin(): return 'Accesso negato.', 403
+    from flask import current_app
+    code = current_app.config.get('COMPETITION_CODE', 'WC')
+    data, err = _api_get(f'/competitions/{code}/matches', {'matchday': giornata})
+    if err:
+        flash(f'Errore API: {err}', 'danger')
+        return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
+    aggiornate = 0
+    with db_conn() as conn:
+        partite_db = db_fetchall(conn,
+            'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
+            (giornata,))
+        for m in (data or {}).get('matches', []):
+            score = m.get('score', {})
+            ft    = score.get('fullTime', {})
+            casa  = ft.get('home')
+            osp   = ft.get('away')
+            if casa is None or osp is None:
+                continue
+            nome_casa  = (m['homeTeam']['name'] or '').upper()
+            nome_ospite = (m['awayTeam']['name'] or '').upper()
+            for p in partite_db:
+                if (row_get(p, 'squadra_casa')   == nome_casa and
+                        row_get(p, 'squadra_ospite') == nome_ospite):
+                    db_execute(conn,
+                               'UPDATE partite SET risultato_casa_reale=?, '
+                               'risultato_ospite_reale=? WHERE id=?',
+                               (casa, osp, row_get(p, 'id')))
+                    aggiornate += 1
+        db_commit(conn)
+    flash(f'Risultati aggiornati da API: {aggiornate} partite.', 'success')
+    return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
+
+
+# ─── Pagina pronostici torneo admin ──────────────────────────────────────────
+
+@admin_bp.route('/admin/pronostici-torneo-pg', endpoint='admin_pronostici_torneo_pg')
+def admin_pronostici_torneo_pg():
+    if require_admin(): return 'Accesso negato.', 403
+    with db_conn() as conn:
+        lock_row = db_fetchone(conn,
+            'SELECT is_locked FROM stato_pronostici_torneo WHERE id=1')
+        torneo_locked = row_get(lock_row, 'is_locked') if lock_row else False
+        tutti = db_fetchall(conn,
+            'SELECT u.nome_utente, pt.* FROM utenti u '
+            'LEFT JOIN pronostici_torneo pt ON u.id=pt.id_utente '
+            'ORDER BY u.nome_utente')
+    return render_template('admin_pronostici_torneo_pg.html',
+                           torneo_locked=torneo_locked,
+                           tutti=tutti, session=session)
+
+
+# ─── Reminder manuale fase knockout ──────────────────────────────────────────
+
+@admin_bp.route('/admin/reminder-manuale-fase/<fase>', methods=['POST'],
+                endpoint='admin_invia_reminder_manuale_fase')
+def admin_invia_reminder_manuale_fase(fase):
+    if require_admin(): return 'Accesso negato.', 403
+    try:
+        with db_conn() as conn:
+            partite = db_fetchall(conn,
+                'SELECT squadra_casa, squadra_ospite, data_ora_partita '
+                'FROM partite WHERE fase=?', (fase,))
+            utenti_email = db_fetchall(conn,
+                "SELECT email FROM utenti WHERE email IS NOT NULL AND email != ''")
+        destinatari = [row_get(u, 'email') for u in utenti_email if row_get(u, 'email')]
+        if not destinatari:
+            flash('Nessun utente con email.', 'warning')
+            return redirect(url_for('admin.admin_home'))
+        from services.email_service import invia_email_async, build_email_giornata
+        pl = [{'squadra_casa': row_get(p, 'squadra_casa'),
+               'squadra_ospite': row_get(p, 'squadra_ospite'),
+               'data_ora_partita': row_get(p, 'data_ora_partita')} for p in partite]
+        from services.game_logic import FASI_NOMI
+        invia_email_async(
+            destinatari,
+            f'🏆 Fanta Mondiali — {FASI_NOMI.get(fase, fase)}: inserisci i pronostici!',
+            build_email_giornata(fase, pl))
+        flash(f'Reminder {FASI_NOMI.get(fase, fase)} inviato a {len(destinatari)} utenti!',
+              'success')
+    except Exception as e:
+        flash(f'Errore: {e}', 'danger')
+    return redirect(url_for('admin.admin_home'))
+
+
 # ─── Pagine separate admin ────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/importa-giocatori-pg', endpoint='admin_importa_giocatori_pg')

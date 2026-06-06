@@ -65,7 +65,7 @@
       (url_for('admin.admin_gestisci_partite'),     '📋', 'Risultati gironi',  'Inserisci punteggi'),
       (url_for('admin.admin_gestisci_bracket'),     '🏆', 'Bracket KO',        'Fasi eliminazione'),
       (url_for('admin.admin_risultati_torneo'),     '🌍', 'Risultati torneo',  'Fine stagione'),
-      (url_for('admin.admin_utenti'),               '👥', 'Utenti',            'Gestione account'),
+      (url_for('admin.admin_pronostici_torneo_pg'),  '🌍', 'Pron. torneo',   'Lock/unlock + vista'),
       (url_for('admin.admin_gestisci_email'),       '📧', 'Email utenti',      'Modifica email'),
       (url_for('admin.admin_importa_giocatori_pg'), '👕', 'Rose squadre',      'Import da API'),
       (url_for('admin.admin_gestisci_fasi_pg'),     '🚀', 'Attiva fase KO',    'Round of 32 → Finale'),
@@ -77,23 +77,6 @@
       <div class="u-muted-xs-mt2">{{ sub }}</div>
     </a>
     {% endfor %}
-
-    <!-- Pronostici torneo lock/unlock -->
-    <div class="fsa-card" style="text-align:center;">
-      <div style="font-size:28px;margin-bottom:6px;">🌍</div>
-      <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Pron. torneo</div>
-      {% if torneo_locked %}
-      <form method="post" action="{{ url_for('admin.admin_sblocca_torneo') }}" style="display:contents;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-secondary btn-sm" style="width:100%;">🔓 Sblocca</button>
-      </form>
-      {% else %}
-      <form method="post" action="{{ url_for('admin.admin_blocca_torneo') }}" style="display:contents;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-warning btn-sm" style="width:100%;" onclick="return confirm('Bloccare i pronostici torneo?')">🔒 Blocca</button>
-      </form>
-      {% endif %}
-    </div>
   </div>
 </div>
 {% endblock %}

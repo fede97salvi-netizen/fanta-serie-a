@@ -26,19 +26,14 @@
     {% endif %}
   </nav>
 
-  <!-- Flash messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
     <div class="flash-{{ cat }}" style="margin-top:8px;">{{ msg }}</div>
     {% endfor %}
-    {% if session.flash_message %}
-    <div class="flash-success" style="margin-top:8px;">{{ session.pop('flash_message') }}</div>
-    {% endif %}
   {% endwith %}
 
   {% block content %}{% endblock %}
 
-  <!-- Tab bar -->
   {% if session.nome_utente %}
   <nav class="fsa-tab-bar">
     <a href="{{ url_for('gioco.home') }}" class="fsa-tab {% if request.endpoint == 'gioco.home' %}active{% endif %}">
@@ -56,7 +51,7 @@
   </nav>
   {% endif %}
 
-  <!-- Drawer profilo -->
+  <!-- Drawer — solo Profilo, Admin (se admin), Logout -->
   <div id="drawer-overlay" class="fsa-drawer-overlay" onclick="chiudiDrawer()" style="display:none;"></div>
   <div id="drawer" class="fsa-drawer">
     {% if session.nome_utente %}
@@ -67,26 +62,22 @@
         <div style="font-size:12px;color:rgba(255,255,255,0.6);">Fanta Mondiali 2026</div>
       </div>
     </div>
-    <a href="{{ url_for('auth.profilo') }}" class="fsa-drawer-item">
+    <a href="{{ url_for('auth.profilo') }}" class="fsa-drawer-item" onclick="chiudiDrawer()">
       <div class="fsa-drawer-icon" style="background:rgba(77,166,255,0.12);">👤</div>
-      <div><div style="font-size:15px;">Profilo</div><div class="u-muted-xs">Cambia email o password</div></div>
-    </a>
-    <a href="{{ url_for('gioco.pronostici_torneo') }}" class="fsa-drawer-item">
-      <div class="fsa-drawer-icon" style="background:rgba(201,162,39,0.12);">🌍</div>
-      <div><div style="font-size:15px;">Pronostici Torneo</div><div class="u-muted-xs">Vincitore, finalista, semi</div></div>
+      <div><div style="font-size:15px;">Profilo</div><div class="u-muted-xs">Email e password</div></div>
     </a>
     {% if is_admin %}
-    <a href="{{ url_for('admin.admin_home') }}" class="fsa-drawer-item">
+    <a href="{{ url_for('admin.admin_home') }}" class="fsa-drawer-item" onclick="chiudiDrawer()">
       <div class="fsa-drawer-icon" style="background:rgba(42,145,52,0.12);">⚙️</div>
       <div><div style="font-size:15px;">Area Admin</div><div class="u-muted-xs">Partite, fasi, risultati</div></div>
     </a>
     {% endif %}
-    <a href="{{ url_for('auth.logout') }}" class="fsa-drawer-item" style="color:var(--red);">
+    <a href="{{ url_for('auth.logout') }}" class="fsa-drawer-item" style="color:var(--red);" onclick="chiudiDrawer()">
       <div class="fsa-drawer-icon" style="background:rgba(230,57,70,0.1);">🚪</div>
       <div><div style="font-size:15px;">Logout</div></div>
     </a>
     {% endif %}
-    <button onclick="chiudiDrawer()" style="margin:16px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:10px;font-family:var(--font-b);cursor:pointer;">Chiudi</button>
+    <button onclick="chiudiDrawer()" style="margin:16px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:10px;font-family:var(--font-b);cursor:pointer;width:calc(100% - 32px);">Chiudi</button>
   </div>
 
   <script>

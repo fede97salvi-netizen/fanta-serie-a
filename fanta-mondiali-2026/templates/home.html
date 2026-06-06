@@ -88,5 +88,24 @@
   </div>
   {% endif %}
 
+  <!-- Pronostici torneo pubblici (visibili solo quando locked) -->
+  {% if torneo_locked and pronostici_torneo_pubblici %}
+  <div class="fsa-section-title">🌍 Pronostici Torneo — tutti</div>
+  <div class="fsa-card" style="padding:0;">
+    {% for t in pronostici_torneo_pubblici %}
+    <div style="display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}{% if t.nome_utente == session.nome_utente %}background:rgba(77,166,255,0.05);{% endif %}">
+      <div style="flex:1;">
+        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ t.nome_utente }}{% if t.nome_utente == session.nome_utente %} <span style="font-size:10px;color:var(--azzurro);">tu</span>{% endif %}</div>
+        <div style="font-size:12px;margin-top:3px;">
+          <span style="color:var(--muted);">🏆</span> <strong>{{ t.vincitore or '—' }}</strong>
+          &nbsp;·&nbsp;
+          <span style="color:var(--muted);">⚽</span> <strong>{{ t.capocannoniere or '—' }}</strong>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

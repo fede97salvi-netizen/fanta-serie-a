@@ -1,72 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Bracket – Fanta Mondiali 2026{% endblock %}
+{% block title %}Bracket{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{{ url_for('gioco.home') }}" class="btn-back">← Home</a>
+</div>
 <div class="page-header">
   <h2>🏆 Bracket Eliminazione</h2>
+  <div style="font-size:12px;color:var(--muted);margin-top:4px;">Esito +1 · Risultato esatto +3 · Marcatore +2 · Bonus +1</div>
 </div>
-
-<div style="padding:0 16px 8px;">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    {% for fase in ['r32','r16','qf','sf','finale'] %}
-    {% if fasi_partite[fase] %}
-    <a href="#{{ fase }}" style="background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.25);color:var(--gold);border-radius:20px;padding:5px 14px;font-family:var(--font-d);font-size:12px;font-weight:700;text-decoration:none;">
-      {{ FASI_NOMI[fase] }}
-    </a>
-    {% endif %}
-    {% endfor %}
-  </div>
-</div>
-
 <div style="padding:0 16px;">
 {% for fase in ['r32','r16','qf','sf','finale','3posto'] %}
 {% if fasi_partite[fase] %}
 {% set fase_stato = stati_fase.get(fase) %}
 {% set is_locked = fase_stato and fase_stato.pronostici_locked %}
-
-<div id="{{ fase }}" class="bracket-fase" style="margin-top:16px;">
+<div id="{{ fase }}" class="bracket-fase" style="margin-top:14px;">
   <div class="bracket-fase-header" style="background:linear-gradient(90deg,rgba(42,145,52,0.2),transparent);border-bottom:1px solid var(--border);">
     <span style="color:var(--green);">{{ FASI_NOMI[fase] }}</span>
-    <span style="font-size:11px;color:var(--muted);">(+{{ PUNTI_KNOCKOUT[fase]['vincitore'] }}pt /+{{ PUNTI_KNOCKOUT[fase]['risultato_bonus'] }}pt bonus 90')</span>
     {% if not is_locked %}
     <a href="{{ url_for('gioco.pronostici_eliminazione', fase=fase) }}" class="btn-gold" style="margin-left:auto;font-size:11px;padding:4px 10px;">Pronostica</a>
     {% endif %}
   </div>
-
   {% for p in fasi_partite[fase] %}
   {% set pid = p.id %}
   {% set pron = pron_elim.get(pid) %}
-  {% set ha_risultato = p.vincitore %}
   <div class="bracket-match">
-    <!-- Squadra casa -->
-    <div class="bracket-team {% if ha_risultato and p.vincitore == p.squadra_casa %}winner{% elif ha_risultato and p.vincitore != p.squadra_casa %}loser{% endif %}">
+    <div class="bracket-team {% if p.risultato_casa_reale is not none and p.risultato_casa_reale > p.risultato_ospite_reale %}winner{% elif p.risultato_casa_reale is not none %}loser{% endif %}">
       {{ p.squadra_casa or 'TBD' }}
     </div>
-    <!-- Score 90' -->
     <div class="bracket-score">
-      {% if ha_risultato and p.gol_casa_90 is not none and p.gol_ospite_90 is not none %}
-        {{ p.gol_casa_90 }}–{{ p.gol_ospite_90 }}
-        <div style="font-size:9px;color:var(--muted);">90'</div>
+      {% if p.risultato_casa_reale is not none %}
+        {{ p.risultato_casa_reale }}–{{ p.risultato_ospite_reale }}
       {% else %}
-        <span style="font-size:11px;">vs</span>
+        <span style="font-size:11px;color:var(--muted);">vs</span>
       {% endif %}
     </div>
-    <!-- Squadra ospite -->
-    <div class="bracket-team {% if ha_risultato and p.vincitore == p.squadra_ospite %}winner{% elif ha_risultato and p.vincitore != p.squadra_ospite %}loser{% endif %}">
+    <div class="bracket-team {% if p.risultato_ospite_reale is not none and p.risultato_ospite_reale > p.risultato_casa_reale %}winner{% elif p.risultato_ospite_reale is not none %}loser{% endif %}">
       {{ p.squadra_ospite or 'TBD' }}
     </div>
-    <!-- Pronostico utente e risultato -->
     <div style="min-width:52px;text-align:right;flex-shrink:0;">
       {% if pron %}
-        {% if ha_risultato %}
-          {% if pron.vincitore == p.vincitore %}
-            <span style="font-size:18px;">✅</span>
-          {% else %}
-            <span style="font-size:18px;">❌</span>
-          {% endif %}
+        {% if p.risultato_casa_reale is not none %}
+          {% from 'services.game_logic' import calcola_punti_pronostico %}
+          <span style="font-size:18px;">{% if pron.esito_pronosticato %}✅{% else %}⏳{% endif %}</span>
         {% else %}
-          <span style="font-size:11px;color:var(--azzurro);">{{ pron.vincitore|truncate(8,true,'') }}</span>
+          <span style="font-size:11px;color:var(--azzurro);">{{ pron.esito_pronosticato or '?' }}</span>
         {% endif %}
-      {% elif not is_locked %}
+      {% elif not is_locked and p.squadra_casa != 'TBD' %}
         <a href="{{ url_for('gioco.pronostici_eliminazione', fase=fase) }}" style="font-size:10px;color:var(--muted);text-decoration:none;">+pron</a>
       {% endif %}
     </div>
@@ -76,5 +55,7 @@
 {% endif %}
 {% endfor %}
 </div>
-<div style="height:20px;"></div>
+<div class="btn-back-bar" style="padding:16px 16px 20px;">
+  <a href="{{ url_for('gioco.home') }}" class="btn-back">← Home</a>
+</div>
 {% endblock %}

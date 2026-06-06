@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Admin Pronostici Torneo{% endblock %}
+{% block content %}
+<div class="btn-back-bar">
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Admin</a>
+</div>
+<div class="page-header">
+  <h2>🌍 Pronostici Torneo</h2>
+</div>
+<div style="padding:0 16px;">
+  <!-- Lock / Unlock -->
+  <div class="fsa-card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;">
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;">Stato pronostici</div>
+      <div class="u-muted-xs-mt2">{% if torneo_locked %}🔒 Bloccati — non modificabili{% else %}🔓 Aperti — gli utenti possono inserirli{% endif %}</div>
+    </div>
+    {% if torneo_locked %}
+    <form method="post" action="{{ url_for('admin.admin_sblocca_torneo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary">🔓 Sblocca</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('admin.admin_blocca_torneo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-warning" onclick="return confirm('Bloccare i pronostici torneo? Gli utenti non potranno più modificarli.')">🔒 Blocca ora</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Lista pronostici inseriti -->
+  <div class="fsa-section-title">Pronostici inseriti</div>
+  <div class="fsa-card" style="padding:0;">
+  {% for u in tutti %}
+  <div style="padding:11px 14px;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}">
+    <div style="font-family:var(--font-d);font-size:14px;font-weight:700;margin-bottom:5px;">{{ u.nome_utente }}</div>
+    {% if u.vincitore or u.capocannoniere %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+      <div><span style="color:var(--muted);">🏆 Vince:</span> <strong>{{ u.vincitore or '—' }}</strong></div>
+      <div><span style="color:var(--muted);">⚽ Cannoniere:</span> <strong>{{ u.capocannoniere or '—' }}</strong></div>
+    </div>
+    {% else %}
+    <div class="u-muted-xs">Non inserito</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  </div>
+</div>
+<div class="btn-back-bar" style="padding:16px 16px 20px;">
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Admin</a>
+</div>
+{% endblock %}
