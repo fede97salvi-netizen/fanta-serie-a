@@ -81,6 +81,20 @@
     </a>
     {% endfor %}
 
+    <!-- Importa rose squadre -->
+    <div class="fsa-card" style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">👕</div>
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;color:white;margin-bottom:4px;">Rose squadre</div>
+      <div class="u-muted-xs-mt2" style="margin-bottom:10px;">Import da API (~7 min)</div>
+      <form method="post" action="{{ url_for('admin.admin_importa_giocatori') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-gold btn-sm" style="width:100%;"
+                onclick="return confirm('Importare le rose di tutte le 48 squadre? Richiede ~7 minuti in background.')">
+          🌐 Importa rose
+        </button>
+      </form>
+    </div>
+
     <!-- Attiva fase -->
     <div class="fsa-card" style="text-align:center;">
       <div style="font-size:28px;margin-bottom:6px;">🚀</div>

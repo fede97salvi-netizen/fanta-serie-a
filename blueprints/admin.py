@@ -471,3 +471,112 @@ def admin_ricalcola_tutto():
     if require_admin(): return 'Accesso negato.', 403
     flash(ricalcola_tutto(), 'success')
     return redirect(url_for('admin.admin_home'))
+
+
+# ─── Importazione rose squadre ────────────────────────────────────────────────
+
+@admin_bp.route('/admin/importa-giocatori', methods=['POST'],
+                endpoint='admin_importa_giocatori')
+def admin_importa_giocatori():
+    """
+    Importa le rose di tutte le squadre WC 2026 dall'API football-data.org.
+    Gira in background per rispettare il rate limit (10 req/min piano free).
+    Stima: ~6-7 minuti per 48 squadre.
+    """
+    if require_admin(): return 'Accesso negato.', 403
+
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def _importa_rose():
+        import time as _time
+        with app.app_context():
+            log.info('[ROSE] ▶ Avvio importazione rose WC 2026...')
+            try:
+                code = app.config.get('COMPETITION_CODE', 'WC')
+
+                # Step 1: ottieni la lista completa delle 48 squadre
+                data, err = _api_get(f'/competitions/{code}/teams')
+                if err:
+                    log.error(f'[ROSE] Errore lista squadre: {err}')
+                    return
+                teams = data.get('teams', [])
+                log.info(f'[ROSE] Trovate {len(teams)} squadre')
+
+                if not teams:
+                    log.warning('[ROSE] Nessuna squadra restituita dall\'API.')
+                    return
+
+                # Step 2: svuota la tabella giocatori
+                with db_conn() as conn:
+                    db_execute(conn, 'DELETE FROM giocatori')
+                    db_commit(conn)
+                log.info('[ROSE] Tabella giocatori svuotata.')
+
+                # Step 3: per ogni squadra recupera la rosa individualmente
+                # (piano free: /teams/{id} restituisce squad completa)
+                totale_inseriti = 0
+                richieste_fatte = 1  # già fatto la chiamata /competitions/WC/teams
+
+                for i, team in enumerate(teams):
+                    team_id   = team.get('id')
+                    # Usa shortName se disponibile (più corto), altrimenti name
+                    team_name = (team.get('shortName') or team.get('name') or '').upper()
+
+                    # Prova prima a usare squad già nella risposta /competitions/teams
+                    squad = team.get('squad', [])
+
+                    # Se vuoto (frequente su piano free), chiama /teams/{id}
+                    if not squad and team_id:
+                        # Rate limiting: max 10 req/min → aspetta se necessario
+                        richieste_fatte += 1
+                        if richieste_fatte % 9 == 0:
+                            log.info(f'[ROSE] Pausa rate limit dopo {richieste_fatte} chiamate...')
+                            _time.sleep(65)
+                        else:
+                            _time.sleep(7)  # ~8-9 req/min, sicuro
+
+                        team_data, err2 = _api_get(f'/teams/{team_id}')
+                        if err2:
+                            log.warning(f'[ROSE] Errore per {team_name}: {err2}')
+                            continue
+                        squad = (team_data or {}).get('squad', [])
+
+                    if not squad:
+                        log.warning(f'[ROSE] Rosa vuota per {team_name} (id={team_id})')
+                        continue
+
+                    # Inserisci i giocatori nel DB
+                    inseriti = 0
+                    with db_conn() as conn:
+                        for player in squad:
+                            nome = (player.get('name') or '').strip()
+                            if nome:
+                                db_execute(conn,
+                                           'INSERT INTO giocatori (nome_giocatore, squadra) '
+                                           'VALUES (?, ?)',
+                                           (nome, team_name))
+                                inseriti += 1
+                        db_commit(conn)
+
+                    totale_inseriti += inseriti
+                    log.info(
+                        f'[ROSE] {team_name}: {inseriti} giocatori '
+                        f'({i + 1}/{len(teams)})'
+                    )
+
+                log.info(
+                    f'[ROSE] ✅ Completato: {totale_inseriti} giocatori '
+                    f'da {len(teams)} squadre.'
+                )
+
+            except Exception:
+                log.exception('[ROSE] Errore importazione rose')
+
+    threading.Thread(target=_importa_rose, daemon=True).start()
+    flash(
+        '🌍 Importazione rose avviata in background (~6-7 minuti per il '
+        'rate limiting API). Controlla i log di Render per il progresso.',
+        'info'
+    )
+    return redirect(url_for('admin.admin_home'))
