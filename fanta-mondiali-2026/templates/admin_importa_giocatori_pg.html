@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Importa Rose{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+</div>
 <div class="page-header">
   <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
   <h2>👕 Importa Rose Squadre</h2>
@@ -27,5 +30,8 @@
     </button>
   </form>
   <div class="u-muted-sm" style="margin-top:10px;text-align:center;">⚠️ Operazione irreversibile — sovrascrive tutti i giocatori esistenti</div>
+</div>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
 </div>
 {% endblock %}

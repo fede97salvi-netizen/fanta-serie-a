@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Registrazione{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('auth.login') }" class="btn-back">← Accedi</a>
+</div>
 <div class="u-card-form">
   <div style="text-align:center;padding:28px 0 20px;">
     <div style="font-size:48px;margin-bottom:8px;">🌍</div>
@@ -30,5 +33,8 @@
   <div style="text-align:center;margin-top:16px;">
     <a href="{{ url_for('auth.login') }}" style="color:var(--azzurro);font-size:14px;text-decoration:none;">Hai già un account? Accedi</a>
   </div>
+</div>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('auth.login') }" class="btn-back">← Accedi</a>
 </div>
 {% endblock %}

@@ -44,14 +44,22 @@ def home():
                            (punteggio,))
         posizione = row_get(rank, 'r') or 1
 
-        # Stato giornata (gironi)
+        # Stato giornata (gironi) — mostra anche senza stato_giornata attivo
         g_row = db_fetchone(conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva=TRUE')
         giornata_attiva = row_get(g_row, 'giornata') if g_row else None
         partite_gironi = []
         if giornata_attiva:
             partite_gironi = db_fetchall(conn,
-                                         'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
-                                         (giornata_attiva,))
+                'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
+                (giornata_attiva,))
+        if not partite_gironi:
+            # Fallback: cerca partite pronosticabili senza risultato, qualunque giornata
+            partite_gironi = db_fetchall(conn,
+                'SELECT * FROM partite WHERE pronosticabile=TRUE '
+                'AND risultato_casa_reale IS NULL '
+                'ORDER BY data_ora_partita LIMIT 10')
+            if partite_gironi and not giornata_attiva:
+                giornata_attiva = row_get(partite_gironi[0], 'giornata')
 
         # Stato fase knockout
         f_row = db_fetchone(conn, 'SELECT * FROM stato_fase WHERE is_attiva=TRUE')
@@ -141,40 +149,42 @@ def pronostici_gironi(giornata):
         partite = db_fetchall(conn,
                               'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
                               (giornata,))
+
+        # ── Carica giocatori con fallback a cascata ─────────────────────────
+        # 1) Exact match per squadra
+        # 2) LIKE sui primi 4 caratteri
+        # 3) Tutti i giocatori (se i nomi non coincidono affatto)
+        tutti_giocatori = db_fetchall(conn,
+            'SELECT nome_giocatore, squadra FROM giocatori '
+            'ORDER BY squadra, nome_giocatore')
+        per_sq_db = {}
+        for g in tutti_giocatori:
+            s = (row_get(g, 'squadra') or '').upper().strip()
+            per_sq_db.setdefault(s, []).append(g)
+
         giocatori_per_partita = {}
-        if partite:
-            squadre_all = set()
-            for p in partite:
-                sc = (row_get(p, 'squadra_casa')   or '').upper().strip()
-                so = (row_get(p, 'squadra_ospite') or '').upper().strip()
-                if sc: squadre_all.add(sc)
-                if so: squadre_all.add(so)
-            # Carica tutti i giocatori delle squadre in UN'unica query
-            ph_sq = ','.join(['?'] * len(squadre_all))
-            tutti_gioc = db_fetchall(conn,
-                f'SELECT nome_giocatore, squadra FROM giocatori '
-                f'WHERE UPPER(squadra) IN ({ph_sq}) '
-                f'ORDER BY squadra, nome_giocatore',
-                tuple(squadre_all))
-            per_sq = {}
-            for g in tutti_gioc:
-                s = (row_get(g, 'squadra') or '').upper()
-                per_sq.setdefault(s, []).append(g)
-            for p in partite:
-                pid = row_get(p, 'id')
-                sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
-                so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
-                lista = per_sq.get(sc, []) + per_sq.get(so, [])
-                # Fallback fuzzy se lista vuota (mismatch nomi)
-                if not lista:
-                    like_sc = (sc[:5] + '%') if sc else '%'
-                    like_so = (so[:5] + '%') if so else '%'
-                    lista = db_fetchall(conn,
-                        'SELECT nome_giocatore, squadra FROM giocatori '
-                        'WHERE UPPER(squadra) LIKE ? OR UPPER(squadra) LIKE ? '
-                        'ORDER BY squadra, nome_giocatore',
-                        (like_sc, like_so))
-                giocatori_per_partita[pid] = lista
+        for p in partite:
+            pid = row_get(p, 'id')
+            sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
+            so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
+
+            # 1) exact match
+            lista = per_sq_db.get(sc, []) + per_sq_db.get(so, [])
+
+            # 2) fuzzy (primi 4 char)
+            if not lista:
+                pref_sc = sc[:4]
+                pref_so = so[:4]
+                lista = [g for s_key, gs in per_sq_db.items()
+                         for g in gs
+                         if (pref_sc and s_key.startswith(pref_sc)) or
+                            (pref_so and s_key.startswith(pref_so))]
+
+            # 3) fallback totale — mostra tutti (mai dropdown vuoto)
+            if not lista:
+                lista = tutti_giocatori
+
+            giocatori_per_partita[pid] = lista
 
         pron_salvati = {row_get(r, 'id_partita'): r
                         for r in db_fetchall(conn,
@@ -337,38 +347,29 @@ def pronostici_eliminazione(fase):
                                              '(SELECT id FROM partite WHERE fase=?)',
                                              (uid, fase))}
 
-        # Giocatori per partita (dropdown marcatore) — con fallback fuzzy
+        # ── Giocatori con fallback garantito ────────────────────────────────
+        tutti_giocatori = db_fetchall(conn,
+            'SELECT nome_giocatore, squadra FROM giocatori ORDER BY squadra, nome_giocatore')
+        per_sq_db = {}
+        for g in tutti_giocatori:
+            s = (row_get(g, 'squadra') or '').upper().strip()
+            per_sq_db.setdefault(s, []).append(g)
+
         giocatori_per_partita = {}
-        if partite:
-            squadre_all = set()
-            for p in partite:
-                sc = (row_get(p, 'squadra_casa')   or '').upper().strip()
-                so = (row_get(p, 'squadra_ospite') or '').upper().strip()
-                if sc and sc != 'TBD': squadre_all.add(sc)
-                if so and so != 'TBD': squadre_all.add(so)
-            per_sq = {}
-            if squadre_all:
-                ph_sq = ','.join(['?'] * len(squadre_all))
-                for g in db_fetchall(conn,
-                    f'SELECT nome_giocatore, squadra FROM giocatori '
-                    f'WHERE UPPER(squadra) IN ({ph_sq}) '
-                    f'ORDER BY squadra, nome_giocatore', tuple(squadre_all)):
-                    s = (row_get(g, 'squadra') or '').upper()
-                    per_sq.setdefault(s, []).append(g)
-            for p in partite:
-                pid = row_get(p, 'id')
-                sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
-                so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
-                lista = per_sq.get(sc, []) + per_sq.get(so, [])
-                if not lista and sc and sc != 'TBD':
-                    like_sc = (sc[:5] + '%') if sc else '%'
-                    like_so = (so[:5] + '%') if so else '%'
-                    lista = db_fetchall(conn,
-                        'SELECT nome_giocatore, squadra FROM giocatori '
-                        'WHERE UPPER(squadra) LIKE ? OR UPPER(squadra) LIKE ? '
-                        'ORDER BY squadra, nome_giocatore',
-                        (like_sc, like_so))
-                giocatori_per_partita[pid] = lista
+        for p in partite:
+            pid = row_get(p, 'id')
+            sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
+            so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
+            lista = per_sq_db.get(sc, []) + per_sq_db.get(so, [])
+            if not lista:
+                pref_sc, pref_so = sc[:4], so[:4]
+                lista = [g for s_key, gs in per_sq_db.items()
+                         for g in gs
+                         if (pref_sc and s_key.startswith(pref_sc)) or
+                            (pref_so and s_key.startswith(pref_so))]
+            if not lista:
+                lista = tutti_giocatori
+            giocatori_per_partita[pid] = lista
 
         if request.method == 'POST' and not is_locked:
             for p in partite:

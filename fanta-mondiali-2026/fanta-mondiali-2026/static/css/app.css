@@ -160,3 +160,8 @@
     .btn-back { display:inline-flex; align-items:center; gap:6px; color:var(--muted); text-decoration:none; font-family:var(--font-d); font-size:14px; font-weight:600; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; cursor:pointer; transition:all .15s; }
     .btn-back:hover, .btn-back:active { color:var(--gold); border-color:var(--gold); background:rgba(201,162,39,0.08); }
     .btn-back-bar { padding:10px 16px 0; }
+
+    /* ── Back button — mobile ottimizzato ── */
+    .btn-back { display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-family:var(--font-d); font-size:15px; font-weight:600; padding:10px 18px; min-height:44px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; transition:color .15s, border-color .15s, background .15s; -webkit-tap-highlight-color: transparent; }
+    .btn-back:hover, .btn-back:active { color:var(--gold); border-color:var(--gold); background:rgba(201,162,39,0.08); }
+    .btn-back-bar { padding:12px 16px 0; }

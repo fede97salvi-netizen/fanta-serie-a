@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Admin Bracket{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+</div>
 <div class="page-header">
   <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
   <h2>🏆 Gestione Bracket</h2>
@@ -62,5 +65,8 @@
   </div>
 </div>
 {% endfor %}
+</div>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
 </div>
 {% endblock %}

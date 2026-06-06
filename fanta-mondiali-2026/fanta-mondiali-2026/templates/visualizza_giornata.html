@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('gioco.archivio_giornate') }" class="btn-back">← Archivio</a>
+</div>
 <div class="u-section-hd">
   <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary u-btn-sm">← Archivio</a>
 </div>
@@ -177,4 +180,7 @@ function toggleSezione(nome) {
   }
 }
 </script>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('gioco.archivio_giornate') }" class="btn-back">← Archivio</a>
+</div>
 {% endblock %}

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ fase_nome }} – Fanta Mondiali{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('gioco.bracket') }" class="btn-back">← Bracket</a>
+</div>
 <div class="page-header">
   <div class="u-muted-xs">Fase ad eliminazione</div>
   <h2>{{ fase_nome }}</h2>
@@ -81,4 +84,7 @@
   <button type="submit" class="btn-gold" style="width:100%;justify-content:center;font-size:17px;padding:15px 20px;margin-bottom:24px;">💾 Salva pronostici {{ fase_nome }}</button>
   {% endif %}
 </form>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('gioco.bracket') }" class="btn-back">← Bracket</a>
+</div>
 {% endblock %}

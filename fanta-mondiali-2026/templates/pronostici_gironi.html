@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Pronostici Round {{ giornata }}{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
+</div>
 <div class="page-header">
   <div class="u-muted-xs">Fase a Gironi</div>
   <h2>⚽ Round {{ giornata }}</h2>
@@ -100,4 +103,7 @@
   </button>
   {% endif %}
 </form>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
+</div>
 {% endblock %}

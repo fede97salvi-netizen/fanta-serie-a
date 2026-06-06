@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Classifica{% endblock %}
 {% block content %}
+<div class="btn-back-bar">
+  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
+</div>
 <div class="page-header"><h2>📊 Classifica</h2></div>
 <div style="padding:0 16px;">
   <div class="fsa-card" style="padding:0;">
@@ -44,5 +47,8 @@
       <div>🎯 Bonus vinc.+final.: +10</div>
     </div>
   </div>
+</div>
+<div class="btn-back-bar" style="padding:14px 16px 24px;">
+  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
 </div>
 {% endblock %}
