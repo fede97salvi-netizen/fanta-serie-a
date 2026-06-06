@@ -1,112 +1,131 @@
 {% extends "base.html" %}
+{% block title %}Admin – Fanta Mondiali 2026{% endblock %}
 {% block content %}
-<div style="background:linear-gradient(135deg,rgba(198,40,40,0.25) 0%,var(--bg) 100%);padding:20px 16px 16px;border-bottom:1px solid rgba(239,83,80,0.15);">
-  <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#ef5350;margin-bottom:4px;">Area riservata</div>
-  <h1 class="u-hero-xl" style="color:white;">Dashboard Admin</h1>
-  {% if giornata_attiva %}
-  {% set g = giornata_attiva['giornata'] if giornata_attiva is mapping else giornata_attiva %}
-  <div class="u-mt-sm" style="display:inline-flex;align-items:center;gap:6px;background:rgba(26,107,46,0.25);border:1px solid rgba(76,175,80,0.3);border-radius:20px;padding:4px 12px;">
-    <span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;"></span>
-    <span style="font-size:13px;color:#81c784;font-weight:500;">Giornata {{ g }} attiva · {{ pronostici_inseriti }} pronostici</span>
-  </div>
-  {% endif %}
+<div class="page-header">
+  <div class="u-muted-xs">Pannello admin</div>
+  <h2>⚙️ Dashboard</h2>
 </div>
 
-{% if flash_message %}
-<div class="u-section-hd"><div class="alert alert-success">{{ flash_message }}</div></div>
-{% endif %}
+<!-- Flash -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash-{{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
 
-<div class="fsa-section">
+<div style="padding:0 16px;">
+
+  <!-- STATO GIRONI -->
   {% if giornata_attiva %}
-  {% set g = giornata_attiva['giornata'] if giornata_attiva is mapping else giornata_attiva %}
+  <div class="fsa-section-title">⚽ Gironi – Round {{ giornata_attiva }} attivo</div>
+  <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
+    <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=giornata_attiva) }}" style="display:contents;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary" onclick="return confirm('Calcolare punteggi round {{ giornata_attiva }}?')">⚡ Calcola punti</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.archivia_giornata', giornata=giornata_attiva) }}" style="display:contents;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary" onclick="return confirm('Archiviare round {{ giornata_attiva }}?')">📦 Archivia round</button>
+    </form>
+    <a href="{{ url_for('admin.admin_gestisci_partite', giornata=giornata_attiva) }}" class="btn-secondary">✏️ Risultati</a>
+  </div>
+  {% endif %}
 
-  <!-- Azioni rapide giornata attiva -->
-  <div class="fsa-section-title">Giornata {{ g }}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;align-items:stretch;">
-    <a href="{{ url_for('admin.admin_gestisci_partite') }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--border);">
-      <div class="u-icon-lg">⚽</div>
-      <div class="u-hero-xs">Gestione partite</div>
-      <div class="u-muted-xs-mt2">Giornata {{ g }}</div>
-    </a>
-    <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=g) }}" class="u-contents">
+  <!-- STATO FASI KNOCKOUT -->
+  {% if fase_attiva %}
+  <div class="fsa-section-title">🏆 {{ FASI_NOMI[fase_attiva] }} attiva</div>
+  {% set sf = stati_fasi.get(fase_attiva) %}
+  <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
+    {% if sf and not sf.pronostici_locked %}
+    <form method="post" action="{{ url_for('admin.admin_chiudi_pronostici_fase', fase=fase_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;border:none;cursor:pointer;font-family:var(--font-b);color:white;background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);" onclick="return confirm('Calcolare punteggi giornata {{ g }}?')">
-        <div class="u-icon-lg">⚡</div>
-        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;">Calcola punteggi</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Giornata {{ g }}</div>
-      </button>
+      <button type="submit" class="btn-warning">🔒 Chiudi pronostici</button>
     </form>
-    <form method="post" action="{{ url_for('admin.admin_invia_reminder', giornata=g) }}" class="u-contents">
+    {% elif sf and sf.pronostici_locked %}
+    <form method="post" action="{{ url_for('admin.admin_apri_pronostici_fase', fase=fase_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;background:var(--card);border:1px solid var(--border);cursor:pointer;color:var(--text);font-family:var(--font-b);" onclick="return confirm('Inviare email di reminder a tutti gli utenti?')">
-        <div class="u-icon-lg">📧</div>
-        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;">Invia reminder</div>
-        <div class="u-muted-xs-mt2">Email a tutti gli utenti</div>
-      </button>
+      <button type="submit" class="btn-secondary">🔓 Riapri pronostici</button>
     </form>
-    <form method="post" action="{{ url_for('admin.archivia_giornata', giornata=g) }}" class="u-contents">
+    {% else %}
+    <form method="post" action="{{ url_for('admin.admin_apri_pronostici_fase', fase=fase_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;border-radius:14px;padding:16px 12px;text-align:center;text-decoration:none;width:100%;cursor:pointer;font-family:var(--font-b);color:var(--text);background:var(--card);border:1px solid rgba(239,83,80,0.25);" onclick="return confirm('Archiviare la giornata {{ g }}? Questa azione non è reversibile.')">
-        <div class="u-icon-lg">📦</div>
-        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#ef9a9a;">Archivia giornata</div>
-        <div class="u-muted-xs-mt2">Chiudi giornata {{ g }}</div>
-      </button>
+      <button type="submit" class="btn-gold">🔓 Apri pronostici</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.admin_calcola_punti_fase', fase=fase_attiva) }}" style="display:contents;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary" onclick="return confirm('Calcolare punteggi {{ FASI_NOMI[fase_attiva] }}?')">⚡ Calcola punti</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.admin_archivia_fase', fase=fase_attiva) }}" style="display:contents;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary" onclick="return confirm('Archiviare {{ FASI_NOMI[fase_attiva] }}?')">📦 Archivia fase</button>
     </form>
   </div>
   {% endif %}
 
-  <!-- Menu funzionalità -->
-  <div class="fsa-section-title">Funzionalità</div>
+  <!-- FUNZIONALITÀ -->
+  <div class="fsa-section-title">FUNZIONALITÀ</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-
-    <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="fsa-card u-card-link">
-      <div class="u-icon-xl">⚽</div>
-      <div class="u-hero">Partite</div>
-      <div class="u-muted-xs-mt3">Importa, gestisci risultati</div>
+    {% for href, icon, label, sub in [
+      (url_for('admin.admin_importa_giornata'),  '⚽', 'Importa gironi', 'Partite da API'),
+      (url_for('admin.admin_gestisci_partite'),  '📋', 'Gestione partite', 'Risultati gironi'),
+      (url_for('admin.admin_gestisci_bracket'),  '🏆', 'Bracket KO', 'Fasi eliminazione'),
+      (url_for('admin.admin_risultati_torneo'),  '🌍', 'Risultati torneo', 'Fine stagione'),
+      (url_for('admin.admin_utenti'),            '👥', 'Utenti', 'Gestione account'),
+      (url_for('admin.admin_gestisci_email'),    '📧', 'Email utenti', 'Aggiorna email'),
+    ] %}
+    <a href="{{ href }}" class="fsa-card u-card-link" style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">{{ icon }}</div>
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;color:white;">{{ label }}</div>
+      <div class="u-muted-xs-mt2">{{ sub }}</div>
     </a>
+    {% endfor %}
 
-    <a href="{{ url_for('admin.admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card u-card-link">
-      <div class="u-icon-xl">📊</div>
-      <div class="u-hero">Pronostici</div>
-      <div class="u-muted-xs-mt3">Visualizza inseriti</div>
-    </a>
+    <!-- Attiva fase -->
+    <div class="fsa-card" style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">🚀</div>
+      <div style="font-family:var(--font-d);font-size:15px;font-weight:700;color:white;margin-bottom:8px;">Attiva fase KO</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        {% for fase in FASI_ORDINE if fase != 'gironi' %}
+        <form method="post" action="{{ url_for('admin.admin_attiva_fase', fase=fase) }}" style="display:contents;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-secondary" style="font-size:11px;padding:5px 10px;width:100%;"
+                  onclick="return confirm('Attivare {{ FASI_NOMI[fase] }}?')">
+            {{ FASI_NOMI[fase] }}
+            {% set sf = stati_fasi.get(fase) %}
+            {% if sf and sf.is_attiva %}🟢{% elif sf and sf.is_in_archivio %}📦{% endif %}
+          </button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
 
-    <a href="{{ url_for('admin.admin_utenti') }}" class="fsa-card u-card-link">
-      <div class="u-icon-xl">👥</div>
-      <div class="u-hero">Utenti</div>
-      <div class="u-muted-xs-mt3">Gestione e email</div>
-    </a>
-
-    <a href="{{ url_for('admin.admin_gestisci_pronostici_iniziali') }}" class="fsa-card u-card-link">
-      <div class="u-icon-xl">📋</div>
-      <div class="u-hero">Pron. Iniziali</div>
-      <div class="u-muted-xs-mt3">Top 4 e capocannoniere</div>
-    </a>
-
-    <a href="{{ url_for('admin.admin_gestisci_finalizzazione') }}" class="fsa-card u-card-link">
-      <div class="u-icon-xl">🏁</div>
-      <div class="u-hero">Finalizzazione</div>
-      <div class="u-muted-xs-mt3">Chiusura stagione</div>
-    </a>
-
-    <form method="post" action="{{ url_for('admin.calcola_punteggi') }}" class="u-contents">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="fsa-card u-card-link" style="width:100%;border:1px solid var(--border);cursor:pointer;font-family:var(--font-b);text-align:left;" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
-        <div class="u-icon-xl">🔄</div>
-        <div class="u-hero">Ricalcola tutto</div>
-        <div class="u-muted-xs-mt3">Reset classifica generale</div>
-      </button>
-    </form>
-
-    <form method="post" action="{{ url_for('admin.admin_aggiorna_risultati_massivo') }}" class="u-contents">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="fsa-card" style="text-align:left;padding:18px 14px;cursor:pointer;border:1px solid var(--border);background:var(--card);width:100%;font-family:var(--font-b);" onclick="return confirm('Aggiornare i risultati di tutte le giornate archiviate dalla API? Può richiedere qualche minuto.')">
-        <div class="u-icon-xl">📥</div>
-        <div class="u-hero">Aggiorna storico</div>
-        <div class="u-muted-xs-mt3">Risultati da API tutte le giornate</div>
-      </button>
-    </form>
-
+    <!-- Ricalcola + Pronostici torneo -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="fsa-card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:6px;">🔄</div>
+        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Ricalcola tutto</div>
+        <form method="post" action="{{ url_for('admin.admin_ricalcola_tutto') }}" style="display:contents;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-secondary btn-sm" style="width:100%;" onclick="return confirm('Ricalcolare da zero?')">Esegui</button>
+        </form>
+      </div>
+      <div class="fsa-card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:6px;">🌍</div>
+        <div style="font-family:var(--font-d);font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Pron. torneo</div>
+        {% if torneo_locked %}
+        <form method="post" action="{{ url_for('admin.admin_sblocca_torneo') }}" style="display:contents;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-secondary btn-sm" style="width:100%;">🔓 Sblocca</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('admin.admin_blocca_torneo') }}" style="display:contents;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-warning btn-sm" style="width:100%;" onclick="return confirm('Bloccare i pronostici torneo?')">🔒 Blocca</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

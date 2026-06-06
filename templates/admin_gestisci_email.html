@@ -1,24 +1,23 @@
 {% extends "base.html" %}
+{% block title %}Email Utenti{% endblock %}
 {% block content %}
-<div class="page-header"><span class="page-title">Gestione email utenti</span></div>
-<div class="fsa-section u-pt-sm">
-  <div class="alert alert-info">Inserisci le email degli utenti esistenti. Lascia vuoto per non modificare.</div>
-  <div class="fsa-card u-p-0">
-    <form method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      {% for utente in utenti %}
-      <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);">
-        <div style="font-weight:600;font-size:14px;">{{ utente['nome_utente'] }}</div>
-        <input type="email" name="email_{{ utente['id'] }}" class="form-control u-h38" style="font-size:13px;"
-          value="{{ utente['email'] or '' }}"
-          placeholder="email@esempio.com">
-      </div>
-      {% endfor %}
-      <div style="padding:14px 16px;">
-        <button type="submit" class="btn-success">Salva tutte le email</button>
-      </div>
-    </form>
+<div class="page-header">
+  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
+  <h2>📧 Email Utenti</h2>
+</div>
+<div style="padding:0 16px;">
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="fsa-card" style="padding:0;">
+    {% for u in utenti %}
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}">
+      <label class="fsa-label" style="margin-bottom:4px;">{{ u.nome_utente }}</label>
+      <input type="email" name="email_{{ u.id }}" value="{{ u.email or '' }}" class="fsa-input"
+             style="font-size:14px;" placeholder="email@esempio.com">
+    </div>
+    {% endfor %}
   </div>
-  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-mt-sm">← Dashboard</a>
+  <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:13px;margin-top:12px;">💾 Salva email</button>
+</form>
 </div>
 {% endblock %}

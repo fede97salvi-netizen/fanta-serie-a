@@ -1,12 +1,8 @@
 """
-FantaSerieA — app factory (V3)
-
-Crea e configura l'applicazione Flask.
-Chiamare create_app() per ottenere un'istanza configurata.
+Fanta Mondiali 2026 — app factory
 """
 
-import logging
-import os
+import logging, os
 from datetime import timedelta
 
 import pytz
@@ -19,217 +15,202 @@ from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime
 
-
-# ─── Logging ─────────────────────────────────────────────────────────────────
-
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'INFO'),
     format='[%(asctime)s] %(levelname)s %(name)s — %(message)s',
 )
-log = logging.getLogger('fanta')
-
-
-# ─── CSP (Content Security Policy) ───────────────────────────────────────────
-# Calibrata sul progetto reale:
-# - style-src 'self':         CSS in static/css/app.css + Google Fonts
-# - script-src 'self' 'unsafe-inline': piccoli script inline in base.html
-#   (menu avatar, tab-bar highlight). Rimuovere 'unsafe-inline' quando
-#   questi script verranno spostati in file .js statici.
-# - img-src 'self' data::     possibili favicon inline base64
-# - font-src:                 Google Fonts
+log = logging.getLogger('mondiali')
 
 CSP = {
-    'default-src':  "'self'",
-    # Separazione CSP Level 3 per stili:
-    # - style-src-elem: solo CSS da file (no <style> inline injection)
-    # - style-src-attr: permette style="" attributi (necessari nei template)
-    # - style-src: fallback per browser vecchi (stesso di attr)
+    'default-src':    "'self'",
     'style-src':      ["'self'", "'unsafe-inline'",
-                       'https://fonts.googleapis.com',
-                       'https://fonts.gstatic.com'],
-    'style-src-elem': ["'self'",
-                       'https://fonts.googleapis.com',
-                       'https://fonts.gstatic.com'],
+                       'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+    'style-src-elem': ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
     'style-src-attr': ["'unsafe-inline'"],
-    'font-src':     ["'self'",
-                     'https://fonts.gstatic.com'],
-    'script-src':   ["'self'", "'unsafe-inline'"],
-    'img-src':      ["'self'", 'data:'],
-    'connect-src':  "'self'",
+    'font-src':       ["'self'", 'https://fonts.gstatic.com'],
+    'script-src':     ["'self'", "'unsafe-inline'"],
+    'img-src':        ["'self'", 'data:'],
+    'connect-src':    "'self'",
     'frame-ancestors': "'none'",
-    'base-uri':     "'self'",
-    'form-action':  "'self'",
+    'base-uri':       "'self'",
+    'form-action':    "'self'",
 }
 
 
 # ─── Schema DB ────────────────────────────────────────────────────────────────
 
 def _create_tables_postgres(conn):
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS utenti (
-        id SERIAL PRIMARY KEY,
-        nome_utente TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        is_temp_password BOOLEAN NOT NULL DEFAULT FALSE,
-        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-        email TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_iniziali (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS partite (
-        id SERIAL PRIMARY KEY,
-        giornata INTEGER NOT NULL,
-        squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL,
-        risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
-        marcatore_reale TEXT,
-        pronosticabile BOOLEAN NOT NULL DEFAULT FALSE,
-        data_ora_partita TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_giornata (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        id_partita INTEGER NOT NULL REFERENCES partite(id),
-        esito_pronosticato TEXT,
-        risultato_casa_pronosticato INTEGER,
-        risultato_ospite_pronosticato INTEGER,
-        marcatore_pronosticato TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS punteggi (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id),
-        punteggio_totale INTEGER NOT NULL DEFAULT 0)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS stato_giornata (
-        id SERIAL PRIMARY KEY,
-        giornata INTEGER NOT NULL UNIQUE,
-        is_attiva BOOLEAN NOT NULL DEFAULT FALSE,
-        is_in_archivio BOOLEAN NOT NULL DEFAULT FALSE)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS stato_pronostici_iniziali (
-        id INTEGER PRIMARY KEY,
-        is_locked BOOLEAN NOT NULL DEFAULT FALSE)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS risultati_finali (
-        id INTEGER PRIMARY KEY,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS giocatori (
-        id SERIAL PRIMARY KEY,
-        nome_giocatore TEXT NOT NULL,
-        squadra TEXT NOT NULL)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS punteggi_giornata (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        giornata INTEGER NOT NULL,
-        punti INTEGER NOT NULL DEFAULT 0,
-        UNIQUE (id_utente, giornata))""")
-    db_execute(conn,
-               "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
-               "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
-    db_execute(conn, "INSERT INTO risultati_finali (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
+    sqls = [
+        """CREATE TABLE IF NOT EXISTS utenti (
+            id SERIAL PRIMARY KEY, nome_utente TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL, is_temp_password BOOLEAN NOT NULL DEFAULT FALSE,
+            is_admin BOOLEAN NOT NULL DEFAULT FALSE, email TEXT)""",
+        """CREATE TABLE IF NOT EXISTS partite (
+            id SERIAL PRIMARY KEY,
+            giornata INTEGER,
+            fase TEXT NOT NULL DEFAULT 'gironi',
+            girone TEXT,
+            squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL,
+            risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
+            gol_casa_90 INTEGER, gol_ospite_90 INTEGER,
+            vincitore TEXT,
+            marcatore_reale TEXT,
+            pronosticabile BOOLEAN NOT NULL DEFAULT FALSE,
+            data_ora_partita TEXT)""",
+        """CREATE TABLE IF NOT EXISTS pronostici_giornata (
+            id SERIAL PRIMARY KEY, id_utente INTEGER NOT NULL REFERENCES utenti(id),
+            id_partita INTEGER NOT NULL REFERENCES partite(id),
+            esito_pronosticato TEXT, risultato_casa_pronosticato INTEGER,
+            risultato_ospite_pronosticato INTEGER, marcatore_pronosticato TEXT)""",
+        """CREATE TABLE IF NOT EXISTS pronostici_eliminazione (
+            id SERIAL PRIMARY KEY,
+            id_utente INTEGER NOT NULL REFERENCES utenti(id),
+            id_partita INTEGER NOT NULL REFERENCES partite(id),
+            vincitore TEXT, gol_casa_90 INTEGER, gol_ospite_90 INTEGER,
+            UNIQUE(id_utente, id_partita))""",
+        """CREATE TABLE IF NOT EXISTS pronostici_torneo (
+            id SERIAL PRIMARY KEY,
+            id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id),
+            vincitore TEXT, finalista TEXT,
+            semifinalista_1 TEXT, semifinalista_2 TEXT, capocannoniere TEXT)""",
+        """CREATE TABLE IF NOT EXISTS punteggi (
+            id SERIAL PRIMARY KEY, id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id),
+            punteggio_totale INTEGER NOT NULL DEFAULT 0)""",
+        """CREATE TABLE IF NOT EXISTS punteggi_giornata (
+            id SERIAL PRIMARY KEY, id_utente INTEGER NOT NULL REFERENCES utenti(id),
+            giornata INTEGER NOT NULL, punti INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(id_utente, giornata))""",
+        """CREATE TABLE IF NOT EXISTS punteggi_fase (
+            id SERIAL PRIMARY KEY, id_utente INTEGER NOT NULL REFERENCES utenti(id),
+            fase TEXT NOT NULL, punti INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(id_utente, fase))""",
+        """CREATE TABLE IF NOT EXISTS stato_giornata (
+            id SERIAL PRIMARY KEY, giornata INTEGER NOT NULL UNIQUE,
+            is_attiva BOOLEAN NOT NULL DEFAULT FALSE,
+            is_in_archivio BOOLEAN NOT NULL DEFAULT FALSE)""",
+        """CREATE TABLE IF NOT EXISTS stato_fase (
+            id SERIAL PRIMARY KEY, fase TEXT NOT NULL UNIQUE,
+            is_attiva BOOLEAN NOT NULL DEFAULT FALSE,
+            is_in_archivio BOOLEAN NOT NULL DEFAULT FALSE,
+            pronostici_locked BOOLEAN NOT NULL DEFAULT FALSE)""",
+        """CREATE TABLE IF NOT EXISTS stato_pronostici_torneo (
+            id INTEGER PRIMARY KEY, is_locked BOOLEAN NOT NULL DEFAULT FALSE)""",
+        """CREATE TABLE IF NOT EXISTS risultati_torneo (
+            id INTEGER PRIMARY KEY, vincitore TEXT, finalista TEXT,
+            semifinalista_1 TEXT, semifinalista_2 TEXT, capocannoniere TEXT)""",
+        """CREATE TABLE IF NOT EXISTS giocatori (
+            id SERIAL PRIMARY KEY, nome_giocatore TEXT NOT NULL, squadra TEXT NOT NULL)""",
+    ]
+    for sql in sqls:
+        db_execute(conn, sql)
+    db_execute(conn, "INSERT INTO stato_pronostici_torneo (id,is_locked) VALUES (1,FALSE) ON CONFLICT(id) DO NOTHING")
+    db_execute(conn, "INSERT INTO risultati_torneo (id) VALUES (1) ON CONFLICT(id) DO NOTHING")
 
 
 def _create_tables_sqlite(conn):
     conn.execute("""CREATE TABLE IF NOT EXISTS utenti (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_utente TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        is_temp_password BOOLEAN NOT NULL DEFAULT 0,
-        is_admin BOOLEAN NOT NULL DEFAULT 0,
-        email TEXT)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_iniziali (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT,
-        FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nome_utente TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL, is_temp_password BOOLEAN NOT NULL DEFAULT 0,
+        is_admin BOOLEAN NOT NULL DEFAULT 0, email TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS partite (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        giornata INTEGER NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, giornata INTEGER,
+        fase TEXT NOT NULL DEFAULT 'gironi', girone TEXT,
         squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL,
         risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
-        marcatore_reale TEXT,
-        pronosticabile BOOLEAN NOT NULL DEFAULT 0,
+        gol_casa_90 INTEGER, gol_ospite_90 INTEGER, vincitore TEXT,
+        marcatore_reale TEXT, pronosticabile BOOLEAN NOT NULL DEFAULT 0,
         data_ora_partita TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        id_partita INTEGER NOT NULL,
-        esito_pronosticato TEXT,
-        risultato_casa_pronosticato INTEGER,
-        risultato_ospite_pronosticato INTEGER,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL,
+        id_partita INTEGER NOT NULL, esito_pronosticato TEXT,
+        risultato_casa_pronosticato INTEGER, risultato_ospite_pronosticato INTEGER,
         marcatore_pronosticato TEXT,
         FOREIGN KEY(id_utente) REFERENCES utenti(id),
         FOREIGN KEY(id_partita) REFERENCES partite(id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_eliminazione (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL,
+        id_partita INTEGER NOT NULL, vincitore TEXT, gol_casa_90 INTEGER,
+        gol_ospite_90 INTEGER, UNIQUE(id_utente, id_partita),
+        FOREIGN KEY(id_utente) REFERENCES utenti(id),
+        FOREIGN KEY(id_partita) REFERENCES partite(id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_torneo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL UNIQUE,
+        vincitore TEXT, finalista TEXT, semifinalista_1 TEXT, semifinalista_2 TEXT,
+        capocannoniere TEXT, FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
     conn.execute("""CREATE TABLE IF NOT EXISTS punteggi (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL UNIQUE,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL UNIQUE,
         punteggio_totale INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS stato_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        giornata INTEGER NOT NULL UNIQUE,
-        is_attiva BOOLEAN NOT NULL DEFAULT 0,
-        is_in_archivio BOOLEAN NOT NULL DEFAULT 0)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS stato_pronostici_iniziali (
-        id INTEGER PRIMARY KEY,
-        is_locked BOOLEAN NOT NULL DEFAULT 0)""")
-    conn.execute("INSERT OR IGNORE INTO stato_pronostici_iniziali (id, is_locked) VALUES (1, 0)")
-    conn.execute("""CREATE TABLE IF NOT EXISTS risultati_finali (
-        id INTEGER PRIMARY KEY,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    conn.execute("INSERT OR IGNORE INTO risultati_finali (id) VALUES (1)")
-    conn.execute("""CREATE TABLE IF NOT EXISTS giocatori (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_giocatore TEXT NOT NULL,
-        squadra TEXT NOT NULL)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS punteggi_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        giornata INTEGER NOT NULL,
-        punti INTEGER NOT NULL DEFAULT 0,
-        UNIQUE (id_utente, giornata),
-        FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL,
+        giornata INTEGER NOT NULL, punti INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(id_utente, giornata), FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS punteggi_fase (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, id_utente INTEGER NOT NULL,
+        fase TEXT NOT NULL, punti INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(id_utente, fase), FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS stato_giornata (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, giornata INTEGER NOT NULL UNIQUE,
+        is_attiva BOOLEAN NOT NULL DEFAULT 0, is_in_archivio BOOLEAN NOT NULL DEFAULT 0)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS stato_fase (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, fase TEXT NOT NULL UNIQUE,
+        is_attiva BOOLEAN NOT NULL DEFAULT 0, is_in_archivio BOOLEAN NOT NULL DEFAULT 0,
+        pronostici_locked BOOLEAN NOT NULL DEFAULT 0)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS stato_pronostici_torneo (
+        id INTEGER PRIMARY KEY, is_locked BOOLEAN NOT NULL DEFAULT 0)""")
+    conn.execute("INSERT OR IGNORE INTO stato_pronostici_torneo (id,is_locked) VALUES (1,0)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS risultati_torneo (
+        id INTEGER PRIMARY KEY, vincitore TEXT, finalista TEXT,
+        semifinalista_1 TEXT, semifinalista_2 TEXT, capocannoniere TEXT)""")
+    conn.execute("INSERT OR IGNORE INTO risultati_torneo (id) VALUES (1)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS giocatori (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nome_giocatore TEXT NOT NULL,
+        squadra TEXT NOT NULL)""")
 
 
 def _migrate_schema(conn):
-    """Migrazioni idempotenti: aggiunge colonne mancanti su DB esistenti."""
     if USE_POSTGRES:
         try:
             db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT")
-            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
-                             "is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS fase TEXT NOT NULL DEFAULT 'gironi'")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS girone TEXT")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS gol_casa_90 INTEGER")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS gol_ospite_90 INTEGER")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS vincitore TEXT")
         except Exception:
-            log.exception('Errore migrazione schema (postgres)')
+            log.exception("Errore migrazione schema postgres")
     else:
         cur = conn.execute("PRAGMA table_info(utenti)")
         cols = {r[1] for r in cur.fetchall()}
-        if 'email' not in cols:
-            try:
-                conn.execute("ALTER TABLE utenti ADD COLUMN email TEXT")
-            except Exception:
-                log.exception('Errore aggiunta colonna email')
-        if 'is_admin' not in cols:
-            try:
-                conn.execute("ALTER TABLE utenti ADD COLUMN "
-                             "is_admin BOOLEAN NOT NULL DEFAULT 0")
-            except Exception:
-                log.exception('Errore aggiunta colonna is_admin')
+        for col, defn in [('email', 'TEXT'), ('is_admin', 'BOOLEAN NOT NULL DEFAULT 0')]:
+            if col not in cols:
+                try:
+                    conn.execute(f"ALTER TABLE utenti ADD COLUMN {col} {defn}")
+                except Exception:
+                    pass
+        cur = conn.execute("PRAGMA table_info(partite)")
+        pcols = {r[1] for r in cur.fetchall()}
+        for col, defn in [
+            ('fase', "TEXT NOT NULL DEFAULT 'gironi'"),
+            ('girone', 'TEXT'), ('gol_casa_90', 'INTEGER'),
+            ('gol_ospite_90', 'INTEGER'), ('vincitore', 'TEXT')
+        ]:
+            if col not in pcols:
+                try:
+                    conn.execute(f"ALTER TABLE partite ADD COLUMN {col} {defn}")
+                except Exception:
+                    pass
 
 
 def _promuovi_admin_storico(conn):
-    row = db_fetchone(conn,
-                      "SELECT COUNT(*) AS c FROM utenti WHERE is_admin = TRUE"
-                      if USE_POSTGRES else
-                      "SELECT COUNT(*) AS c FROM utenti WHERE is_admin = 1")
+    cond = "is_admin = TRUE" if USE_POSTGRES else "is_admin = 1"
+    row  = db_fetchone(conn, f"SELECT COUNT(*) AS c FROM utenti WHERE {cond}")
     if (row_get(row, 'c') or 0) == 0:
         legacy = os.environ.get('LEGACY_ADMIN_USERNAME', 'mirko')
-        if USE_POSTGRES:
-            db_execute(conn,
-                       "UPDATE utenti SET is_admin = TRUE WHERE nome_utente = ?",
-                       (legacy,))
-        else:
-            db_execute(conn,
-                       "UPDATE utenti SET is_admin = 1 WHERE nome_utente = ?",
-                       (legacy,))
-        log.info(f"Migrazione: promosso '{legacy}' ad admin.")
+        flag   = "TRUE" if USE_POSTGRES else "1"
+        db_execute(conn, f"UPDATE utenti SET is_admin = {flag} WHERE nome_utente = ?", (legacy,))
+        log.info(f"Promosso '{legacy}' ad admin.")
 
 
 def create_tables():
@@ -245,34 +226,30 @@ def create_tables():
 
 # ─── Filtri Jinja ─────────────────────────────────────────────────────────────
 
-def _register_filters(app: Flask):
-    @app.template_filter('datetime_local_italia')
-    def datetime_local_italia(s):
+def _register_filters(app):
+    @app.template_filter('datetime_local')
+    def datetime_local(s):
         if not s:
             return ''
         try:
-            orario_naive = parse_flexible_datetime(str(s))
-            if not orario_naive:
+            naive = parse_flexible_datetime(str(s))
+            if not naive:
                 return str(s)
             roma_tz = pytz.timezone('Europe/Rome')
-            return (pytz.utc.localize(orario_naive)
-                    .astimezone(roma_tz)
-                    .strftime('%Y-%m-%dT%H:%M'))
+            return pytz.utc.localize(naive).astimezone(roma_tz).strftime('%d/%m %H:%M')
         except Exception:
             return str(s)
 
-    @app.template_filter('fuso_orario_italia')
-    def fuso_orario_italia(s):
+    @app.template_filter('datetime_form')
+    def datetime_form(s):
         if not s:
             return ''
         try:
-            orario_naive = parse_flexible_datetime(str(s))
-            if not orario_naive:
+            naive = parse_flexible_datetime(str(s))
+            if not naive:
                 return str(s)
             roma_tz = pytz.timezone('Europe/Rome')
-            return (pytz.utc.localize(orario_naive)
-                    .astimezone(roma_tz)
-                    .strftime('%d/%m/%Y %H:%M'))
+            return pytz.utc.localize(naive).astimezone(roma_tz).strftime('%Y-%m-%dT%H:%M')
         except Exception:
             return str(s)
 
@@ -281,28 +258,23 @@ def _register_filters(app: Flask):
 
 def create_app(config=None) -> Flask:
     app = Flask(__name__)
-
-    # Configurazione
     cfg = config or get_config()
+
     app.secret_key = cfg.SECRET_KEY
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(
-        days=cfg.PERMANENT_SESSION_LIFETIME_DAYS)
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=cfg.PERMANENT_SESSION_LIFETIME_DAYS)
     app.config['SESSION_COOKIE_HTTPONLY'] = cfg.SESSION_COOKIE_HTTPONLY
     app.config['SESSION_COOKIE_SAMESITE'] = cfg.SESSION_COOKIE_SAMESITE
     app.config['SESSION_COOKIE_SECURE']   = getattr(cfg, 'SESSION_COOKIE_SECURE', False)
     app.config['WTF_CSRF_TIME_LIMIT']     = cfg.WTF_CSRF_TIME_LIMIT
     app.config['RATELIMIT_STORAGE_URI']   = cfg.RATELIMIT_STORAGE_URI
-
-    # Config esposta ai blueprint
     app.config['FOOTBALL_API_KEY']  = cfg.FOOTBALL_API_KEY
     app.config['FOOTBALL_API_BASE'] = cfg.FOOTBALL_API_BASE
-    app.config['SERIE_A_CODE']      = cfg.SERIE_A_CODE
+    app.config['COMPETITION_CODE']  = cfg.COMPETITION_CODE
     app.config['RESEND_API_KEY']    = cfg.RESEND_API_KEY
     app.config['EMAIL_FROM_NAME']   = cfg.EMAIL_FROM_NAME
     app.config['EMAIL_FROM_ADDRESS'] = cfg.EMAIL_FROM_ADDRESS
     app.config['APP_URL']           = cfg.APP_URL
 
-    # SQLAlchemy — usato per i modelli / Alembic
     db_url = getattr(cfg, 'DATABASE_URL', '')
     if db_url:
         if db_url.startswith('postgres://'):
@@ -313,56 +285,43 @@ def create_app(config=None) -> Flask:
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Estensioni
     csrf.init_app(app)
     limiter.init_app(app)
     db.init_app(app)
 
-    # Flask-Talisman (solo in produzione o se forzato)
-    talisman_enabled = getattr(cfg, 'TALISMAN_ENABLED', False)
-    if talisman_enabled:
-        Talisman(
-            app,
-            content_security_policy=CSP,
-            content_security_policy_nonce_in=['script-src'],
-            force_https=True,
-            strict_transport_security=True,
-            strict_transport_security_max_age=31536000,
-            strict_transport_security_include_subdomains=True,
-            frame_options='DENY',
-            referrer_policy='strict-origin-when-cross-origin',
-        )
+    if getattr(cfg, 'TALISMAN_ENABLED', False):
+        Talisman(app, content_security_policy=CSP, force_https=True,
+                 strict_transport_security=True, strict_transport_security_max_age=31536000,
+                 frame_options='DENY', referrer_policy='strict-origin-when-cross-origin')
     else:
-        # In sviluppo: solo X-Frame-Options manuale
         @app.after_request
-        def _add_minimal_headers(response):
+        def _headers(response):
             response.headers.setdefault('X-Frame-Options', 'DENY')
             response.headers.setdefault('X-Content-Type-Options', 'nosniff')
             return response
 
-    # Filtri Jinja
     _register_filters(app)
 
-    # Context processor globale
     @app.context_processor
     def inject_globals():
         g_attiva = None
+        fase_attiva = None
         try:
             with db_conn() as conn:
-                row = db_fetchone(
-                    conn,
-                    'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE',
-                )
+                row = db_fetchone(conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva=TRUE')
                 g_attiva = row_get(row, 'giornata') if row else None
+                row2 = db_fetchone(conn, 'SELECT fase FROM stato_fase WHERE is_attiva=TRUE')
+                fase_attiva = row_get(row2, 'fase') if row2 else None
         except Exception:
-            log.exception('Errore lettura giornata attiva')
+            log.exception('Errore lettura stato attivo')
         return {
             'giornata_attiva': g_attiva,
+            'fase_attiva':     fase_attiva,
             'csrf_token':      generate_csrf,
             'is_admin':        bool(session.get('is_admin')),
+            'APP_NAME':        'Fanta Mondiali 2026',
         }
 
-    # Blueprint
     from blueprints.auth  import auth_bp
     from blueprints.gioco import gioco_bp
     from blueprints.admin import admin_bp
@@ -371,7 +330,6 @@ def create_app(config=None) -> Flask:
     app.register_blueprint(gioco_bp)
     app.register_blueprint(admin_bp)
 
-    # Schema DB al primo avvio
     with app.app_context():
         try:
             create_tables()
@@ -381,10 +339,8 @@ def create_app(config=None) -> Flask:
     return app
 
 
-# ─── Entry point (locale / gunicorn) ─────────────────────────────────────────
-
-app = create_app()   # usato da gunicorn: gunicorn app:app
+app = create_app()
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
-    app.run(host='127.0.0.1', port=5000, debug=debug_mode)
+    app.run(host='127.0.0.1', port=5001, debug=debug_mode)

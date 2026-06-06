@@ -1,12 +1,10 @@
 """
-Logica di gioco — estratta da app.py per separazione delle responsabilità.
+Logica di gioco per Fanta Mondiali 2026.
 
-Espone:
-  - parse_flexible_datetime()
-  - calcola_punti_pronostico()        ← unica fonte di verità sulla formula
-  - calcola_e_aggiorna_punti_giornata()
-  - ricalcola_punteggi_totali()
-  - ricalcola_punteggi_finali()
+Tre strati di punteggio:
+  A) Fase a gironi     — identica a FantaSerieA (esito/risultato/marcatore)
+  B) Eliminazione diretta — chi vince + bonus risultato nei 90'
+  C) Pronostici torneo — vincitore/finalista/semi/capocannoniere (pre-torneo)
 """
 
 import logging
@@ -15,26 +13,60 @@ from datetime import datetime
 
 import pytz
 
-from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
+from db_utils import (
+    db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
+)
 
-log = logging.getLogger('fanta')
-
-# ─── Costanti di punteggio ────────────────────────────────────────────────────
-PUNTI_ESITO       = 1
-PUNTI_RISULTATO   = 3
-PUNTI_MARCATORE   = 2
-PUNTI_BONUS_TRIPLA = 1
+log = logging.getLogger('mondiali')
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
+# ─── Costanti ─────────────────────────────────────────────────────────────────
 
-# ─── Date / timezone ─────────────────────────────────────────────────────────
+# Fase a gironi (stessa formula FantaSerieA)
+PUNTI_ESITO        = 1
+PUNTI_RISULTATO    = 3
+PUNTI_MARCATORE    = 2
+PUNTI_BONUS_TRIPLA = 1
 
-def parse_flexible_datetime(date_string: str) -> datetime | None:
+# Fase eliminazione diretta — punti crescenti per importanza del turno
+PUNTI_KNOCKOUT = {
+    'r32':    {'vincitore': 3,  'risultato_bonus': 2},
+    'r16':    {'vincitore': 5,  'risultato_bonus': 2},
+    'qf':     {'vincitore': 8,  'risultato_bonus': 2},
+    'sf':     {'vincitore': 12, 'risultato_bonus': 3},
+    'finale': {'vincitore': 15, 'risultato_bonus': 5},
+    '3posto': {'vincitore': 8,  'risultato_bonus': 2},
+}
+
+# Pronostici torneo (pre-torneo)
+PUNTI_TORNEO = {
+    'vincitore':              40,
+    'finalista':              20,
+    'semifinalista':          10,  # per ciascuno dei 2
+    'capocannoniere':         25,
+    'bonus_vincitore_finalista': 10,
+}
+
+FASI_ORDINE = ['gironi', 'r32', 'r16', 'qf', 'sf', 'finale']
+FASI_NOMI = {
+    'gironi': 'Fase a Gironi',
+    'r32':    'Round of 32',
+    'r16':    'Ottavi di Finale',
+    'qf':     'Quarti di Finale',
+    'sf':     'Semifinali',
+    'finale': 'Finale',
+    '3posto': '3° posto',
+}
+
+
+# ─── Utility data / timezone ─────────────────────────────────────────────────
+
+def parse_flexible_datetime(date_string: str):
     if not date_string:
         return None
-    for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M',
-                '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
+    for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
         try:
             return datetime.strptime(date_string, fmt)
         except ValueError:
@@ -42,41 +74,26 @@ def parse_flexible_datetime(date_string: str) -> datetime | None:
     return None
 
 
-def is_partita_scaduta(data_ora_utc_str: str | None) -> bool:
-    """True se l'orario UTC della partita è già passato (ora Europa/Roma)."""
+def is_partita_scaduta(data_ora_utc_str) -> bool:
     if not data_ora_utc_str:
         return False
     orario_naive = parse_flexible_datetime(str(data_ora_utc_str))
     if not orario_naive:
         return False
     roma_tz = pytz.timezone('Europe/Rome')
-    ora_corrente = datetime.now(roma_tz)
-    return ora_corrente > pytz.utc.localize(orario_naive).astimezone(roma_tz)
+    return datetime.now(roma_tz) > pytz.utc.localize(orario_naive).astimezone(roma_tz)
 
 
-# ─── Calcolo punti ────────────────────────────────────────────────────────────
+# ─── STRATO A: Fase a gironi ─────────────────────────────────────────────────
 
 def calcola_punti_pronostico(pronostico, partita) -> dict:
-    """
-    Calcola il dettaglio dei punti per un pronostico dato una partita conclusa.
-
-    Parametri:
-        pronostico  — sqlite3.Row / psycopg2 Row / dict / None
-        partita     — sqlite3.Row / psycopg2 Row / dict
-
-    Ritorna un dict con chiavi:
-        esito, risultato, marcatore, bonus, totale  (int)
-        esito_corretto, risultato_corretto, marcatore_corretto  (bool)
-    """
+    """Calcola punti per un pronostico di giornata (fase gironi). Identico a FantaSerieA."""
     out = {
         'esito': 0, 'risultato': 0, 'marcatore': 0, 'bonus': 0, 'totale': 0,
-        'esito_corretto': False,
-        'risultato_corretto': False,
-        'marcatore_corretto': False,
+        'esito_corretto': False, 'risultato_corretto': False, 'marcatore_corretto': False,
     }
     if not pronostico:
         return out
-
     r_casa = row_get(partita, 'risultato_casa_reale')
     r_osp  = row_get(partita, 'risultato_ospite_reale')
     if r_casa is None or r_osp is None:
@@ -84,22 +101,18 @@ def calcola_punti_pronostico(pronostico, partita) -> dict:
 
     esito_reale = '1' if r_casa > r_osp else 'X' if r_casa == r_osp else '2'
 
-    # Esito 1/X/2
     if row_get(pronostico, 'esito_pronosticato') == esito_reale:
         out['esito'] = PUNTI_ESITO
         out['esito_corretto'] = True
 
-    # Risultato esatto
     if (row_get(pronostico, 'risultato_casa_pronosticato') == r_casa
             and row_get(pronostico, 'risultato_ospite_pronosticato') == r_osp):
         out['risultato'] = PUNTI_RISULTATO
         out['risultato_corretto'] = True
 
-    # Marcatore
     pm = (row_get(pronostico, 'marcatore_pronosticato') or '').strip().lower()
     mr_raw = row_get(partita, 'marcatore_reale') or ''
     marcatori_reali = [m.strip().lower() for m in mr_raw.split(',') if m.strip()]
-
     if pm == 'nessun marcatore':
         if r_casa == 0 and r_osp == 0:
             out['marcatore'] = PUNTI_MARCATORE
@@ -108,171 +121,319 @@ def calcola_punti_pronostico(pronostico, partita) -> dict:
         out['marcatore'] = PUNTI_MARCATORE
         out['marcatore_corretto'] = True
 
-    # Bonus tripla
     if out['esito_corretto'] and out['risultato_corretto'] and out['marcatore_corretto']:
         out['bonus'] = PUNTI_BONUS_TRIPLA
 
-    out['totale'] = (out['esito'] + out['risultato']
-                     + out['marcatore'] + out['bonus'])
+    out['totale'] = out['esito'] + out['risultato'] + out['marcatore'] + out['bonus']
     return out
 
 
-def _upsert_punteggio_giornata(conn, id_utente: int, giornata: int, punti: int):
-    """UPSERT idempotente su punteggi_giornata."""
+def _safe_int(v, lo=None, hi=None):
+    if v is None or v == '':
+        return None
+    try:
+        n = int(v)
+    except (ValueError, TypeError):
+        return None
+    if lo is not None and n < lo:
+        return None
+    if hi is not None and n > hi:
+        return None
+    return n
+
+
+def _upsert_punteggio_giornata(conn, id_utente, giornata, punti):
     if USE_POSTGRES:
-        db_execute(
-            conn,
-            'INSERT INTO punteggi_giornata (id_utente, giornata, punti) '
-            'VALUES (?, ?, ?) '
-            'ON CONFLICT (id_utente, giornata) DO UPDATE SET punti = EXCLUDED.punti',
-            (id_utente, giornata, punti),
-        )
+        db_execute(conn,
+                   'INSERT INTO punteggi_giornata (id_utente, giornata, punti) VALUES (?,?,?) '
+                   'ON CONFLICT (id_utente, giornata) DO UPDATE SET punti = EXCLUDED.punti',
+                   (id_utente, giornata, punti))
     else:
-        db_execute(
-            conn,
-            'INSERT INTO punteggi_giornata (id_utente, giornata, punti) '
-            'VALUES (?, ?, ?) '
-            'ON CONFLICT (id_utente, giornata) DO UPDATE SET punti = excluded.punti',
-            (id_utente, giornata, punti),
-        )
+        db_execute(conn,
+                   'INSERT INTO punteggi_giornata (id_utente, giornata, punti) VALUES (?,?,?) '
+                   'ON CONFLICT (id_utente, giornata) DO UPDATE SET punti = excluded.punti',
+                   (id_utente, giornata, punti))
 
 
-def _refresh_totale_utente(conn, id_utente: int):
-    """Ricalcola punteggi.punteggio_totale dalla somma di punteggi_giornata."""
-    row = db_fetchone(
-        conn,
-        'SELECT COALESCE(SUM(punti), 0) AS tot FROM punteggi_giornata '
-        'WHERE id_utente = ?',
-        (id_utente,),
-    )
-    totale = row_get(row, 'tot') or 0
-    if USE_POSTGRES:
-        db_execute(
-            conn,
-            'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?, ?) '
-            'ON CONFLICT (id_utente) DO UPDATE SET punteggio_totale = EXCLUDED.punteggio_totale',
-            (id_utente, totale),
-        )
-    else:
-        db_execute(
-            conn,
-            'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?, ?) '
-            'ON CONFLICT (id_utente) DO UPDATE SET punteggio_totale = excluded.punteggio_totale',
-            (id_utente, totale),
-        )
-
-
-def _calcola_punti_giornata_conn(giornata: int, conn) -> None:
-    """Calcola e persiste i punti della giornata. IDEMPOTENTE."""
-    utenti   = db_fetchall(conn, 'SELECT id FROM utenti')
-    partite  = db_fetchall(
-        conn,
-        'SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE '
-        'AND risultato_casa_reale IS NOT NULL',
-        (giornata,),
-    )
+def _calcola_punti_giornata_conn(giornata, conn):
+    """Calcola e persiste i punti di una giornata gironi. Idempotente."""
+    utenti  = db_fetchall(conn, 'SELECT id FROM utenti')
+    partite = db_fetchall(conn,
+                          'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE '
+                          'AND risultato_casa_reale IS NOT NULL', (giornata,))
     if not partite:
         return
-
     pids = [row_get(p, 'id') for p in partite]
-    placeholder = ','.join(['?'] * len(pids))
-    pronostici_raw = db_fetchall(
-        conn,
-        f'SELECT * FROM pronostici_giornata WHERE id_partita IN ({placeholder})',
-        tuple(pids),
-    )
-    pronostici_idx = {
-        (row_get(p, 'id_utente'), row_get(p, 'id_partita')): p
-        for p in pronostici_raw
-    }
-    partite_idx = {row_get(p, 'id'): p for p in partite}
+    ph = ','.join(['?'] * len(pids))
+    rows = db_fetchall(conn,
+                       f'SELECT * FROM pronostici_giornata WHERE id_partita IN ({ph})',
+                       tuple(pids))
+    pron_idx  = {(row_get(r, 'id_utente'), row_get(r, 'id_partita')): r for r in rows}
+    parte_idx = {row_get(p, 'id'): p for p in partite}
 
-    for utente in utenti:
-        uid = row_get(utente, 'id')
-        punti_giornata = sum(
-            calcola_punti_pronostico(
-                pronostici_idx.get((uid, pid)),
-                partite_idx[pid],
-            )['totale']
+    for u in utenti:
+        uid = row_get(u, 'id')
+        punti = sum(
+            calcola_punti_pronostico(pron_idx.get((uid, pid)), parte_idx[pid])['totale']
             for pid in pids
         )
-        _upsert_punteggio_giornata(conn, uid, giornata, punti_giornata)
-        _refresh_totale_utente(conn, uid)
+        _upsert_punteggio_giornata(conn, uid, giornata, punti)
 
 
-def calcola_e_aggiorna_punti_giornata(giornata: int) -> str:
+def calcola_e_aggiorna_punti_giornata(giornata) -> str:
     with db_conn() as conn:
-        check = db_fetchall(
-            conn,
-            'SELECT id FROM partite WHERE giornata = ? AND pronosticabile = TRUE '
-            'AND risultato_casa_reale IS NOT NULL',
-            (giornata,),
-        )
-        if not check:
-            return f'Nessuna partita con risultati trovata per la giornata {giornata}.'
+        if not db_fetchall(conn,
+                           'SELECT id FROM partite WHERE giornata=? AND pronosticabile=TRUE '
+                           'AND risultato_casa_reale IS NOT NULL', (giornata,)):
+            return f'Nessuna partita con risultati per la giornata {giornata}.'
         _calcola_punti_giornata_conn(giornata, conn)
+        _refresh_totali_tutti(conn)
         db_commit(conn)
-    return f'Punti per la Giornata {giornata} calcolati con successo!'
+    return f'Punteggi giornata {giornata} calcolati!'
 
 
-def ricalcola_punteggi_totali() -> str:
-    """Ricalcola tutti i punteggi da zero. Idempotente."""
+# ─── STRATO B: Eliminazione diretta ──────────────────────────────────────────
+
+def calcola_punti_eliminazione(pronostico, partita) -> dict:
+    """
+    Calcola punti per un pronostico di eliminazione diretta.
+    
+    pronostico: ha campi vincitore, gol_casa_90, gol_ospite_90
+    partita:    ha campi vincitore (chi ha vinto), gol_casa_90, gol_ospite_90
+                (risultato nei 90' — non include extra time/rigori)
+    """
+    fase = row_get(partita, 'fase') or 'r32'
+    cfg  = PUNTI_KNOCKOUT.get(fase, PUNTI_KNOCKOUT['r32'])
+
+    out = {'vincitore': 0, 'risultato_bonus': 0, 'totale': 0,
+           'vincitore_corretto': False, 'risultato_corretto': False}
+
+    if not pronostico:
+        return out
+
+    vincitore_reale = (row_get(partita, 'vincitore') or '').strip()
+    if not vincitore_reale:
+        return out  # match non ancora giocato
+
+    vincitore_pron = (row_get(pronostico, 'vincitore') or '').strip()
+    if vincitore_pron.lower() == vincitore_reale.lower():
+        out['vincitore'] = cfg['vincitore']
+        out['vincitore_corretto'] = True
+
+        # Bonus risultato nei 90'
+        gc90 = row_get(partita, 'gol_casa_90')
+        go90 = row_get(partita, 'gol_ospite_90')
+        if gc90 is not None and go90 is not None:
+            gc90_p = row_get(pronostico, 'gol_casa_90')
+            go90_p = row_get(pronostico, 'gol_ospite_90')
+            if gc90_p == gc90 and go90_p == go90:
+                out['risultato_bonus'] = cfg['risultato_bonus']
+                out['risultato_corretto'] = True
+
+    out['totale'] = out['vincitore'] + out['risultato_bonus']
+    return out
+
+
+def _upsert_punteggio_fase(conn, id_utente, fase, punti):
+    if USE_POSTGRES:
+        db_execute(conn,
+                   'INSERT INTO punteggi_fase (id_utente, fase, punti) VALUES (?,?,?) '
+                   'ON CONFLICT (id_utente, fase) DO UPDATE SET punti = EXCLUDED.punti',
+                   (id_utente, fase, punti))
+    else:
+        db_execute(conn,
+                   'INSERT INTO punteggi_fase (id_utente, fase, punti) VALUES (?,?,?) '
+                   'ON CONFLICT (id_utente, fase) DO UPDATE SET punti = excluded.punti',
+                   (id_utente, fase, punti))
+
+
+def calcola_e_aggiorna_punti_fase(fase) -> str:
+    """Calcola e persiste i punti di una fase knockout. Idempotente."""
+    with db_conn() as conn:
+        partite = db_fetchall(conn,
+                              'SELECT * FROM partite WHERE fase=? AND vincitore IS NOT NULL',
+                              (fase,))
+        if not partite:
+            return f'Nessuna partita con risultati per la fase {FASI_NOMI.get(fase, fase)}.'
+
+        utenti = db_fetchall(conn, 'SELECT id FROM utenti')
+        pids   = [row_get(p, 'id') for p in partite]
+        ph     = ','.join(['?'] * len(pids))
+        prons  = db_fetchall(conn,
+                             f'SELECT * FROM pronostici_eliminazione WHERE id_partita IN ({ph})',
+                             tuple(pids))
+        pron_idx  = {(row_get(r, 'id_utente'), row_get(r, 'id_partita')): r for r in prons}
+        parte_idx = {row_get(p, 'id'): p for p in partite}
+
+        for u in utenti:
+            uid = row_get(u, 'id')
+            punti = sum(
+                calcola_punti_eliminazione(pron_idx.get((uid, pid)), parte_idx[pid])['totale']
+                for pid in pids
+            )
+            _upsert_punteggio_fase(conn, uid, fase, punti)
+
+        _refresh_totali_tutti(conn)
+        db_commit(conn)
+    return f'Punteggi {FASI_NOMI.get(fase, fase)} calcolati!'
+
+
+# ─── STRATO C: Pronostici torneo ─────────────────────────────────────────────
+
+def calcola_punti_torneo(pronostico, risultati) -> dict:
+    """
+    Calcola i bonus da pronostici torneo (inseriti prima del via).
+    
+    pronostico: dict con vincitore/finalista/semifinalista_1/semifinalista_2/capocannoniere
+    risultati:  dict con gli stessi campi compilati dall'admin a fine torneo
+    """
+    out = {
+        'vincitore': 0, 'finalista': 0, 'semifinalista': 0,
+        'capocannoniere': 0, 'bonus': 0, 'totale': 0,
+        'vincitore_ok': False, 'finalista_ok': False,
+        'semi1_ok': False, 'semi2_ok': False, 'capocannoniere_ok': False,
+    }
+    if not pronostico or not risultati:
+        return out
+
+    def match(campo_pron, campo_ris):
+        return (row_get(pronostico, campo_pron) or '').strip().lower() == \
+               (row_get(risultati, campo_ris)  or '').strip().lower()
+
+    if match('vincitore', 'vincitore'):
+        out['vincitore']    = PUNTI_TORNEO['vincitore']
+        out['vincitore_ok'] = True
+
+    if match('finalista', 'finalista'):
+        out['finalista']    = PUNTI_TORNEO['finalista']
+        out['finalista_ok'] = True
+
+    if out['vincitore_ok'] and out['finalista_ok']:
+        out['bonus'] = PUNTI_TORNEO['bonus_vincitore_finalista']
+
+    semi_reali = {
+        (row_get(risultati, 'semifinalista_1') or '').strip().lower(),
+        (row_get(risultati, 'semifinalista_2') or '').strip().lower(),
+    }
+    for campo, flag in [('semifinalista_1', 'semi1_ok'), ('semifinalista_2', 'semi2_ok')]:
+        v = (row_get(pronostico, campo) or '').strip().lower()
+        if v and v in semi_reali:
+            out['semifinalista'] += PUNTI_TORNEO['semifinalista']
+            out[flag] = True
+
+    if match('capocannoniere', 'capocannoniere'):
+        out['capocannoniere']    = PUNTI_TORNEO['capocannoniere']
+        out['capocannoniere_ok'] = True
+
+    out['totale'] = (out['vincitore'] + out['finalista'] + out['semifinalista']
+                     + out['capocannoniere'] + out['bonus'])
+    return out
+
+
+def calcola_e_aggiorna_punti_torneo() -> str:
+    """Calcola i bonus torneo (chiamato a fine torneo). Idempotente."""
+    with db_conn() as conn:
+        rf = db_fetchone(conn, 'SELECT * FROM risultati_torneo WHERE id=1')
+        if not rf or not row_get(rf, 'vincitore'):
+            return 'Inserisci prima i risultati reali del torneo (vincitore, finalista ecc.).'
+
+        utenti = db_fetchall(conn, 'SELECT id FROM utenti')
+        for u in utenti:
+            uid  = row_get(u, 'id')
+            pron = db_fetchone(conn,
+                               'SELECT * FROM pronostici_torneo WHERE id_utente=?', (uid,))
+            det  = calcola_punti_torneo(pron, rf)
+            if USE_POSTGRES:
+                db_execute(conn,
+                           'INSERT INTO punteggi_fase (id_utente, fase, punti) VALUES (?,?,?) '
+                           'ON CONFLICT (id_utente, fase) DO UPDATE SET punti = EXCLUDED.punti',
+                           (uid, 'torneo', det['totale']))
+            else:
+                db_execute(conn,
+                           'INSERT INTO punteggi_fase (id_utente, fase, punti) VALUES (?,?,?) '
+                           'ON CONFLICT (id_utente, fase) DO UPDATE SET punti = excluded.punti',
+                           (uid, 'torneo', det['totale']))
+
+        _refresh_totali_tutti(conn)
+        db_commit(conn)
+    return 'Bonus pronostici torneo calcolati!'
+
+
+# ─── Ricalcolo totali ────────────────────────────────────────────────────────
+
+def _refresh_totali_tutti(conn):
+    """Aggiorna punteggio_totale per tutti gli utenti dalla somma di punteggi_giornata + punteggi_fase."""
+    utenti = db_fetchall(conn, 'SELECT id FROM utenti')
+    for u in utenti:
+        uid = row_get(u, 'id')
+        r1 = db_fetchone(conn,
+                         'SELECT COALESCE(SUM(punti),0) AS tot FROM punteggi_giornata WHERE id_utente=?',
+                         (uid,))
+        r2 = db_fetchone(conn,
+                         'SELECT COALESCE(SUM(punti),0) AS tot FROM punteggi_fase WHERE id_utente=?',
+                         (uid,))
+        totale = (row_get(r1, 'tot') or 0) + (row_get(r2, 'tot') or 0)
+        if USE_POSTGRES:
+            db_execute(conn,
+                       'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?,?) '
+                       'ON CONFLICT (id_utente) DO UPDATE SET punteggio_totale = EXCLUDED.punteggio_totale',
+                       (uid, totale))
+        else:
+            db_execute(conn,
+                       'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?,?) '
+                       'ON CONFLICT (id_utente) DO UPDATE SET punteggio_totale = excluded.punteggio_totale',
+                       (uid, totale))
+
+
+def ricalcola_tutto() -> str:
+    """Ricalcola tutti i punteggi da zero (idempotente)."""
     with db_conn() as conn:
         db_execute(conn, 'DELETE FROM punteggi_giornata')
+        db_execute(conn, 'DELETE FROM punteggi_fase')
         db_execute(conn, 'DELETE FROM punteggi')
-        for utente in db_fetchall(conn, 'SELECT id FROM utenti'):
-            db_execute(
-                conn,
-                'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?, 0)',
-                (row_get(utente, 'id'),),
-            )
-        for g in db_fetchall(
-            conn,
-            'SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE',
-        ):
+        for u in db_fetchall(conn, 'SELECT id FROM utenti'):
+            db_execute(conn,
+                       'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?,0)',
+                       (row_get(u, 'id'),))
+
+        # Ricalcola gironi
+        for g in db_fetchall(conn,
+                             'SELECT giornata FROM stato_giornata WHERE is_in_archivio=TRUE'):
             _calcola_punti_giornata_conn(row_get(g, 'giornata'), conn)
-        db_commit(conn)
-    return 'Classifica generale ricalcolata con successo.'
 
-
-def ricalcola_punteggi_finali() -> str:
-    """Ricalcola totali stagione + bonus pronostici iniziali. Idempotente."""
-    with db_conn() as conn:
-        rf = db_fetchone(conn, 'SELECT * FROM risultati_finali WHERE id = 1')
-        if not rf or not row_get(rf, 'squadra_1'):
-            return 'Errore: inserire prima i risultati reali di fine stagione.'
-
-    ricalcola_punteggi_totali()
-
-    with db_conn() as conn:
-        rf = db_fetchone(conn, 'SELECT * FROM risultati_finali WHERE id = 1')
-        for utente in db_fetchall(conn, 'SELECT id FROM utenti'):
-            uid   = row_get(utente, 'id')
-            pron  = db_fetchone(
-                conn,
-                'SELECT * FROM pronostici_iniziali WHERE id_utente = ?',
-                (uid,),
-            )
-            if not pron:
+        # Ricalcola fasi knockout
+        for fase in ['r32', 'r16', 'qf', 'sf', 'finale', '3posto']:
+            partite = db_fetchall(conn,
+                                  'SELECT * FROM partite WHERE fase=? AND vincitore IS NOT NULL',
+                                  (fase,))
+            if not partite:
                 continue
-            punti, corrette = 0, 0
-            for i in range(1, 5):
-                k = f'squadra_{i}'
-                if ((row_get(pron, k) or '').strip().lower()
-                        == (row_get(rf, k) or '').strip().lower()):
-                    punti += 20
-                    corrette += 1
-            if corrette == 4:
-                punti += 10
-            if ((row_get(pron, 'capocannoniere') or '').strip().lower()
-                    == (row_get(rf, 'capocannoniere') or '').strip().lower()):
-                punti += 20
-            if punti:
-                db_execute(
-                    conn,
-                    'UPDATE punteggi SET punteggio_totale = punteggio_totale + ? '
-                    'WHERE id_utente = ?',
-                    (punti, uid),
+            utenti = db_fetchall(conn, 'SELECT id FROM utenti')
+            pids   = [row_get(p, 'id') for p in partite]
+            ph     = ','.join(['?'] * len(pids))
+            prons  = db_fetchall(conn,
+                                 f'SELECT * FROM pronostici_eliminazione WHERE id_partita IN ({ph})',
+                                 tuple(pids))
+            pron_idx  = {(row_get(r, 'id_utente'), row_get(r, 'id_partita')): r for r in prons}
+            parte_idx = {row_get(p, 'id'): p for p in partite}
+            for u in utenti:
+                uid = row_get(u, 'id')
+                punti = sum(
+                    calcola_punti_eliminazione(pron_idx.get((uid, pid)), parte_idx[pid])['totale']
+                    for pid in pids
                 )
+                _upsert_punteggio_fase(conn, uid, fase, punti)
+
+        # Bonus torneo
+        rf = db_fetchone(conn, 'SELECT * FROM risultati_torneo WHERE id=1')
+        if rf and row_get(rf, 'vincitore'):
+            for u in db_fetchall(conn, 'SELECT id FROM utenti'):
+                uid  = row_get(u, 'id')
+                pron = db_fetchone(conn,
+                                   'SELECT * FROM pronostici_torneo WHERE id_utente=?', (uid,))
+                det  = calcola_punti_torneo(pron, rf)
+                _upsert_punteggio_fase(conn, uid, 'torneo', det['totale'])
+
+        _refresh_totali_tutti(conn)
         db_commit(conn)
-    return 'Punti finali di stagione calcolati con successo!'
+    return 'Classifica completa ricalcolata!'
