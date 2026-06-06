@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Ricalcola Classifica{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
+  <h2>🔄 Ricalcola Classifica</h2>
+</div>
+<div style="padding:0 16px;">
+  <div class="fsa-card" style="margin-bottom:14px;">
+    <div style="font-size:14px;margin-bottom:8px;line-height:1.5;">
+      Ricalcola tutti i punteggi da zero: gironi, fasi knockout e bonus torneo.<br>
+      <span style="color:var(--muted);">Operazione idempotente — sicura da eseguire più volte.</span>
+    </div>
+    <div style="background:rgba(230,57,70,0.08);border:1px solid rgba(230,57,70,0.2);border-radius:8px;padding:10px;font-size:12px;color:#ff6b74;">
+      ⚠️ Tutti i punteggi verranno azzerati e ricalcolati dai dati storici. Non perdere nessun dato — ma verifica i risultati dopo.
+    </div>
+  </div>
+  <form method="post" action="{{ url_for('admin.admin_ricalcola_tutto') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:16px;" onclick="return confirm('Ricalcolare tutta la classifica da zero?')">
+      🔄 Ricalcola tutto
+    </button>
+  </form>
+</div>
+{% endblock %}
