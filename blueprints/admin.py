@@ -905,3 +905,30 @@ def admin_ricalcola_tutta_la_classifica():
         return 'Accesso negato.', 403
     flash(ricalcola_punteggi_totali(), 'success')
     return redirect(url_for('admin.admin_home'))
+@admin_bp.route('/attiva-giornata', methods=['POST'])
+def admin_attiva_giornata():
+    from flask import session, request, flash, redirect, url_for
+    from db_utils import db_conn, db_execute, db_commit
+
+    # Sicurezza: verifichiamo che l'utente sia admin
+    if not session.get('is_admin'):
+        return "Accesso negato.", 403
+
+    giornata = request.form.get('giornata', type=int)
+    if giornata:
+        with db_conn() as conn:
+            # 1. Spengiamo eventuali altre giornate rimaste accese
+            db_execute(conn, "UPDATE stato_giornata SET is_attiva = FALSE")
+            
+            # 2. Accendiamo il nuovo Round
+            db_execute(conn, """
+                INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio)
+                VALUES (?, TRUE, FALSE)
+                ON CONFLICT (giornata) DO UPDATE SET is_attiva = TRUE, is_in_archivio = FALSE
+            """, (giornata,))
+                
+            db_commit(conn)
+        
+        flash(f"⚽ Round {giornata} dei Gironi attivato con successo! Ora è visibile in Home.", "success")
+        
+    return redirect(url_for('admin.admin_home'))
