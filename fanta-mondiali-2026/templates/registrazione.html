@@ -2,7 +2,7 @@
 {% block title %}Registrazione{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('auth.login') }" class="btn-back">← Accedi</a>
+  <a href="{{ url_for('auth.login') }}" class="btn-back">← Accedi</a>
 </div>
 <div class="u-card-form">
   <div style="text-align:center;padding:28px 0 20px;">
@@ -35,6 +35,6 @@
   </div>
 </div>
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
-  <a href="{ url_for('auth.login') }" class="btn-back">← Accedi</a>
+  <a href="{{ url_for('auth.login') }}" class="btn-back">← Accedi</a>
 </div>
 {% endblock %}
