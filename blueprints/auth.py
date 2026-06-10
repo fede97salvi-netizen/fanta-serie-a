@@ -70,7 +70,9 @@ def utente_corrente(conn):
 
 
 # ─── Route ──────────────────────────────────────────────────────────────────
-
+@auth_bp.route('/finta-home', endpoint='home')
+def home():
+    return redirect(url_for('gioco.home'))
 
 @auth_bp.route('/registrazione', methods=['GET', 'POST'], endpoint='registrazione')
 @limiter.limit('10 per hour', methods=['POST'])
