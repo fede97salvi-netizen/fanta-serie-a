@@ -69,7 +69,7 @@ def utente_corrente(conn):
     )
 
 
-
+# ─── Route ──────────────────────────────────────────────────────────────────
 
 
 @auth_bp.route('/registrazione', methods=['GET', 'POST'], endpoint='registrazione')
