@@ -11,7 +11,7 @@
 <div style="padding:0 16px;">
 
   <!-- Giornata attiva -->
-  {% if giornata_attiva %}
+ {% if giornata_attiva %}
   <div class="fsa-section-title">⚽ Gironi – Round {{ giornata_attiva }}</div>
   <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
     <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=giornata_attiva) }}" style="display:contents;">
@@ -26,6 +26,19 @@
     <form method="post" action="{{ url_for('admin.admin_invia_reminder_manuale', giornata=giornata_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-secondary">📧 Reminder</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="fsa-section-title">⚽ Attiva Gironi (Nessun Round in corso)</div>
+  <div class="fsa-card">
+    <form method="post" action="{{ url_for('admin.admin_attiva_giornata') }}" style="display:flex;gap:8px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="giornata" class="fsa-select" style="flex:1;">
+        <option value="1">Round 1</option>
+        <option value="2">Round 2</option>
+        <option value="3">Round 3</option>
+      </select>
+      <button type="submit" class="btn-gold">🚀 Attiva Round</button>
     </form>
   </div>
   {% endif %}
