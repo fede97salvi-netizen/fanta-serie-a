@@ -45,14 +45,14 @@
       {% endfor %}
     </select>
   </div>
- <div style="margin-bottom:20px;">
- <label class="fsa-label">⚽ Capocannoniere (+{{ PUNTI_TORNEO.capocannoniere }}pt)</label>
- <input type="text" name="capocannoniere" list="lista-giocatori" class="fsa-input" placeholder="Inizia a digitare il nome..." value="{{ pron.capocannoniere if pron else '' }}" autocomplete="off">
+  <div style="margin-bottom:20px;">
+    <label class="fsa-label">⚽ Capocannoniere (+{{ PUNTI_TORNEO.capocannoniere }}pt)</label>
+    <input type="text" name="capocannoniere" list="lista-giocatori" class="fsa-input" placeholder="Inizia a digitare il nome..." value="{{ pron.capocannoniere if pron else '' }}" autocomplete="off">
  
- <datalist id="lista-giocatori">
-   {% for g in giocatori %}
-   <option value="{{ g.nome_giocatore }}">{{ g.nome_giocatore }} ({{ g.squadra }})</option>
-   {% endfor %}
+    <datalist id="lista-giocatori">
+     {% for g in giocatori %}
+    <option value="{{ g.nome_giocatore }}">{{ g.nome_giocatore }} ({{ g.squadra }})</option>
+     {% endfor %}
  </datalist>
 
  <div class="u-muted-xs" style="margin-top:4px;">Inizia a digitare e seleziona il giocatore dai suggerimenti</div>
