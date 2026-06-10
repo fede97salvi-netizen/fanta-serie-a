@@ -2,7 +2,7 @@
 {% block title %}Pronostici Torneo{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
+  <a href="{{ url_for('gioco.home') }}" class="btn-back">← Home</a>
 </div>
 <div class="page-header">
   <h2>🌍 Pronostici Torneo</h2>
@@ -55,6 +55,6 @@
 {% endif %}
 </div>
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
-  <a href="{ url_for('gioco.home') }" class="btn-back">← Home</a>
+  <a href="{{ url_for('gioco.home') }}" class="btn-back">← Home</a>
 </div>
 {% endblock %}
