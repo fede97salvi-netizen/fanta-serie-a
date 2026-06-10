@@ -473,14 +473,7 @@ def pronostici_torneo():
             return redirect(url_for('gioco.home'))
 
         pron = db_fetchone(conn, 'SELECT * FROM pronostici_torneo WHERE id_utente=?', (uid,))
-        # Lista squadre partecipanti
-        squadre = [row_get(r, 'squadra_casa')
-                   for r in db_fetchall(conn,
-                                        'SELECT DISTINCT squadra_casa FROM partite ORDER BY squadra_casa')]
-# NUOVO: Carichiamo tutti i giocatori dal database
-     giocatori = db_fetchall(conn, 'SELECT nome_giocatore, squadra FROM giocatori ORDER BY nome_giocatore')
+        squadre = [row_get(r, 'squadra_casa') for r in db_fetchall(conn, 'SELECT DISTINCT squadra_casa FROM partite ORDER BY squadra_casa')]
+        giocatori = db_fetchall(conn, 'SELECT nome_giocatore, squadra FROM giocatori ORDER BY nome_giocatore')
 
- return render_template('pronostici_torneo.html',
-                        is_locked=False, pron=pron, squadre=squadre,
-                        giocatori=giocatori, # <-- Variabile aggiunta qui
-                        PUNTI_TORNEO=PUNTI_TORNEO, session=session)
+    return render_template('pronostici_torneo.html', is_locked=False, pron=pron, squadre=squadre, giocatori=giocatori, PUNTI_TORNEO=PUNTI_TORNEO, session=session)
