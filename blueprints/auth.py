@@ -69,39 +69,7 @@ def utente_corrente(conn):
     )
 
 
-# ─── Route ────────────────────────────────────────────────────────────────────
 
-@auth_bp.route('/', endpoint='home')
-def home():
-    if 'nome_utente' not in session:
-        return render_template('welcome.html', session=session)
-    with db_conn() as conn:
-        g_row = db_fetchone(
-            conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE')
-        giornata_attiva = row_get(g_row, 'giornata') if g_row else None
-        user = utente_corrente(conn)
-        if not user:
-            return redirect(url_for('auth.logout'))
-        uid = row_get(user, 'id')
-        p_row = db_fetchone(
-            conn, 'SELECT punteggio_totale FROM punteggi WHERE id_utente = ?',
-            (uid,),
-        )
-        punteggio_utente = row_get(p_row, 'punteggio_totale') or 0
-        rank_row = db_fetchone(
-            conn,
-            'SELECT COUNT(id) + 1 AS rank FROM punteggi '
-            'WHERE punteggio_totale > ?',
-            (punteggio_utente,),
-        )
-        posizione_utente = row_get(rank_row, 'rank') or 1
-    return render_template(
-        'home.html',
-        giornata_attiva=giornata_attiva,
-        punteggio_utente=punteggio_utente,
-        posizione_utente=posizione_utente,
-        session=session,
-    )
 
 
 @auth_bp.route('/registrazione', methods=['GET', 'POST'], endpoint='registrazione')
