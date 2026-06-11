@@ -71,7 +71,7 @@
   {% endif %}
 
   <!-- Griglia funzionalità -->
-  <div class="fsa-section-title">FUNZIONALITÀ</div>
+ <div class="fsa-section-title">FUNZIONALITÀ</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     {% for href, icon, label, sub in [
       (url_for('admin.admin_importa_giornata'),     '⚽', 'Importa gironi',    'Partite da API'),
@@ -83,7 +83,8 @@
       (url_for('admin.admin_importa_giocatori_pg'), '👕', 'Rose squadre',      'Import da API'),
       (url_for('admin.admin_gestisci_fasi_pg'),     '🚀', 'Attiva fase KO',    'Round of 32 → Finale'),
       (url_for('admin.admin_ricalcola_pg'),         '🔄', 'Ricalcola',         'Reset classifica'),
-      (url_for('admin.admin_utenti'),               '👥', 'Gestione utenti',   'Reset password')
+      (url_for('admin.admin_utenti'),               '👥', 'Gestione utenti',   'Reset password'),
+      (url_for('admin.admin_pronostici_partite'),   '📝', 'Pronostici match',  'Vedi e modifica')
     ] %}
     <a href="{{ href }}" class="fsa-card u-card-link" style="text-align:center;">
       <div style="font-size:28px;margin-bottom:6px;">{{ icon }}</div>
