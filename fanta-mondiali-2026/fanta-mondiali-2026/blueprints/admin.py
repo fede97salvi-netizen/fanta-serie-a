@@ -772,6 +772,8 @@ def admin_massivo_pronosticabile(giornata, stato):
 
 # ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
 
+# ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
+
 @admin_bp.route('/admin/pronostici-partite', methods=['GET', 'POST'], endpoint='admin_pronostici_partite')
 def admin_pronostici_partite():
     from flask import request, flash, redirect, url_for, render_template, session
@@ -780,7 +782,6 @@ def admin_pronostici_partite():
     if require_admin(): return "Accesso negato.", 403
 
     with db_conn() as conn:
-        # Peschiamo le partite della fase a gironi ordinate per data
         partite = db_fetchall(conn, "SELECT id, giornata, squadra_casa, squadra_ospite FROM partite WHERE fase='gironi' ORDER BY giornata, data_ora_partita")
 
         partita_id = request.args.get('partita_id', type=int)
@@ -791,34 +792,33 @@ def admin_pronostici_partite():
             partita_sel = db_fetchone(conn, "SELECT * FROM partite WHERE id=?", (partita_id,))
 
             if request.method == 'POST':
-                # Salvataggio delle modifiche manuali dell'admin
                 for key in request.form:
                     if key.startswith('gc_'):
                         uid = int(key.split('_')[1])
                         gc = request.form.get(f'gc_{uid}', '').strip()
                         go = request.form.get(f'go_{uid}', '').strip()
+                        esito = request.form.get(f'esito_{uid}', '').strip()
                         marc = request.form.get(f'marc_{uid}', '').strip()
 
-                        # Calcoliamo l'esito automatico (1, X, 2) per non rompere il calcolo dei punti
-                        esito = ''
+                        # Calcolo esito automatico se scrivi il risultato esatto
                         if gc != '' and go != '':
                             if int(gc) > int(go): esito = '1'
                             elif int(gc) < int(go): esito = '2'
                             else: esito = 'X'
 
+                        if esito != '' or (gc != '' and go != '') or marc != '':
                             exists = db_fetchone(conn, "SELECT id FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
                             if exists:
                                 db_execute(conn, "UPDATE pronostici_giornata SET risultato_casa_pronosticato=?, risultato_ospite_pronosticato=?, marcatore_pronosticato=?, esito_pronosticato=? WHERE id_utente=? AND id_partita=?", (gc, go, marc, esito, uid, partita_id))
                             else:
                                 db_execute(conn, "INSERT INTO pronostici_giornata (id_utente, id_partita, risultato_casa_pronosticato, risultato_ospite_pronosticato, marcatore_pronosticato, esito_pronosticato) VALUES (?, ?, ?, ?, ?, ?)", (uid, partita_id, gc, go, marc, esito))
-                        elif gc == '' and go == '':
+                        elif gc == '' and go == '' and esito == '' and marc == '':
                             db_execute(conn, "DELETE FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
                 
                 db_commit(conn)
-                flash("Pronostici della partita salvati con successo!", "success")
+                flash("Pronostici salvati con successo!", "success")
                 return redirect(url_for('admin.admin_pronostici_partite', partita_id=partita_id))
 
-            # Lettura dei pronostici attuali per la tabella (usando i nomi colonne corretti)
             utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti ORDER BY nome_utente")
             pron = { row_get(p, 'id_utente'): p for p in db_fetchall(conn, "SELECT * FROM pronostici_giornata WHERE id_partita=?", (partita_id,)) }
 
@@ -826,16 +826,24 @@ def admin_pronostici_partite():
                 uid = row_get(u, 'id')
                 p = pron.get(uid)
                 
-                gc_val = row_get(p, 'risultato_casa_pronosticato') if p else None
-                go_val = row_get(p, 'risultato_ospite_pronosticato') if p else None
+                esito_val = row_get(p, 'esito_pronosticato') if p else ''
+                gc_val = row_get(p, 'risultato_casa_pronosticato') if p else ''
+                go_val = row_get(p, 'risultato_ospite_pronosticato') if p else ''
                 marc_val = row_get(p, 'marcatore_pronosticato') if p else ''
+
+                # Il trucco magico: puliamo le stringhe per evitare che appaia la scritta "None"
+                if str(esito_val) == 'None': esito_val = ''
+                if str(gc_val) == 'None': gc_val = ''
+                if str(go_val) == 'None': go_val = ''
+                if str(marc_val) == 'None': marc_val = ''
 
                 utenti_pronostici.append({
                     'id': uid,
                     'nome_utente': row_get(u, 'nome_utente'),
-                    'gol_casa': gc_val if gc_val is not None else '',
-                    'gol_ospite': go_val if go_val is not None else '',
-                    'marcatore': marc_val if marc_val is not None else ''
+                    'esito': esito_val,
+                    'gol_casa': gc_val,
+                    'gol_ospite': go_val,
+                    'marcatore': marc_val
                 })
 
     return render_template('admin_pronostici_partite.html', partite=partite, partita_sel=partita_sel, utenti_pronostici=utenti_pronostici, session=session)
