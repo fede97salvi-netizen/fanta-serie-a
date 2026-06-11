@@ -44,6 +44,7 @@
         <thead>
           <tr style="border-bottom:2px solid var(--border); background-color:rgba(0,0,0,0.3);">
             <th style="padding:12px; color:var(--muted);">Utente</th>
+            <th style="padding:12px; color:var(--gold); text-align:center;">Esito</th>
             <th style="padding:12px; color:var(--muted); text-align:center;">Gol Casa</th>
             <th style="padding:12px; color:var(--muted); text-align:center;">Gol Ospite</th>
             <th style="padding:12px; color:var(--muted);">Marcatore</th>
@@ -54,13 +55,21 @@
             <tr style="border-bottom:1px solid var(--border);">
               <td style="padding:12px; font-weight:700;">{{ u.nome_utente }}</td>
               <td style="padding:12px; text-align:center;">
+                <select name="esito_{{ u.id }}" class="fsa-select" style="width:60px; padding:6px; font-size:13px; text-align:center; border-color:var(--gold);">
+                  <option value=""></option>
+                  <option value="1" {% if u.esito == '1' %}selected{% endif %}>1</option>
+                  <option value="X" {% if u.esito == 'X' %}selected{% endif %}>X</option>
+                  <option value="2" {% if u.esito == '2' %}selected{% endif %}>2</option>
+                </select>
+              </td>
+              <td style="padding:12px; text-align:center;">
                 <input type="number" name="gc_{{ u.id }}" value="{{ u.gol_casa }}" min="0" max="20" class="fsa-input" style="width:50px; text-align:center; padding:6px;">
               </td>
               <td style="padding:12px; text-align:center;">
                 <input type="number" name="go_{{ u.id }}" value="{{ u.gol_ospite }}" min="0" max="20" class="fsa-input" style="width:50px; text-align:center; padding:6px;">
               </td>
               <td style="padding:12px;">
-                <input type="text" name="marc_{{ u.id }}" value="{{ u.marcatore }}" class="fsa-input" style="padding:6px; font-size:13px;" placeholder="Es. Messi">
+                <input type="text" name="marc_{{ u.id }}" value="{{ u.marcatore }}" class="fsa-input" style="padding:6px; font-size:13px;" placeholder="Nessuno">
               </td>
             </tr>
           {% endfor %}
