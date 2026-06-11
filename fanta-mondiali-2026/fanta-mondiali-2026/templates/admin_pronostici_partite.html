@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Gestione Pronostici Partite{% endblock %}
+{% block content %}
+
+<div class="btn-back-bar">
+  <a href="/admin" class="btn-back">← Dashboard Admin</a>
+</div>
+
+<div class="page-header">
+  <h2>📝 Pronostici Utenti</h2>
+  <div class="u-muted-xs" style="margin-top:4px;">Visualizza o modifica a mano i pronostici (Fase a Gironi)</div>
+</div>
+
+<div style="padding:0 16px;">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div style="margin-bottom:16px; padding:14px; background-color:#22c55e; color:white; border-radius:6px; font-weight:bold; font-size:14px; text-align:center;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="fsa-card" style="margin-bottom:16px;">
+    <form method="get" action="{{ url_for('admin.admin_pronostici_partite') }}" style="display:flex; gap:8px;">
+      <select name="partita_id" class="fsa-select" style="flex:1;" onchange="this.form.submit()">
+        <option value="">— Seleziona una partita —</option>
+        {% for p in partite %}
+          <option value="{{ p.id }}" {% if partita_sel and partita_sel.id == p.id %}selected{% endif %}>
+            R{{ p.giornata }}: {{ p.squadra_casa }} vs {{ p.squadra_ospite }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if partita_sel %}
+  <form method="post" action="{{ url_for('admin.admin_pronostici_partite', partita_id=partita_sel.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="fsa-card" style="padding:0; overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; color:white; font-size:14px; text-align:left;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border); background-color:rgba(0,0,0,0.3);">
+            <th style="padding:12px; color:var(--muted);">Utente</th>
+            <th style="padding:12px; color:var(--muted); text-align:center;">Gol Casa</th>
+            <th style="padding:12px; color:var(--muted); text-align:center;">Gol Ospite</th>
+            <th style="padding:12px; color:var(--muted);">Marcatore</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in utenti_pronostici %}
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:12px; font-weight:700;">{{ u.nome_utente }}</td>
+              <td style="padding:12px; text-align:center;">
+                <input type="number" name="gc_{{ u.id }}" value="{{ u.gol_casa }}" min="0" max="20" class="fsa-input" style="width:50px; text-align:center; padding:6px;">
+              </td>
+              <td style="padding:12px; text-align:center;">
+                <input type="number" name="go_{{ u.id }}" value="{{ u.gol_ospite }}" min="0" max="20" class="fsa-input" style="width:50px; text-align:center; padding:6px;">
+              </td>
+              <td style="padding:12px;">
+                <input type="text" name="marc_{{ u.id }}" value="{{ u.marcatore }}" class="fsa-input" style="padding:6px; font-size:13px;" placeholder="Es. Messi">
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <button type="submit" class="btn-primary" style="width:100%; margin-top:16px; margin-bottom:24px; padding:14px; font-size:16px; font-weight:bold; justify-content:center;">
+      💾 Salva Modifiche Pronostici
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% endblock %}
