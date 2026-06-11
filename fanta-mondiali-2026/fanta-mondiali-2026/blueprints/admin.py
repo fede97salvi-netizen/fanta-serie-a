@@ -772,8 +772,6 @@ def admin_massivo_pronosticabile(giornata, stato):
 
 # ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
 
-# ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
-
 @admin_bp.route('/admin/pronostici-partite', methods=['GET', 'POST'], endpoint='admin_pronostici_partite')
 def admin_pronostici_partite():
     from flask import request, flash, redirect, url_for, render_template, session
@@ -794,48 +792,70 @@ def admin_pronostici_partite():
             if request.method == 'POST':
                 for key in request.form:
                     if key.startswith('gc_'):
-                        uid = int(key.split('_')[1])
-                        gc = request.form.get(f'gc_{uid}', '').strip()
-                        go = request.form.get(f'go_{uid}', '').strip()
-                        esito = request.form.get(f'esito_{uid}', '').strip()
-                        marc = request.form.get(f'marc_{uid}', '').strip()
+                        try:
+                            uid = int(key.split('_')[1])
+                            gc = request.form.get(f'gc_{uid}', '').strip()
+                            go = request.form.get(f'go_{uid}', '').strip()
+                            esito = request.form.get(f'esito_{uid}', '').strip()
+                            marc = request.form.get(f'marc_{uid}', '').strip()
 
-                        # Calcolo esito automatico se scrivi il risultato esatto
-                        if gc != '' and go != '':
-                            if int(gc) > int(go): esito = '1'
-                            elif int(gc) < int(go): esito = '2'
-                            else: esito = 'X'
+                            # Calcolo esito automatico
+                            if gc != '' and go != '':
+                                if int(gc) > int(go): esito = '1'
+                                elif int(gc) < int(go): esito = '2'
+                                else: esito = 'X'
 
-                        if esito != '' or (gc != '' and go != '') or marc != '':
-                            exists = db_fetchone(conn, "SELECT id FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
-                            if exists:
-                                db_execute(conn, "UPDATE pronostici_giornata SET risultato_casa_pronosticato=?, risultato_ospite_pronosticato=?, marcatore_pronosticato=?, esito_pronosticato=? WHERE id_utente=? AND id_partita=?", (gc, go, marc, esito, uid, partita_id))
-                            else:
-                                db_execute(conn, "INSERT INTO pronostici_giornata (id_utente, id_partita, risultato_casa_pronosticato, risultato_ospite_pronosticato, marcatore_pronosticato, esito_pronosticato) VALUES (?, ?, ?, ?, ?, ?)", (uid, partita_id, gc, go, marc, esito))
-                        elif gc == '' and go == '' and esito == '' and marc == '':
-                            db_execute(conn, "DELETE FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
+                            if esito != '' or (gc != '' and go != '') or marc != '':
+                                exists = db_fetchone(conn, "SELECT id FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
+                                if exists:
+                                    db_execute(conn, "UPDATE pronostici_giornata SET risultato_casa_pronosticato=?, risultato_ospite_pronosticato=?, marcatore_pronosticato=?, esito_pronosticato=? WHERE id_utente=? AND id_partita=?", (gc, go, marc, esito, uid, partita_id))
+                                else:
+                                    db_execute(conn, "INSERT INTO pronostici_giornata (id_utente, id_partita, risultato_casa_pronosticato, risultato_ospite_pronosticato, marcatore_pronosticato, esito_pronosticato) VALUES (?, ?, ?, ?, ?, ?)", (uid, partita_id, gc, go, marc, esito))
+                            elif gc == '' and go == '' and esito == '' and marc == '':
+                                db_execute(conn, "DELETE FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
+                        except Exception:
+                            pass
                 
                 db_commit(conn)
                 flash("Pronostici salvati con successo!", "success")
                 return redirect(url_for('admin.admin_pronostici_partite', partita_id=partita_id))
 
             utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti ORDER BY nome_utente")
-            pron = { row_get(p, 'id_utente'): p for p in db_fetchall(conn, "SELECT * FROM pronostici_giornata WHERE id_partita=?", (partita_id,)) }
+            
+            # BLINDATURA: forziamo gli ID a essere Numeri Interi (int)
+            tutti_pronostici = db_fetchall(conn, "SELECT * FROM pronostici_giornata WHERE id_partita=?", (partita_id,))
+            pron = {}
+            for p in tutti_pronostici:
+                try:
+                    p_uid = int(row_get(p, 'id_utente'))
+                    pron[p_uid] = p
+                except Exception:
+                    pass
 
             for u in utenti:
-                uid = row_get(u, 'id')
+                try:
+                    uid = int(row_get(u, 'id'))
+                except Exception:
+                    continue
+                    
                 p = pron.get(uid)
                 
-                esito_val = row_get(p, 'esito_pronosticato') if p else ''
-                gc_val = row_get(p, 'risultato_casa_pronosticato') if p else ''
-                go_val = row_get(p, 'risultato_ospite_pronosticato') if p else ''
-                marc_val = row_get(p, 'marcatore_pronosticato') if p else ''
+                esito_val = ''
+                gc_val = ''
+                go_val = ''
+                marc_val = ''
 
-                # Il trucco magico: puliamo le stringhe per evitare che appaia la scritta "None"
-                if str(esito_val) == 'None': esito_val = ''
-                if str(gc_val) == 'None': gc_val = ''
-                if str(go_val) == 'None': go_val = ''
-                if str(marc_val) == 'None': marc_val = ''
+                if p:
+                    e = row_get(p, 'esito_pronosticato')
+                    c = row_get(p, 'risultato_casa_pronosticato')
+                    o = row_get(p, 'risultato_ospite_pronosticato')
+                    m = row_get(p, 'marcatore_pronosticato')
+                    
+                    # Se esiste, lo converte in Testo, altrimenti lo sbianca
+                    if e is not None and str(e).lower() != 'none': esito_val = str(e)
+                    if c is not None and str(c).lower() != 'none': gc_val = str(c)
+                    if o is not None and str(o).lower() != 'none': go_val = str(o)
+                    if m is not None and str(m).lower() != 'none': marc_val = str(m)
 
                 utenti_pronostici.append({
                     'id': uid,
