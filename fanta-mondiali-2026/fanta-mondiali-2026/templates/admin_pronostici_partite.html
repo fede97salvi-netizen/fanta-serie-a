@@ -57,9 +57,9 @@
               <td style="padding:12px; text-align:center;">
                 <select name="esito_{{ u.id }}" class="fsa-select" style="width:60px; padding:6px; font-size:13px; text-align:center; border-color:var(--gold);">
                   <option value=""></option>
-                  <option value="1" {% if u.esito == '1' %}selected{% endif %}>1</option>
-                  <option value="X" {% if u.esito == 'X' %}selected{% endif %}>X</option>
-                  <option value="2" {% if u.esito == '2' %}selected{% endif %}>2</option>
+                  <option value="1" {% if u.esito|string == '1' %}selected{% endif %}>1</option>
+                  <option value="X" {% if u.esito|string == 'X' %}selected{% endif %}>X</option>
+                  <option value="2" {% if u.esito|string == '2' %}selected{% endif %}>2</option>
                 </select>
               </td>
               <td style="padding:12px; text-align:center;">
