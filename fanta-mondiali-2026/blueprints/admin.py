@@ -781,3 +781,24 @@ def admin_attiva_giornata():
         flash(f"⚽ Round {giornata} dei Gironi attivato con successo! Ora è visibile in Home.", "success")
         
     return redirect(url_for('admin.admin_home'))
+@admin_bp.route('/utenti', endpoint='admin_utenti')
+def admin_utenti():
+    from flask import session, render_template
+    from db_utils import db_conn, db_fetchall
+    if not session.get('is_admin'): return "Accesso negato.", 403
+    with db_conn() as conn: utenti = db_fetchall(conn, "SELECT id, nome_utente, email, is_admin, is_temp_password FROM utenti ORDER BY nome_utente")
+    return render_template('admin_utenti.html', utenti=utenti, session=session)
+
+@admin_bp.route('/utenti/reset/<int:user_id>', methods=['POST'], endpoint='admin_reset_password')
+def admin_reset_password(user_id):
+    from flask import session, request, flash, redirect, url_for
+    from db_utils import db_conn, db_execute, db_commit
+    from werkzeug.security import generate_password_hash
+    if not session.get('is_admin'): return "Accesso negato.", 403
+    pw_temporanea = "fanta2026"
+    hashed = generate_password_hash(pw_temporanea, method='pbkdf2:sha256', salt_length=16)
+    with db_conn() as conn:
+        db_execute(conn, "UPDATE utenti SET password = ?, is_temp_password = TRUE WHERE id = ?", (hashed, user_id))
+        db_commit(conn)
+    flash(f"Password resettata con successo per l'utente! Comunicagli la password temporanea: {pw_temporanea}", "success")
+    return redirect(url_for('admin.admin_utenti'))
