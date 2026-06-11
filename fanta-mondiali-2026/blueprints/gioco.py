@@ -424,8 +424,9 @@ def pronostici_eliminazione(fase):
 
 # ─── Pronostici torneo ────────────────────────────────────────────────────────
 
-@gioco_bp.route('/pronostici-torneo', methods=['GET', 'POST'],
-                endpoint='pronostici_torneo')
+# ─── Pronostici torneo ────────────────────────────────────────────────────────
+
+@gioco_bp.route('/pronostici-torneo', methods=['GET', 'POST'], endpoint='pronostici_torneo')
 def pronostici_torneo():
     """Inserimento pronostici torneo pre-partenza."""
     if 'nome_utente' not in session:
@@ -436,39 +437,21 @@ def pronostici_torneo():
             return redirect(url_for('auth.logout'))
         uid = row_get(user, 'id')
 
-        lock_row  = db_fetchone(conn, 'SELECT is_locked FROM stato_pronostici_torneo WHERE id=1')
+        lock_row = db_fetchone(conn, 'SELECT is_locked FROM stato_pronostici_torneo WHERE id=1')
         is_locked = row_get(lock_row, 'is_locked') if lock_row else True
 
         if is_locked:
-            # Mostra pronostici di tutti
-            tutti = db_fetchall(conn,
-                                'SELECT u.nome_utente, pt.* FROM utenti u '
-                                'JOIN pronostici_torneo pt ON u.id=pt.id_utente '
-                                'ORDER BY u.nome_utente')
-            return render_template('pronostici_torneo.html',
-                                   is_locked=True, tutti=tutti,
-                                   PUNTI_TORNEO=PUNTI_TORNEO, session=session)
+            tutti = db_fetchall(conn, 'SELECT u.nome_utente, pt.* FROM utenti u JOIN pronostici_torneo pt ON u.id=pt.id_utente ORDER BY u.nome_utente')
+            return render_template('pronostici_torneo.html', is_locked=True, tutti=tutti, PUNTI_TORNEO=PUNTI_TORNEO, session=session)
 
         if request.method == 'POST':
             vinc = (request.form.get('vincitore') or '').strip()
-            fin  = (request.form.get('finalista') or '').strip()
-            s1   = (request.form.get('semifinalista_1') or '').strip()
-            s2   = (request.form.get('semifinalista_2') or '').strip()
-            cc   = (request.form.get('capocannoniere') or '').strip()
-            exists = db_fetchone(conn,
-                                 'SELECT id FROM pronostici_torneo WHERE id_utente=?', (uid,))
+            cc = (request.form.get('capocannoniere') or '').strip()
+            exists = db_fetchone(conn, 'SELECT id FROM pronostici_torneo WHERE id_utente=?', (uid,))
             if exists:
-                db_execute(conn,
-                           'UPDATE pronostici_torneo SET vincitore=?, finalista=?, '
-                           'semifinalista_1=?, semifinalista_2=?, capocannoniere=? '
-                           'WHERE id_utente=?',
-                           (vinc, fin, s1, s2, cc, uid))
+                db_execute(conn, 'UPDATE pronostici_torneo SET vincitore=?, capocannoniere=? WHERE id_utente=?', (vinc, cc, uid))
             else:
-                db_execute(conn,
-                           'INSERT INTO pronostici_torneo '
-                           '(id_utente, vincitore, finalista, semifinalista_1, '
-                           'semifinalista_2, capocannoniere) VALUES (?,?,?,?,?,?)',
-                           (uid, vinc, fin, s1, s2, cc))
+                db_execute(conn, 'INSERT INTO pronostici_torneo (id_utente, vincitore, capocannoniere) VALUES (?,?,?)', (uid, vinc, cc))
             db_commit(conn)
             return redirect(url_for('gioco.home'))
 
