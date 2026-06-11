@@ -41,10 +41,12 @@
     <div style="padding:8px 10px;background:rgba(201,162,39,0.06);border-radius:8px;margin-bottom:8px;font-size:13px;">
       <span style="color:var(--muted);">Il tuo:</span>
       <strong style="color:var(--gold);margin-left:4px;">{{ pron.esito_pronosticato or '—' }}</strong>
-      {% if pron.risultato_casa_pronosticato is not none %}
+      {% if pron.risultato_casa_pronosticato|string not in ['None', '', 'none'] %}
       <strong style="color:var(--gold);"> ({{ pron.risultato_casa_pronosticato }}–{{ pron.risultato_ospite_pronosticato }})</strong>
       {% endif %}
-      {% if pron.marcatore_pronosticato %}· <span style="color:var(--azzurro);">⚽ {{ pron.marcatore_pronosticato }}</span>{% endif %}
+      {% if pron.marcatore_pronosticato|string not in ['None', '', 'none'] %}
+      · <span style="color:var(--azzurro);">⚽ {{ pron.marcatore_pronosticato }}</span>
+      {% endif %}
     </div>
     {% endif %}
     
@@ -56,11 +58,11 @@
         <span style="color:var(--muted);">{{ t.nome_utente }}:</span>
         <span style="font-family:var(--font-d);color:white;">{{ t.esito_pronosticato or '?' }}</span>
         
-        {% if t.risultato_casa_pronosticato is not none and t.risultato_ospite_pronosticato is not none %}
+        {% if t.risultato_casa_pronosticato|string not in ['None', '', 'none'] and t.risultato_ospite_pronosticato|string not in ['None', '', 'none'] %}
           <span class="u-muted-xs"> {{ t.risultato_casa_pronosticato }}–{{ t.risultato_ospite_pronosticato }}</span>
         {% endif %}
         
-        {% if t.marcatore_pronosticato %}
+        {% if t.marcatore_pronosticato|string not in ['None', '', 'none'] %}
           <span style="color:var(--azzurro);"> · ⚽ {{ t.marcatore_pronosticato }}</span>
         {% endif %}
       </div>
@@ -80,11 +82,11 @@
     <div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center;margin-bottom:12px;">
       <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input"
              style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
-             placeholder="0" value="{{ pron.risultato_casa_pronosticato if pron and pron.risultato_casa_pronosticato is not none else '' }}">
+             placeholder="0" value="{{ pron.risultato_casa_pronosticato if pron and pron.risultato_casa_pronosticato|string not in ['None', 'none'] else '' }}">
       <div style="text-align:center;color:var(--muted);font-weight:700;">–</div>
       <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input"
              style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;"
-             placeholder="0" value="{{ pron.risultato_ospite_pronosticato if pron and pron.risultato_ospite_pronosticato is not none else '' }}">
+             placeholder="0" value="{{ pron.risultato_ospite_pronosticato if pron and pron.risultato_ospite_pronosticato|string not in ['None', 'none'] else '' }}">
     </div>
 
     <div class="fsa-label">Marcatore (+2pt)</div>
