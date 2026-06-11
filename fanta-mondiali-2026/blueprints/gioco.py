@@ -44,12 +44,12 @@ def home():
                            (punteggio,))
         posizione = row_get(rank, 'r') or 1
 
-        # Stato giornata (gironi) — mostra anche senza stato_giornata attivo
+       # Stato giornata (gironi) — mostra anche senza stato_giornata attivo
         g_row = db_fetchone(conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva=TRUE')
         giornata_attiva = row_get(g_row, 'giornata') if g_row else None
         partite_gironi = []
+        
         if giornata_attiva:
-            if giornata_attiva:
             partite_gironi = db_fetchall(conn,
                 'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE ORDER BY data_ora_partita',
                 (giornata_attiva,))
