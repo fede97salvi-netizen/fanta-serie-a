@@ -49,8 +49,9 @@ def home():
         giornata_attiva = row_get(g_row, 'giornata') if g_row else None
         partite_gironi = []
         if giornata_attiva:
+            if giornata_attiva:
             partite_gironi = db_fetchall(conn,
-                'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
+                'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE ORDER BY data_ora_partita',
                 (giornata_attiva,))
         if not partite_gironi:
             # Fallback: cerca partite pronosticabili senza risultato, qualunque giornata
@@ -243,7 +244,7 @@ def visualizza_giornata(giornata):
     with db_conn() as conn:
         partite = db_fetchall(conn,
                               'SELECT * FROM partite WHERE giornata=? '
-                              'AND pronosticabile=TRUE AND risultato_casa_reale IS NOT NULL',
+                              'AND pronosticabile=TRUE AND risultato_casa_reale IS NOT NULL ORDER BY data_ora_partita',
                               (giornata,))
         utenti  = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti')
         pids    = [row_get(p, 'id') for p in partite]
