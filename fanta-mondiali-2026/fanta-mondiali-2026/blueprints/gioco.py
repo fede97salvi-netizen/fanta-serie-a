@@ -147,7 +147,7 @@ def pronostici_gironi(giornata):
         uid = row_get(user, 'id')
 
         partite = db_fetchall(conn,
-                              'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
+                              'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE ORDER BY data_ora_partita',
                               (giornata,))
 
         # ── Carica giocatori con fallback a cascata ─────────────────────────
