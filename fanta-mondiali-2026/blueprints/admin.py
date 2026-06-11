@@ -776,4 +776,61 @@ def admin_attiva_giornata():
         flash(f"⚽ Round {giornata} dei Gironi attivato con successo! Ora è visibile in Home.", "success")
         
     return redirect(url_for('admin.admin_home'))
+# ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
 
+@admin_bp.route('/admin/pronostici-partite', methods=['GET', 'POST'], endpoint='admin_pronostici_partite')
+def admin_pronostici_partite():
+    from flask import request, flash, redirect, url_for, render_template, session
+    from db_utils import db_conn, db_fetchall, db_fetchone, db_execute, db_commit, row_get
+
+    if require_admin(): return "Accesso negato.", 403
+
+    with db_conn() as conn:
+        # Peschiamo le partite della fase a gironi
+        partite = db_fetchall(conn, "SELECT id, giornata, squadra_casa, squadra_ospite FROM partite WHERE fase='gironi' ORDER BY giornata, data_ora_partita")
+
+        partita_id = request.args.get('partita_id', type=int)
+        partita_sel = None
+        utenti_pronostici = []
+
+        if partita_id:
+            partita_sel = db_fetchone(conn, "SELECT * FROM partite WHERE id=?", (partita_id,))
+
+            if request.method == 'POST':
+                # Salvataggio delle modifiche manuali dell'admin
+                for key in request.form:
+                    if key.startswith('gc_'):
+                        uid = int(key.split('_')[1])
+                        gc = request.form.get(f'gc_{uid}', '').strip()
+                        go = request.form.get(f'go_{uid}', '').strip()
+                        marc = request.form.get(f'marc_{uid}', '').strip()
+
+                        if gc != '' and go != '':
+                            exists = db_fetchone(conn, "SELECT id FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
+                            if exists:
+                                db_execute(conn, "UPDATE pronostici_giornata SET gol_casa=?, gol_ospite=?, marcatore=? WHERE id_utente=? AND id_partita=?", (gc, go, marc, uid, partita_id))
+                            else:
+                                db_execute(conn, "INSERT INTO pronostici_giornata (id_utente, id_partita, gol_casa, gol_ospite, marcatore) VALUES (?, ?, ?, ?, ?)", (uid, partita_id, gc, go, marc))
+                        elif gc == '' and go == '':
+                            db_execute(conn, "DELETE FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
+                
+                db_commit(conn)
+                flash("Pronostici della partita salvati con successo!", "success")
+                return redirect(url_for('admin.admin_pronostici_partite', partita_id=partita_id))
+
+            # Lettura dei pronostici attuali per la tabella
+            utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti ORDER BY nome_utente")
+            pron = { row_get(p, 'id_utente'): p for p in db_fetchall(conn, "SELECT * FROM pronostici_giornata WHERE id_partita=?", (partita_id,)) }
+
+            for u in utenti:
+                uid = row_get(u, 'id')
+                p = pron.get(uid)
+                utenti_pronostici.append({
+                    'id': uid,
+                    'nome_utente': row_get(u, 'nome_utente'),
+                    'gol_casa': row_get(p, 'gol_casa') if p else '',
+                    'gol_ospite': row_get(p, 'gol_ospite') if p else '',
+                    'marcatore': row_get(p, 'marcatore') if p else ''
+                })
+
+    return render_template('admin_pronostici_partite.html', partite=partite, partita_sel=partita_sel, utenti_pronostici=utenti_pronostici, session=session)
