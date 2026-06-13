@@ -506,32 +506,55 @@ def admin_importa_risultati(giornata):
     if err:
         flash(f'Errore API: {err}', 'danger')
         return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
+    
     aggiornate = 0
     with db_conn() as conn:
         partite_db = db_fetchall(conn,
             'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
             (giornata,))
+        
         for m in (data or {}).get('matches', []):
             score = m.get('score', {})
             ft    = score.get('fullTime', {})
             casa  = ft.get('home')
             osp   = ft.get('away')
+            
             if casa is None or osp is None:
                 continue
+                
             nome_casa  = (m['homeTeam']['name'] or '').upper()
             nome_ospite = (m['awayTeam']['name'] or '').upper()
+            
+            # --- NUOVA LOGICA: Estrazione Marcatori ---
+            marcatori_list = []
+            goals = m.get('goals', [])
+            for g in goals:
+                scorer = g.get('scorer', {})
+                nome_marcatore = scorer.get('name')
+                if nome_marcatore:
+                    marcatori_list.append(nome_marcatore)
+            
+            marcatore_str = ", ".join(marcatori_list) if marcatori_list else None
+            
+            # Se la partita finisce 0-0, forza "Nessun marcatore"
+            if casa == 0 and osp == 0:
+                marcatore_str = "Nessun marcatore"
+            # ------------------------------------------
+
             for p in partite_db:
-                if (row_get(p, 'squadra_casa')   == nome_casa and
+                if (row_get(p, 'squadra_casa') == nome_casa and
                         row_get(p, 'squadra_ospite') == nome_ospite):
+                    
+                    # Aggiorniamo anche il campo marcatore_reale
                     db_execute(conn,
                                'UPDATE partite SET risultato_casa_reale=?, '
-                               'risultato_ospite_reale=? WHERE id=?',
-                               (casa, osp, row_get(p, 'id')))
+                               'risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
+                               (casa, osp, marcatore_str, row_get(p, 'id')))
                     aggiornate += 1
         db_commit(conn)
+        
     flash(f'Risultati aggiornati da API: {aggiornate} partite.', 'success')
     return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
-
 
 # ─── Pagina pronostici torneo admin ──────────────────────────────────────────
 
