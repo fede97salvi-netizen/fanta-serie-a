@@ -10,7 +10,6 @@
 <div style="padding:0 16px;">
 
   {% if giornata_attiva %}
-  <!-- Import risultati da API -->
   <form method="post" action="{{ url_for('admin.admin_importa_risultati', giornata=giornata_attiva) }}" style="margin-bottom:12px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn-secondary" style="width:100%;justify-content:center;" onclick="return confirm('Scaricare i risultati del round {{ giornata_attiva }} dall\'API?')">
@@ -18,7 +17,6 @@
     </button>
   </form>
 
-  <!-- Inserimento risultati manuale -->
   <div class="fsa-section-title">Risultati manuali – Round {{ giornata_attiva }}</div>
   <form method="post" action="{{ url_for('admin.admin_risultati_gironi', giornata=giornata_attiva) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -33,12 +31,22 @@
         <div style="text-align:center;color:var(--muted);font-weight:700;">–</div>
         <input type="number" name="ospite_{{ p.id }}" min="0" max="20" class="fsa-input" style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;" placeholder="0" value="{{ p.risultato_ospite_reale if p.risultato_ospite_reale is not none else '' }}">
       </div>
+      
       <div class="fsa-label">Marcatori</div>
+      
+      <datalist id="lista_marcatori_{{ p.id }}">
+        <option value="Nessun marcatore">
+        <option value="Autogol">
+        {% for g in giocatori_per_partita.get(p.id, []) %}
+          <option value="{{ g.nome_giocatore }}">
+        {% endfor %}
+      </datalist>
+
       <div id="marcatori_{{ p.id }}">
         {% if p.marcatore_reale %}
           {% for m in p.marcatore_reale.split(',') %}
           <div style="display:flex;gap:6px;margin-bottom:6px;">
-            <input type="text" name="marcatore_{{ p.id }}[]" value="{{ m.strip() }}" class="fsa-input" style="font-size:14px;">
+            <input type="text" name="marcatore_{{ p.id }}[]" value="{{ m.strip() }}" list="lista_marcatori_{{ p.id }}" class="fsa-input" style="font-size:14px;" autocomplete="off">
             <button type="button" onclick="this.parentNode.remove()" class="btn-danger" style="padding:6px 10px;border:none;flex-shrink:0;">✕</button>
           </div>
           {% endfor %}
@@ -51,12 +59,10 @@
   </form>
   {% endif %}
 
-  <!-- Lista tutte le partite con checkbox pronosticabile -->
   <div class="fsa-section-title">Tutte le partite — attiva/disattiva pronosticabili</div>
   <div class="fsa-card" style="padding:0;">
   {% for p in partite %}
   <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}gap:8px;">
-    <!-- Checkbox pronosticabile -->
     <form method="post" action="{{ url_for('admin.admin_toggle_pronosticabile', id_partita=p.id) }}" style="flex-shrink:0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" style="background:none;border:none;cursor:pointer;padding:0;" title="Attiva/disattiva pronosticabile">
@@ -87,7 +93,8 @@ function aggiungiMarcatore(pid) {
   var c = document.getElementById('marcatori_'+pid);
   var d = document.createElement('div');
   d.style='display:flex;gap:6px;margin-bottom:6px;';
-  d.innerHTML='<input type="text" name="marcatore_'+pid+'[]" class="fsa-input" style="font-size:14px;" placeholder="Nome marcatore">' +
+  // Aggiunto attributo list e autocomplete="off" al campo generato
+  d.innerHTML='<input type="text" name="marcatore_'+pid+'[]" list="lista_marcatori_'+pid+'" class="fsa-input" style="font-size:14px;" placeholder="Nome marcatore" autocomplete="off">' +
     '<button type="button" onclick="this.parentNode.remove()" class="btn-danger" style="padding:6px 10px;border:none;flex-shrink:0;">✕</button>';
   c.appendChild(d);
 }
