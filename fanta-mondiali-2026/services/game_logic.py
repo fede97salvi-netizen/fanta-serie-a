@@ -2,14 +2,14 @@
 Logica di gioco Fanta Mondiali 2026 — versione semplificata.
 
 Un solo sistema punti per TUTTI i match (gironi + eliminazione diretta):
-  - Esito corretto (1/X/2)  → +1 pt
+  - Esito corretto (1/X/2)  → +1 pt (assorbito se si indovina il risultato esatto)
   - Risultato esatto         → +3 pt
   - Marcatore corretto       → +2 pt
   - Bonus tripla             → +1 pt
 
 Pronostici torneo (pre-partenza):
-  - Vincitore del torneo     → +40 pt
-  - Capocannoniere           → +25 pt
+  - Vincitore del torneo     → +30 pt
+  - Capocannoniere           → +15 pt
 """
 
 import logging
@@ -33,8 +33,8 @@ PUNTI_MARCATORE    = 2
 PUNTI_BONUS_TRIPLA = 1
 
 PUNTI_TORNEO = {
-    'vincitore':      40,
-    'capocannoniere': 25,
+    'vincitore':      30,
+    'capocannoniere': 15,
 }
 
 FASI_ORDINE = ['gironi', 'r32', 'r16', 'qf', 'sf', 'finale']
@@ -92,21 +92,32 @@ def calcola_punti_pronostico(pronostico, partita) -> dict:
     }
     if not pronostico:
         return out
+    
     r_casa = row_get(partita, 'risultato_casa_reale')
     r_osp  = row_get(partita, 'risultato_ospite_reale')
+    
     if r_casa is None or r_osp is None:
         return out
+        
     esito_reale = '1' if r_casa > r_osp else 'X' if r_casa == r_osp else '2'
-    if row_get(pronostico, 'esito_pronosticato') == esito_reale:
+    
+    # 1. Calcolo Esito
+    if str(row_get(pronostico, 'esito_pronosticato')).upper() == esito_reale:
         out['esito'] = PUNTI_ESITO
         out['esito_corretto'] = True
+        
+    # 2. Calcolo Risultato Esatto
     if (row_get(pronostico, 'risultato_casa_pronosticato') == r_casa and
             row_get(pronostico, 'risultato_ospite_pronosticato') == r_osp):
-        out['risultato'] = PUNTI_RISULTATO
         out['risultato_corretto'] = True
+        out['risultato'] = PUNTI_RISULTATO
+        out['esito'] = 0  # <--- LOGICA SOSTITUTIVA: I 3 punti assorbono l'esito
+        
+    # 3. Calcolo Marcatore
     pm = (row_get(pronostico, 'marcatore_pronosticato') or '').strip().lower()
     mr_raw = row_get(partita, 'marcatore_reale') or ''
     marcatori_reali = [m.strip().lower() for m in mr_raw.split(',') if m.strip()]
+    
     if pm == 'nessun marcatore':
         if r_casa == 0 and r_osp == 0:
             out['marcatore'] = PUNTI_MARCATORE
@@ -114,8 +125,11 @@ def calcola_punti_pronostico(pronostico, partita) -> dict:
     elif pm and pm in marcatori_reali:
         out['marcatore'] = PUNTI_MARCATORE
         out['marcatore_corretto'] = True
+        
+    # 4. Calcolo Bonus Tripla
     if out['esito_corretto'] and out['risultato_corretto'] and out['marcatore_corretto']:
         out['bonus'] = PUNTI_BONUS_TRIPLA
+        
     out['totale'] = out['esito'] + out['risultato'] + out['marcatore'] + out['bonus']
     return out
 
