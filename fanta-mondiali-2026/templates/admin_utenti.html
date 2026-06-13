@@ -2,7 +2,7 @@
 {% block title %}Utenti{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Admin</a>
 </div>
 <div class="page-header">
   <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
@@ -19,22 +19,25 @@
         </div>
       </div>
       <div style="display:flex;gap:6px;">
-        <form method="post" action="{{ url_for('admin.admin_reset_password', user_id=u.id) }}" style="display:inline;">
+        
+        <form method="post" action="{{ url_for('admin.admin_resetta_password', id_utente=u.id) }}" style="display:inline;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn-warning btn-xs" onclick="return confirm('Reset pw {{ u.nome_utente }}?')">Reset pw</button>
         </form>
+        
         {% if not u.is_admin %}
         <form method="post" action="{{ url_for('admin.admin_elimina_utente', id_utente=u.id) }}" style="display:inline;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn-danger btn-xs" onclick="return confirm('Eliminare {{ u.nome_utente }}?')">Elimina</button>
         </form>
         {% endif %}
+        
       </div>
     </div>
     {% endfor %}
   </div>
 </div>
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
-  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Admin</a>
 </div>
 {% endblock %}
