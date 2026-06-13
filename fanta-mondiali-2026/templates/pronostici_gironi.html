@@ -41,9 +41,17 @@
     <div style="padding:8px 10px;background:rgba(201,162,39,0.06);border-radius:8px;margin-bottom:8px;font-size:13px;">
       <span style="color:var(--muted);">Il tuo:</span>
       <strong style="color:var(--gold);margin-left:4px;">{{ pron.esito_pronosticato or '—' }}</strong>
-      {% if pron.risultato_casa_pronosticato|string not in ['None', '', 'none'] %}
-      <strong style="color:var(--gold);"> ({{ pron.risultato_casa_pronosticato }}–{{ pron.risultato_ospite_pronosticato }})</strong>
+      
+      {% set my_casa_str = pron.risultato_casa_pronosticato|string %}
+      {% set my_ospite_str = pron.risultato_ospite_pronosticato|string %}
+      {% set my_casa_valido = my_casa_str not in ['None', '', 'none'] %}
+      {% set my_ospite_valido = my_ospite_str not in ['None', '', 'none'] %}
+      
+      {# Se l'utente ha inserito almeno un valore numerico, mostra il risultato gestendo i vuoti come 0 #}
+      {% if my_casa_valido or my_ospite_valido %}
+      <strong style="color:var(--gold);"> ({{ pron.risultato_casa_pronosticato if my_casa_valido else '0' }}–{{ pron.risultato_ospite_pronosticato if my_ospite_valido else '0' }})</strong>
       {% endif %}
+      
       {% if pron.marcatore_pronosticato|string not in ['None', '', 'none'] %}
       · <span style="color:var(--azzurro);">⚽ {{ pron.marcatore_pronosticato }}</span>
       {% endif %}
@@ -58,8 +66,14 @@
         <span style="color:var(--muted);">{{ t.nome_utente }}:</span>
         <span style="font-family:var(--font-d);color:white;">{{ t.esito_pronosticato or '?' }}</span>
         
-        {% if t.risultato_casa_pronosticato|string not in ['None', '', 'none'] and t.risultato_ospite_pronosticato|string not in ['None', '', 'none'] %}
-          <span class="u-muted-xs"> {{ t.risultato_casa_pronosticato }}–{{ t.risultato_ospite_pronosticato }}</span>
+        {% set gr_casa_str = t.risultato_casa_pronosticato|string %}
+        {% set gr_ospite_str = t.risultato_ospite_pronosticato|string %}
+        {% set gr_casa_valido = gr_casa_str not in ['None', '', 'none'] %}
+        {% set gr_ospite_valido = gr_ospite_str not in ['None', '', 'none'] %}
+        
+        {# Se è stato inserito almeno un gol, mostra il punteggio trasformando l'eventuale campo vuoto in 0 #}
+        {% if gr_casa_valido or gr_ospite_valido %}
+          <span class="u-muted-xs"> {{ t.risultato_casa_pronosticato if gr_casa_valido else '0' }}–{{ t.risultato_ospite_pronosticato if gr_ospite_valido else '0' }}</span>
         {% endif %}
         
         {% if t.marcatore_pronosticato|string not in ['None', '', 'none'] %}
