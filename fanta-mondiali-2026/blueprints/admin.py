@@ -144,10 +144,36 @@ def admin_gestisci_partite():
             partite_attive = db_fetchall(conn,
                 'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
                 (giornata_attiva,))
+
+        # --- Aggiunta: Caricamento giocatori per l'autocompletamento ---
+        tutti_giocatori = db_fetchall(conn,
+            'SELECT nome_giocatore, squadra FROM giocatori ORDER BY squadra, nome_giocatore')
+        per_sq_db = {}
+        for g in tutti_giocatori:
+            s = (row_get(g, 'squadra') or '').upper().strip()
+            per_sq_db.setdefault(s, []).append(g)
+
+        giocatori_per_partita = {}
+        for p in partite:
+            pid = row_get(p, 'id')
+            sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
+            so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
+            lista = per_sq_db.get(sc, []) + per_sq_db.get(so, [])
+            if not lista:
+                pref_sc, pref_so = sc[:4], so[:4]
+                lista = [g for s_key, gs in per_sq_db.items()
+                         for g in gs
+                         if (pref_sc and s_key.startswith(pref_sc)) or
+                            (pref_so and s_key.startswith(pref_so))]
+            giocatori_per_partita[pid] = lista
+        # ---------------------------------------------------------------
+
     return render_template('admin_gestisci_partite.html',
                            partite=partite, giornata_sel=giornata_sel,
                            giornata_attiva=giornata_attiva,
-                           partite_attive=partite_attive, session=session)
+                           partite_attive=partite_attive,
+                           giocatori_per_partita=giocatori_per_partita,
+                           session=session)
 
 
 @admin_bp.route('/admin/importa-giornata', methods=['GET', 'POST'],
