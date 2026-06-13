@@ -151,10 +151,6 @@ def pronostici_gironi(giornata):
                               'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE ORDER BY data_ora_partita',
                               (giornata,))
 
-        # ── Carica giocatori con fallback a cascata ─────────────────────────
-        # 1) Exact match per squadra
-        # 2) LIKE sui primi 4 caratteri
-        # 3) Tutti i giocatori (se i nomi non coincidono affatto)
         tutti_giocatori = db_fetchall(conn,
             'SELECT nome_giocatore, squadra FROM giocatori '
             'ORDER BY squadra, nome_giocatore')
@@ -168,11 +164,7 @@ def pronostici_gironi(giornata):
             pid = row_get(p, 'id')
             sc  = (row_get(p, 'squadra_casa')   or '').upper().strip()
             so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
-
-            # 1) exact match
             lista = per_sq_db.get(sc, []) + per_sq_db.get(so, [])
-
-            # 2) fuzzy (primi 4 char)
             if not lista:
                 pref_sc = sc[:4]
                 pref_so = so[:4]
@@ -180,11 +172,8 @@ def pronostici_gironi(giornata):
                          for g in gs
                          if (pref_sc and s_key.startswith(pref_sc)) or
                             (pref_so and s_key.startswith(pref_so))]
-
-            # 3) fallback totale — mostra tutti (mai dropdown vuoto)
             if not lista:
                 lista = tutti_giocatori
-
             giocatori_per_partita[pid] = lista
 
         pron_salvati = {row_get(r, 'id_partita'): r
@@ -221,18 +210,47 @@ def pronostici_gironi(giornata):
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
                     for p in partite}
+        
         altri = {}
+        punti_miei = {} # Dizionario per tenere traccia dei punti dell'utente corrente
+        
         for p in partite:
             pid = row_get(p, 'id')
+            
+            # Calcola i tuoi punti live se la partita ha un risultato reale
+            pron = pron_salvati.get(pid)
+            if pron and row_get(p, 'risultato_casa_reale') is not None:
+                punti_miei[pid] = calcola_punti_pronostico(pron, p)['totale']
+            else:
+                punti_miei[pid] = None
+
             if scadenze.get(pid):
-                altri[pid] = db_fetchall(conn,
+                rows = db_fetchall(conn,
                     'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
                     'JOIN utenti u ON pg.id_utente=u.id WHERE pg.id_partita=?', (pid,))
+                
+                arricchiti = []
+                for r in rows:
+                    punti_tot = None
+                    # Se l'admin ha inserito il risultato reale, calcoliamo i punti di questo utente
+                    if row_get(p, 'risultato_casa_reale') is not None:
+                        punti_tot = calcola_punti_pronostico(r, p)['totale']
+                    
+                    arricchiti.append({
+                        'nome_utente': row_get(r, 'nome_utente'),
+                        'esito_pronosticato': row_get(r, 'esito_pronosticato'),
+                        'risultato_casa_pronosticato': row_get(r, 'risultato_casa_pronosticato'),
+                        'risultato_ospite_pronosticato': row_get(r, 'risultato_ospite_pronosticato'),
+                        'marcatore_pronosticato': row_get(r, 'marcatore_pronosticato'),
+                        'punti_ottenuti': punti_tot
+                    })
+                altri[pid] = arricchiti
 
     return render_template('pronostici_gironi.html',
                            partite=partite, giornata=giornata,
                            pron_salvati=pron_salvati,
                            scadenze=scadenze, altri_pron=altri,
+                           punti_miei=punti_miei,
                            giocatori_per_partita=giocatori_per_partita,
                            session=session)
 
