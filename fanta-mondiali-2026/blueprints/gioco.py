@@ -4,7 +4,7 @@ Route per i partecipanti.
 """
 
 import logging
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get
 from services.game_logic import (
@@ -183,6 +183,29 @@ def pronostici_gironi(giornata):
                                              (uid, giornata))}
 
         if request.method == 'POST':
+            # --- FASE 1: VALIDAZIONE DEI DATI ---
+            errori_validazione = False
+            for p in partite:
+                if is_partita_scaduta(row_get(p, 'data_ora_partita')):
+                    continue
+                pid   = row_get(p, 'id')
+                esito = request.form.get(f'esito_{pid}')
+                rcasa = request.form.get(f'casa_{pid}', '').strip()
+                rosp  = request.form.get(f'ospite_{pid}', '').strip()
+                marc  = (request.form.get(f'marcatore_{pid}') or '').strip()
+                
+                # Se ha inserito anche solo UN dato per questa partita
+                if esito or rcasa != '' or rosp != '' or marc:
+                    # Controlla se MANCA qualcosa
+                    if not esito or rcasa == '' or rosp == '' or not marc:
+                        errori_validazione = True
+                        break
+            
+            if errori_validazione:
+                flash("Attenzione: hai compilato solo parzialmente una partita. Inserisci TUTTI i dati (Esito 1X2, Gol Casa, Gol Ospite, Marcatore)!", "warning")
+                return redirect(url_for('gioco.pronostici_gironi', giornata=giornata))
+
+            # --- FASE 2: SALVATAGGIO EFFETTIVO ---
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
                     continue
@@ -191,7 +214,8 @@ def pronostici_gironi(giornata):
                 rcasa = _safe_int(request.form.get(f'casa_{pid}'), lo=0, hi=20)
                 rosp  = _safe_int(request.form.get(f'ospite_{pid}'), lo=0, hi=20)
                 marc  = (request.form.get(f'marcatore_{pid}') or '').strip()
-                if esito or (rcasa is not None and rosp is not None) or marc:
+                
+                if esito and rcasa is not None and rosp is not None and marc:
                     if pid in pron_salvati:
                         db_execute(conn,
                                    'UPDATE pronostici_giornata SET esito_pronosticato=?, '
@@ -206,18 +230,18 @@ def pronostici_gironi(giornata):
                                    'VALUES (?,?,?,?,?,?)',
                                    (uid, pid, esito, rcasa, rosp, marc))
             db_commit(conn)
+            flash("Pronostici salvati con successo!", "success")
             return redirect(url_for('gioco.home'))
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
                     for p in partite}
         
         altri = {}
-        punti_miei = {} # Dizionario per tenere traccia dei punti dell'utente corrente
+        punti_miei = {}
         
         for p in partite:
             pid = row_get(p, 'id')
             
-            # Calcola i tuoi punti live se la partita ha un risultato reale
             pron = pron_salvati.get(pid)
             if pron and row_get(p, 'risultato_casa_reale') is not None:
                 punti_miei[pid] = calcola_punti_pronostico(pron, p)['totale']
@@ -232,7 +256,6 @@ def pronostici_gironi(giornata):
                 arricchiti = []
                 for r in rows:
                     punti_tot = None
-                    # Se l'admin ha inserito il risultato reale, calcoliamo i punti di questo utente
                     if row_get(p, 'risultato_casa_reale') is not None:
                         punti_tot = calcola_punti_pronostico(r, p)['totale']
                     
@@ -391,6 +414,27 @@ def pronostici_eliminazione(fase):
             giocatori_per_partita[pid] = lista
 
         if request.method == 'POST' and not is_locked:
+            # --- FASE 1: VALIDAZIONE DEI DATI ---
+            errori_validazione = False
+            for p in partite:
+                if is_partita_scaduta(row_get(p, 'data_ora_partita')):
+                    continue
+                pid    = row_get(p, 'id')
+                esito  = request.form.get(f'esito_{pid}')
+                rcasa  = request.form.get(f'casa_{pid}', '').strip()
+                rosp   = request.form.get(f'ospite_{pid}', '').strip()
+                marc   = (request.form.get(f'marcatore_{pid}') or '').strip()
+                
+                if esito or rcasa != '' or rosp != '' or marc:
+                    if not esito or rcasa == '' or rosp == '' or not marc:
+                        errori_validazione = True
+                        break
+            
+            if errori_validazione:
+                flash("Attenzione: hai compilato solo parzialmente una partita. Inserisci TUTTI i dati (Esito 1X2, Gol Casa, Gol Ospite, Marcatore)!", "warning")
+                return redirect(url_for('gioco.pronostici_eliminazione', fase=fase))
+
+            # --- FASE 2: SALVATAGGIO ---
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
                     continue
@@ -399,7 +443,8 @@ def pronostici_eliminazione(fase):
                 r_casa = _safe_int(request.form.get(f'casa_{pid}'), lo=0, hi=20)
                 r_osp  = _safe_int(request.form.get(f'ospite_{pid}'), lo=0, hi=20)
                 marc   = (request.form.get(f'marcatore_{pid}') or '').strip()
-                if esito or (r_casa is not None and r_osp is not None) or marc:
+                
+                if esito and r_casa is not None and r_osp is not None and marc:
                     if pid in pron_salvati:
                         db_execute(conn,
                                    'UPDATE pronostici_eliminazione '
@@ -418,6 +463,7 @@ def pronostici_eliminazione(fase):
                                    'marcatore_pronosticato) VALUES (?,?,?,?,?,?)',
                                    (uid, pid, esito, r_casa, r_osp, marc))
             db_commit(conn)
+            flash("Pronostici salvati con successo!", "success")
             return redirect(url_for('gioco.bracket'))
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
