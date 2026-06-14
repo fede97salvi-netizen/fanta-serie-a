@@ -825,6 +825,7 @@ def admin_massivo_pronosticabile(giornata, stato):
 def admin_pronostici_partite():
     from flask import request, flash, redirect, url_for, render_template, session
     from db_utils import db_conn, db_fetchall, db_fetchone, db_execute, db_commit, row_get
+    from services.game_logic import _safe_int  # <-- Aggiunto per evitare i crash sui campi vuoti
 
     if require_admin(): return "Accesso negato.", 403
 
@@ -843,27 +844,34 @@ def admin_pronostici_partite():
                     if key.startswith('gc_'):
                         try:
                             uid = int(key.split('_')[1])
-                            gc = request.form.get(f'gc_{uid}', '').strip()
-                            go = request.form.get(f'go_{uid}', '').strip()
+                            gc_raw = request.form.get(f'gc_{uid}', '').strip()
+                            go_raw = request.form.get(f'go_{uid}', '').strip()
                             esito = request.form.get(f'esito_{uid}', '').strip()
-                            marc = request.form.get(f'marc_{uid}', '').strip()
+                            marc_raw = request.form.get(f'marc_{uid}', '').strip()
+                            
+                            # Trasforma in numeri veri o lascia None se è vuoto
+                            gc = _safe_int(gc_raw, lo=0, hi=20)
+                            go = _safe_int(go_raw, lo=0, hi=20)
+                            marc = marc_raw if marc_raw else None
 
                             # Calcolo esito automatico
-                            if gc != '' and go != '':
-                                if int(gc) > int(go): esito = '1'
-                                elif int(gc) < int(go): esito = '2'
+                            if gc is not None and go is not None:
+                                if gc > go: esito = '1'
+                                elif gc < go: esito = '2'
                                 else: esito = 'X'
+                            else:
+                                esito = esito if esito else None
 
-                            if esito != '' or (gc != '' and go != '') or marc != '':
+                            if esito is not None or (gc is not None and go is not None) or marc is not None:
                                 exists = db_fetchone(conn, "SELECT id FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
                                 if exists:
                                     db_execute(conn, "UPDATE pronostici_giornata SET risultato_casa_pronosticato=?, risultato_ospite_pronosticato=?, marcatore_pronosticato=?, esito_pronosticato=? WHERE id_utente=? AND id_partita=?", (gc, go, marc, esito, uid, partita_id))
                                 else:
                                     db_execute(conn, "INSERT INTO pronostici_giornata (id_utente, id_partita, risultato_casa_pronosticato, risultato_ospite_pronosticato, marcatore_pronosticato, esito_pronosticato) VALUES (?, ?, ?, ?, ?, ?)", (uid, partita_id, gc, go, marc, esito))
-                            elif gc == '' and go == '' and esito == '' and marc == '':
+                            elif gc is None and go is None and not esito and not marc:
                                 db_execute(conn, "DELETE FROM pronostici_giornata WHERE id_utente=? AND id_partita=?", (uid, partita_id))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            log.exception(f"Errore salvataggio admin pronostici per l'utente con ID {uid}: {e}")
                 
                 db_commit(conn)
                 flash("Pronostici salvati con successo!", "success")
@@ -871,7 +879,6 @@ def admin_pronostici_partite():
 
             utenti = db_fetchall(conn, "SELECT id, nome_utente FROM utenti ORDER BY nome_utente")
             
-            # BLINDATURA: forziamo gli ID a essere Numeri Interi (int)
             tutti_pronostici = db_fetchall(conn, "SELECT * FROM pronostici_giornata WHERE id_partita=?", (partita_id,))
             pron = {}
             for p in tutti_pronostici:
@@ -900,7 +907,6 @@ def admin_pronostici_partite():
                     o = row_get(p, 'risultato_ospite_pronosticato')
                     m = row_get(p, 'marcatore_pronosticato')
                     
-                    # Se esiste, lo converte in Testo, altrimenti lo sbianca
                     if e is not None and str(e).lower() != 'none': esito_val = str(e)
                     if c is not None and str(c).lower() != 'none': gc_val = str(c)
                     if o is not None and str(o).lower() != 'none': go_val = str(o)
