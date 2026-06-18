@@ -922,3 +922,35 @@ def admin_pronostici_partite():
                 })
 
     return render_template('admin_pronostici_partite.html', partite=partite, partita_sel=partita_sel, utenti_pronostici=utenti_pronostici, session=session)
+@admin_bp.route('/admin/attiva-giornata', methods=['POST'], endpoint='admin_attiva_giornata')
+def admin_attiva_giornata():
+    """Attiva un round dei gironi (e spegne eventuali fasi KO attive)"""
+    if require_admin(): 
+        return 'Accesso negato.', 403
+        
+    giornata = _safe_int(request.form.get('giornata'))
+    if not giornata:
+        flash('Seleziona un round valido da attivare.', 'warning')
+        return redirect(url_for('admin.admin_home'))
+        
+    with db_conn() as conn:
+        # 1. Disattiva tutte le giornate dei gironi e le fasi eliminazione
+        db_execute(conn, 'UPDATE stato_giornata SET is_attiva=FALSE')
+        db_execute(conn, 'UPDATE stato_fase SET is_attiva=FALSE')
+        
+        # 2. Attiva la giornata selezionata
+        if USE_POSTGRES:
+            db_execute(conn,
+                       'INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio) '
+                       'VALUES (?, TRUE, FALSE) '
+                       'ON CONFLICT (giornata) DO UPDATE SET is_attiva=TRUE',
+                       (giornata,))
+        else:
+            # Per SQLite backend locale
+            db_execute(conn, 'INSERT OR IGNORE INTO stato_giornata (giornata, is_attiva, is_in_archivio) VALUES (?, 0, 0)', (giornata,))
+            db_execute(conn, 'UPDATE stato_giornata SET is_attiva=TRUE WHERE giornata=?', (giornata,))
+            
+        db_commit(conn)
+        
+    flash(f'✅ Round {giornata} attivato con successo!', 'success')
+    return redirect(url_for('admin.admin_home'))
