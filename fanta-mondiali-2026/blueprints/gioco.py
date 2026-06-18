@@ -546,3 +546,10 @@ def pronostici_torneo():
     return render_template('pronostici_torneo.html',
                            is_locked=False, pron=pron, squadre=squadre,
                            PUNTI_TORNEO=PUNTI_TORNEO, session=session)
+@gioco_bp.route('/classifica-cumulativa/<int:giornata>', endpoint='classifica_cumulativa_giornata')
+def classifica_cumulativa_giornata(giornata):
+    """Ponte di emergenza: reindirizza alla classifica generale."""
+    if 'nome_utente' not in session:
+        return redirect(url_for('auth.login'))
+    
+    return redirect(url_for('gioco.classifica'))    
