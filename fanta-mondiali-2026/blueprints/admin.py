@@ -954,3 +954,24 @@ def admin_attiva_giornata():
         
     flash(f'✅ Round {giornata} attivato con successo!', 'success')
     return redirect(url_for('admin.admin_home'))
+@admin_bp.route('/admin/modifica-giornata-archiviata/<int:giornata>', methods=['GET', 'POST'], endpoint='admin_modifica_giornata_archiviata')
+def admin_modifica_giornata_archiviata(giornata):
+    """Riapre una giornata archiviata rimettendola come attiva nella Dashboard"""
+    if require_admin(): 
+        return 'Accesso negato.', 403
+        
+    with db_conn() as conn:
+        # 1. Disattiva temporaneamente qualsiasi altra giornata o fase attiva
+        db_execute(conn, 'UPDATE stato_giornata SET is_attiva=FALSE')
+        db_execute(conn, 'UPDATE stato_fase SET is_attiva=FALSE')
+        
+        # 2. Riattiva la giornata selezionata e la rimuove dall'archivio
+        if USE_POSTGRES:
+            db_execute(conn, 'UPDATE stato_giornata SET is_attiva=TRUE, is_in_archivio=FALSE WHERE giornata=?', (giornata,))
+        else:
+            db_execute(conn, 'UPDATE stato_giornata SET is_attiva=1, is_in_archivio=0 WHERE giornata=?', (giornata,))
+            
+        db_commit(conn)
+        
+    flash(f'🔄 Round {giornata} riaperto! Ora puoi modificare i risultati dalla Home Admin.', 'success')
+    return redirect(url_for('admin.admin_home'))
