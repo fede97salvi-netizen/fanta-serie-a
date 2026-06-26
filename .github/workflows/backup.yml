@@ -1,0 +1,40 @@
+name: Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'      # ogni domenica alle 04:00 UTC
+  workflow_dispatch:          # esecuzione manuale dal tab Actions
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Installa pg_dump aggiornato (PGDG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump DB Serie A
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
+        run: |
+          mkdir -p backups
+          pg_dump "$DB_URL?sslmode=require" --no-owner --no-privileges \
+            | gzip > "backups/seriea_$(date +%Y%m%d_%H%M).sql.gz"
+
+      - name: Dump DB Mondiali
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_MONDIALI }}
+        run: |
+          mkdir -p backups
+          pg_dump "$DB_URL?sslmode=require" --no-owner --no-privileges \
+            | gzip > "backups/mondiali_$(date +%Y%m%d_%H%M).sql.gz"
+
+      - name: Carica i backup come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 90
