@@ -440,8 +440,9 @@ def pronostici_eliminazione(fase):
                                    'risultato_ospite_pronosticato, '
                                    'marcatore_pronosticato) VALUES (?,?,?,?,?,?)',
                                    (uid, pid, esito, r_casa, r_osp, marc))
-            db_commit(conn)
-            return redirect(url_for('gioco.bracket'))
+           db_commit(conn)
+flash("Pronostici salvati con successo!", "success")
+return redirect(url_for('gioco.home')) # <-- COMPORTAMENTO IDENTICO AI GIRONI
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
                     for p in partite}
