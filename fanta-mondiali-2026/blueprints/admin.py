@@ -1014,9 +1014,10 @@ def admin_importa_api_knockout(fase):
                     (fase, casa, ospite))
 
                 if not exists:
+                    # TRUCCO: Inseriamo giornata=0 per accontentare il vincolo NOT NULL del database
                     db_execute(conn,
-                        'INSERT INTO partite (fase, squadra_casa, squadra_ospite, data_ora_partita, pronosticabile) '
-                        'VALUES (?,?,?,?,FALSE)',
+                        'INSERT INTO partite (fase, squadra_casa, squadra_ospite, data_ora_partita, pronosticabile, giornata) '
+                        'VALUES (?,?,?,?,FALSE,0)',
                         (fase, casa, ospite, data_ora))
                     inserite += 1
         db_commit(conn)
