@@ -975,3 +975,55 @@ def admin_modifica_giornata_archiviata(giornata):
         
     flash(f'🔄 Round {giornata} riaperto! Ora puoi modificare i risultati dalla Home Admin.', 'success')
     return redirect(url_for('admin.admin_home'))
+@admin_bp.route('/admin/importa-api-knockout/<fase>', methods=['POST'], endpoint='admin_importa_api_knockout')
+def admin_importa_api_knockout(fase):
+    """Scarica in automatico le partite della fase a eliminazione diretta dall'API."""
+    if require_admin(): return 'Accesso negato.', 403
+    from flask import current_app
+    code = current_app.config.get('COMPETITION_CODE', 'WC')
+    
+    # Richiesta di tutte le partite del torneo all'API
+    data, err = _api_get(f'/competitions/{code}/matches')
+    if err:
+        flash(f'Errore API: {err}', 'danger')
+        return redirect(url_for('admin.admin_home'))
+
+    # Mappa le nostre sigle DB con i nomi ufficiali che usa l'API
+    stage_map = {
+        'r32': ['LAST_32', 'ROUND_OF_32'],
+        'r16': ['LAST_16'],
+        'qf':  ['QUARTER_FINALS'],
+        'sf':  ['SEMI_FINALS'],
+        'finale': ['FINAL'],
+        '3posto': ['THIRD_PLACE']
+    }
+    target_stages = stage_map.get(fase, [])
+
+    inserite = 0
+    with db_conn() as conn:
+        for m in (data or {}).get('matches', []):
+            stage = m.get('stage')
+            if stage in target_stages:
+                casa = (m.get('homeTeam', {}).get('name') or 'TBD').upper()
+                ospite = (m.get('awayTeam', {}).get('name') or 'TBD').upper()
+                data_ora = m.get('utcDate', '')
+
+                # Evita duplicati controllando se la partita è già nel DB
+                exists = db_fetchone(conn,
+                    'SELECT id FROM partite WHERE fase=? AND squadra_casa=? AND squadra_ospite=?',
+                    (fase, casa, ospite))
+
+                if not exists:
+                    db_execute(conn,
+                        'INSERT INTO partite (fase, squadra_casa, squadra_ospite, data_ora_partita, pronosticabile) '
+                        'VALUES (?,?,?,?,FALSE)',
+                        (fase, casa, ospite, data_ora))
+                    inserite += 1
+        db_commit(conn)
+
+    if inserite > 0:
+        flash(f'Magia fatta! {inserite} partite importate per {FASI_NOMI.get(fase, fase)}.', 'success')
+    else:
+        flash(f'Nessuna nuova partita trovata nell\'API per questa fase. (O l\'API non è ancora aggiornata, o le hai già importate).', 'warning')
+
+    return redirect(url_for('admin.admin_home'))
