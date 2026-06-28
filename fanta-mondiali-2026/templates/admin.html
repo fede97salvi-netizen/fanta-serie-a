@@ -10,8 +10,7 @@
 {% endwith %}
 <div style="padding:0 16px;">
 
-  <!-- Giornata attiva -->
- {% if giornata_attiva %}
+  {% if giornata_attiva %}
   <div class="fsa-section-title">⚽ Gironi – Round {{ giornata_attiva }}</div>
   <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
     <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=giornata_attiva) }}" style="display:contents;">
@@ -43,11 +42,16 @@
   </div>
   {% endif %}
 
-  <!-- Fase knockout attiva -->
   {% if fase_attiva %}
   <div class="fsa-section-title">🏆 {{ FASI_NOMI[fase_attiva] }}</div>
   {% set sf = stati_fasi.get(fase_attiva) %}
   <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
+    
+    <form method="post" action="{{ url_for('admin.admin_importa_api_knockout', fase=fase_attiva) }}" style="display:contents;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-gold" style="background: linear-gradient(135deg, #FFD700 0%, #D4AF37 100%);color:black;" onclick="return confirm('Vuoi scaricare in automatico le partite dall\'API per i {{ FASI_NOMI[fase_attiva] }}?')">⬇️ Scarica da API</button>
+    </form>
+    
     {% if sf and not sf.pronostici_locked %}
     <form method="post" action="{{ url_for('admin.admin_chiudi_pronostici_fase', fase=fase_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -70,8 +74,7 @@
   </div>
   {% endif %}
 
-  <!-- Griglia funzionalità -->
- <div class="fsa-section-title">FUNZIONALITÀ</div>
+  <div class="fsa-section-title">FUNZIONALITÀ</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     {% for href, icon, label, sub in [
       (url_for('admin.admin_importa_giornata'),     '⚽', 'Importa gironi',    'Partite da API'),
