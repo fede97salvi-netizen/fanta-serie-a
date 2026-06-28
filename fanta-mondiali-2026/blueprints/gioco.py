@@ -414,27 +414,6 @@ def pronostici_eliminazione(fase):
             giocatori_per_partita[pid] = lista
 
         if request.method == 'POST' and not is_locked:
-            # --- FASE 1: VALIDAZIONE DEI DATI ---
-            errori_validazione = False
-            for p in partite:
-                if is_partita_scaduta(row_get(p, 'data_ora_partita')):
-                    continue
-                pid    = row_get(p, 'id')
-                esito  = request.form.get(f'esito_{pid}')
-                rcasa  = request.form.get(f'casa_{pid}', '').strip()
-                rosp   = request.form.get(f'ospite_{pid}', '').strip()
-                marc   = (request.form.get(f'marcatore_{pid}') or '').strip()
-                
-                if esito or rcasa != '' or rosp != '' or marc:
-                    if not esito or rcasa == '' or rosp == '' or not marc:
-                        errori_validazione = True
-                        break
-            
-            if errori_validazione:
-                flash("Attenzione: hai compilato solo parzialmente una partita. Inserisci TUTTI i dati (Esito 1X2, Gol Casa, Gol Ospite, Marcatore)!", "warning")
-                return redirect(url_for('gioco.pronostici_eliminazione', fase=fase))
-
-            # --- FASE 2: SALVATAGGIO ---
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
                     continue
@@ -443,8 +422,7 @@ def pronostici_eliminazione(fase):
                 r_casa = _safe_int(request.form.get(f'casa_{pid}'), lo=0, hi=20)
                 r_osp  = _safe_int(request.form.get(f'ospite_{pid}'), lo=0, hi=20)
                 marc   = (request.form.get(f'marcatore_{pid}') or '').strip()
-                
-                if esito and r_casa is not None and r_osp is not None and marc:
+                if esito or (r_casa is not None and r_osp is not None) or marc:
                     if pid in pron_salvati:
                         db_execute(conn,
                                    'UPDATE pronostici_eliminazione '
@@ -463,15 +441,17 @@ def pronostici_eliminazione(fase):
                                    'marcatore_pronosticato) VALUES (?,?,?,?,?,?)',
                                    (uid, pid, esito, r_casa, r_osp, marc))
             db_commit(conn)
-            flash("Pronostici salvati con successo!", "success")
             return redirect(url_for('gioco.bracket'))
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
                     for p in partite}
+        
+        # --- MODIFICA AUTOMAZIONE QUI ---
         tutti_pron = {}
-        if is_locked:
-            for p in partite:
-                pid = row_get(p, 'id')
+        for p in partite:
+            pid = row_get(p, 'id')
+            # Se la singola partita è iniziata (scaduta) OPPURE se l'admin blocca manualmente la fase
+            if scadenze.get(pid) or is_locked:
                 tutti_pron[pid] = db_fetchall(conn,
                     'SELECT u.nome_utente, pe.* FROM pronostici_eliminazione pe '
                     'JOIN utenti u ON pe.id_utente=u.id WHERE pe.id_partita=?', (pid,))
