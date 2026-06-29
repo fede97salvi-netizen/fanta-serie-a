@@ -350,21 +350,20 @@ def aggiungi_partita_knockout():
 @admin_bp.route('/admin/risultati-knockout/<fase>', methods=['POST'],
                 endpoint='admin_risultati_knockout_fase')
 def admin_risultati_knockout_fase(fase):
-    """Inserisce i risultati finali di tutti i match di una fase knockout."""
+    """Inserisce i risultati finali (90') di tutti i match di una fase knockout."""
     if require_admin(): return 'Accesso negato.', 403
     
     with db_conn() as conn:
         partite = db_fetchall(conn, 'SELECT id FROM partite WHERE fase=?', (fase,))
         for p in partite:
             pid = row_get(p, 'id')
-            vincitore = (request.form.get(f'vincitore_{pid}') or '').strip()
             r_casa = _safe_int(request.form.get(f'casa_{pid}', '').strip(), lo=0, hi=20)
             r_osp  = _safe_int(request.form.get(f'ospite_{pid}', '').strip(), lo=0, hi=20)
             marcatore = (request.form.get(f'marcatore_{pid}') or '').strip() or None
             
             db_execute(conn,
-                       'UPDATE partite SET vincitore=?, risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
-                       (vincitore, r_casa, r_osp, marcatore, pid))
+                       'UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
+                       (r_casa, r_osp, marcatore, pid))
         db_commit(conn)
         
     flash(f'Risultati salvati con successo per {FASI_NOMI.get(fase, fase)}. Ora puoi calcolare i punti!', 'success')
