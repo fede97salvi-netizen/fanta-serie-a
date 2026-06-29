@@ -2,7 +2,7 @@
 {% block title %}{{ fase_nome }} – Fanta Mondiali{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('gioco.bracket') }" class="btn-back">← Bracket</a>
+  <a href="{{ url_for('gioco.bracket') }}" class="btn-back">← Bracket</a>
 </div>
 <div class="page-header">
   <div class="u-muted-xs">Fase ad eliminazione</div>
@@ -23,8 +23,9 @@
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
       {% if p.girone %}<span class="girone-badge">{{ p.girone }}</span>{% endif %}
       {% if p.data_ora_partita %}<span class="u-muted-xs">{{ p.data_ora_partita|datetime_local }}</span>{% endif %}
-      {% if scaduto %}<span style="font-size:10px;color:var(--red);margin-left:auto;">🔒</span>{% endif %}
+      {% if scaduto %}<span style="font-size:10px;color:var(--red);margin-left:auto;">🔒 chiuso</span>{% endif %}
     </div>
+    
     <div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;align-items:center;margin-bottom:12px;">
       <div style="font-family:var(--font-d);font-size:15px;font-weight:700;text-align:center;">{{ p.squadra_casa or 'TBD' }}</div>
       {% if scaduto and p.risultato_casa_reale is not none %}
@@ -34,15 +35,21 @@
       {% endif %}
       <div style="font-family:var(--font-d);font-size:15px;font-weight:700;text-align:center;">{{ p.squadra_ospite or 'TBD' }}</div>
     </div>
+    
     {% if scaduto %}
       {% if pron %}
       <div style="padding:8px 10px;background:rgba(201,162,39,0.06);border-radius:8px;margin-bottom:8px;font-size:13px;">
         <span style="color:var(--muted);">Il tuo:</span>
         <strong style="color:var(--gold);margin-left:4px;">{{ pron.esito_pronosticato or '—' }}</strong>
         {% if pron.risultato_casa_pronosticato is not none %}<strong style="color:var(--gold);"> ({{ pron.risultato_casa_pronosticato }}–{{ pron.risultato_ospite_pronosticato }})</strong>{% endif %}
-        {% if pron.marcatore_pronosticato %}· <span style="color:var(--azzurro);">⚽ {{ pron.marcatore_pronosticato }}</span>{% endif %}
+        {% if pron.marcatore_pronosticato|string not in ['None', '', 'none'] %}· <span style="color:var(--azzurro);">⚽ {{ pron.marcatore_pronosticato }}</span>{% endif %}
+        
+        {% if punti_miei and punti_miei.get(pid) is not none %}
+          <span style="float:right;background:var(--gold);color:black;padding:1px 5px;border-radius:4px;font-weight:bold;font-size:11px;">+{{ punti_miei[pid] }} PT</span>
+        {% endif %}
       </div>
       {% endif %}
+      
       {% if tutti_pron.get(pid) %}
       <div class="u-muted-xs" style="margin-bottom:6px;">Pronostici gruppo:</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -50,11 +57,28 @@
         <div style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:11px;">
           <span style="color:var(--muted);">{{ t.nome_utente }}:</span>
           <span style="font-family:var(--font-d);color:white;">{{ t.esito_pronosticato or '?' }}</span>
-          {% if t.risultato_casa_pronosticato is not none %}<span class="u-muted-xs"> {{ t.risultato_casa_pronosticato }}–{{ t.risultato_ospite_pronosticato }}</span>{% endif %}
+          
+          {% set gr_casa_str = t.risultato_casa_pronosticato|string %}
+          {% set gr_ospite_str = t.risultato_ospite_pronosticato|string %}
+          {% set gr_casa_valido = gr_casa_str not in ['None', '', 'none'] %}
+          {% set gr_ospite_valido = gr_ospite_str not in ['None', '', 'none'] %}
+          
+          {% if gr_casa_valido or gr_ospite_valido %}
+            <span class="u-muted-xs"> {{ t.risultato_casa_pronosticato if gr_casa_valido else '0' }}–{{ t.risultato_ospite_pronosticato if gr_ospite_valido else '0' }}</span>
+          {% endif %}
+          
+          {% if t.marcatore_pronosticato|string not in ['None', '', 'none'] %}
+            <span style="color:var(--azzurro);"> · ⚽ {{ t.marcatore_pronosticato }}</span>
+          {% endif %}
+          
+          {% if t.punti_ottenuti is not none %}
+            <strong style="color:var(--gold);margin-left:4px;">(+{{ t.punti_ottenuti }}pt)</strong>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
       {% endif %}
+      
     {% else %}
     <div class="fsa-label">Esito</div>
     <div class="esito-group" style="margin-bottom:12px;">
@@ -64,9 +88,9 @@
     </div>
     <div class="fsa-label">Risultato esatto (+3pt)</div>
     <div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center;margin-bottom:12px;">
-      <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;" placeholder="0" value="{{ pron.risultato_casa_pronosticato if pron and pron.risultato_casa_pronosticato is not none else '' }}">
+      <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;" placeholder="0" value="{{ pron.risultato_casa_pronosticato if pron and pron.risultato_casa_pronosticato|string not in ['None', 'none'] else '' }}">
       <div style="text-align:center;color:var(--muted);font-weight:700;">–</div>
-      <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;" placeholder="0" value="{{ pron.risultato_ospite_pronosticato if pron and pron.risultato_ospite_pronosticato is not none else '' }}">
+      <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="text-align:center;font-family:var(--font-d);font-size:20px;font-weight:700;" placeholder="0" value="{{ pron.risultato_ospite_pronosticato if pron and pron.risultato_ospite_pronosticato|string not in ['None', 'none'] else '' }}">
     </div>
     <div class="fsa-label">Marcatore (+2pt)</div>
     <select name="marcatore_{{ pid }}" class="fsa-select">
@@ -85,6 +109,6 @@
   {% endif %}
 </form>
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
-  <a href="{ url_for('gioco.bracket') }" class="btn-back">← Bracket</a>
+  <a href="{{ url_for('gioco.bracket') }}" class="btn-back">← Bracket</a>
 </div>
 {% endblock %}
