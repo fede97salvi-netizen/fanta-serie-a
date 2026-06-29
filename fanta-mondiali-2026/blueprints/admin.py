@@ -130,7 +130,6 @@ def admin_gestisci_partite():
     if require_admin(): return 'Accesso negato.', 403
     with db_conn() as conn:
         giornata_sel = request.args.get('giornata', type=int)
-        girone_sel   = request.args.get('girone', '')
         partite = db_fetchall(conn,
             ('SELECT * FROM partite WHERE giornata=? ORDER BY data_ora_partita'
              if giornata_sel
@@ -145,7 +144,6 @@ def admin_gestisci_partite():
                 'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE',
                 (giornata_attiva,))
 
-        # --- Aggiunta: Caricamento giocatori per l'autocompletamento ---
         tutti_giocatori = db_fetchall(conn,
             'SELECT nome_giocatore, squadra FROM giocatori ORDER BY squadra, nome_giocatore')
         per_sq_db = {}
@@ -166,7 +164,6 @@ def admin_gestisci_partite():
                          if (pref_sc and s_key.startswith(pref_sc)) or
                             (pref_so and s_key.startswith(pref_so))]
             giocatori_per_partita[pid] = lista
-        # ---------------------------------------------------------------
 
     return render_template('admin_gestisci_partite.html',
                            partite=partite, giornata_sel=giornata_sel,
@@ -290,7 +287,7 @@ def archivia_giornata(giornata):
     return redirect(url_for('admin.admin_home'))
 
 
-# ─── Gestione fasi knockout ───────────────────────────────────────────────────
+# ─── Gestione Fasi Knockout (Bracket) ─────────────────────────────────────────
 
 @admin_bp.route('/admin/gestisci-bracket', endpoint='admin_gestisci_bracket')
 def admin_gestisci_bracket():
@@ -301,8 +298,30 @@ def admin_gestisci_bracket():
             fasi_partite[fase] = db_fetchall(conn,
                 'SELECT * FROM partite WHERE fase=? ORDER BY data_ora_partita', (fase,))
         stati_fasi = {row_get(r, 'fase'): r for r in db_fetchall(conn, 'SELECT * FROM stato_fase')}
+        
+        tutti_giocatori = db_fetchall(conn, "SELECT nome_giocatore, squadra FROM giocatori ORDER BY squadra, nome_giocatore")
+        per_sq_db = {}
+        for g in tutti_giocatori:
+            s = (row_get(g, 'squadra') or '').upper().strip()
+            per_sq_db.setdefault(s, []).append(g)
+
+        giocatori_per_partita = {}
+        for fase, partite in fasi_partite.items():
+            for p in partite:
+                pid = row_get(p, 'id')
+                sc  = (row_get(p, 'squadra_casa') or '').upper().strip()
+                so  = (row_get(p, 'squadra_ospite') or '').upper().strip()
+                lista = per_sq_db.get(sc, []) + per_sq_db.get(so, [])
+                if not lista:
+                    pref_sc, pref_so = sc[:4], so[:4]
+                    lista = [g for s_key, gs in per_sq_db.items() for g in gs if (pref_sc and s_key.startswith(pref_sc)) or (pref_so and s_key.startswith(pref_so))]
+                if not lista:
+                    lista = tutti_giocatori
+                giocatori_per_partita[pid] = lista
+
     return render_template('admin_bracket.html',
                            fasi_partite=fasi_partite, stati_fasi=stati_fasi,
+                           giocatori_per_partita=giocatori_per_partita,
                            FASI_NOMI=FASI_NOMI, FASI_ORDINE=['r32','r16','qf','sf','finale','3posto'],
                            session=session)
 
@@ -328,33 +347,35 @@ def aggiungi_partita_knockout():
     return redirect(url_for('admin.admin_gestisci_bracket'))
 
 
-@admin_bp.route('/admin/risultato-knockout/<int:id_partita>', methods=['POST'],
-                endpoint='admin_risultato_knockout')
-def admin_risultato_knockout(id_partita):
-    """Inserisce il risultato di un match knockout: vincitore + gol nei 90'."""
+@admin_bp.route('/admin/risultati-knockout/<fase>', methods=['POST'],
+                endpoint='admin_risultati_knockout_fase')
+def admin_risultati_knockout_fase(fase):
+    """Inserisce i risultati finali di tutti i match di una fase knockout."""
     if require_admin(): return 'Accesso negato.', 403
-    vincitore = (request.form.get('vincitore') or '').strip()
-    gc90 = _safe_int(request.form.get('gol_casa_90', '').strip(), lo=0, hi=20)
-    go90 = _safe_int(request.form.get('gol_ospite_90', '').strip(), lo=0, hi=20)
-    if not vincitore:
-        flash('Inserisci il vincitore.', 'warning')
-        return redirect(url_for('admin.admin_gestisci_bracket'))
+    
     with db_conn() as conn:
-        db_execute(conn,
-                   'UPDATE partite SET vincitore=?, gol_casa_90=?, gol_ospite_90=? WHERE id=?',
-                   (vincitore, gc90, go90, id_partita))
+        partite = db_fetchall(conn, 'SELECT id FROM partite WHERE fase=?', (fase,))
+        for p in partite:
+            pid = row_get(p, 'id')
+            vincitore = (request.form.get(f'vincitore_{pid}') or '').strip()
+            r_casa = _safe_int(request.form.get(f'casa_{pid}', '').strip(), lo=0, hi=20)
+            r_osp  = _safe_int(request.form.get(f'ospite_{pid}', '').strip(), lo=0, hi=20)
+            marcatore = (request.form.get(f'marcatore_{pid}') or '').strip() or None
+            
+            db_execute(conn,
+                       'UPDATE partite SET vincitore=?, risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
+                       (vincitore, r_casa, r_osp, marcatore, pid))
         db_commit(conn)
-    flash('Risultato salvato.', 'success')
+        
+    flash(f'Risultati salvati con successo per {FASI_NOMI.get(fase, fase)}. Ora puoi calcolare i punti!', 'success')
     return redirect(url_for('admin.admin_gestisci_bracket'))
 
 
 @admin_bp.route('/admin/attiva-fase/<fase>', methods=['POST'],
                 endpoint='admin_attiva_fase')
 def admin_attiva_fase(fase):
-    """Attiva una fase knockout e blocca i pronostici dell'eliminazione per quella fase."""
     if require_admin(): return 'Accesso negato.', 403
     with db_conn() as conn:
-        # Disattiva tutto, attiva la fase richiesta
         db_execute(conn, 'UPDATE stato_fase SET is_attiva=FALSE')
         if USE_POSTGRES:
             db_execute(conn,
@@ -366,7 +387,6 @@ def admin_attiva_fase(fase):
                        'INSERT OR IGNORE INTO stato_fase (fase, is_attiva, pronostici_locked) VALUES (?,1,0)',
                        (fase,))
             db_execute(conn, 'UPDATE stato_fase SET is_attiva=1 WHERE fase=?', (fase,))
-        # Disattiva giornata gironi
         db_execute(conn, 'UPDATE stato_giornata SET is_attiva=FALSE')
         db_commit(conn)
     flash(f'{FASI_NOMI.get(fase, fase)} attivata. Apri i pronostici separatamente.', 'success')
@@ -376,7 +396,6 @@ def admin_attiva_fase(fase):
 @admin_bp.route('/admin/apri-pronostici-fase/<fase>', methods=['POST'],
                 endpoint='admin_apri_pronostici_fase')
 def admin_apri_pronostici_fase(fase):
-    """Apre i pronostici per una fase knockout (utenti possono ora inserirli)."""
     if require_admin(): return 'Accesso negato.', 403
     with db_conn() as conn:
         if USE_POSTGRES:
@@ -397,7 +416,6 @@ def admin_apri_pronostici_fase(fase):
 @admin_bp.route('/admin/chiudi-pronostici-fase/<fase>', methods=['POST'],
                 endpoint='admin_chiudi_pronostici_fase')
 def admin_chiudi_pronostici_fase(fase):
-    """Chiude i pronostici (lock) per una fase knockout — fa partire le partite."""
     if require_admin(): return 'Accesso negato.', 403
     with db_conn() as conn:
         if USE_POSTGRES:
@@ -489,7 +507,7 @@ def admin_risultati_torneo():
     return render_template('admin_risultati_torneo.html', rf=rf, session=session)
 
 
-# ─── Ricalcola ────────────────────────────────────────────────────────────────
+# ─── Utility Ricalcola ────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/ricalcola-tutto', methods=['POST'],
                 endpoint='admin_ricalcola_tutto')
@@ -498,8 +516,6 @@ def admin_ricalcola_tutto():
     flash(ricalcola_tutto(), 'success')
     return redirect(url_for('admin.admin_home'))
 
-
-# ─── Toggle pronosticabile ───────────────────────────────────────────────────
 
 @admin_bp.route('/admin/toggle-pronosticabile/<int:id_partita>', methods=['POST'],
                 endpoint='admin_toggle_pronosticabile')
@@ -519,12 +535,11 @@ def admin_toggle_pronosticabile(id_partita):
     return redirect(request.referrer or url_for('admin.admin_gestisci_partite'))
 
 
-# ─── Importa risultati da API ─────────────────────────────────────────────────
+# ─── Importazione automatica risultati gironi da API ──────────────────────────
 
 @admin_bp.route('/admin/importa-risultati/<int:giornata>', methods=['POST'],
                 endpoint='admin_importa_risultati')
 def admin_importa_risultati(giornata):
-    """Scarica e aggiorna i risultati delle partite pronosticabili da football-data.org."""
     if require_admin(): return 'Accesso negato.', 403
     from flask import current_app
     code = current_app.config.get('COMPETITION_CODE', 'WC')
@@ -551,7 +566,6 @@ def admin_importa_risultati(giornata):
             nome_casa  = (m['homeTeam']['name'] or '').upper()
             nome_ospite = (m['awayTeam']['name'] or '').upper()
             
-            # --- NUOVA LOGICA: Estrazione Marcatori ---
             marcatori_list = []
             goals = m.get('goals', [])
             for g in goals:
@@ -562,16 +576,13 @@ def admin_importa_risultati(giornata):
             
             marcatore_str = ", ".join(marcatori_list) if marcatori_list else None
             
-            # Se la partita finisce 0-0, forza "Nessun marcatore"
             if casa == 0 and osp == 0:
                 marcatore_str = "Nessun marcatore"
-            # ------------------------------------------
 
             for p in partite_db:
                 if (row_get(p, 'squadra_casa') == nome_casa and
                         row_get(p, 'squadra_ospite') == nome_ospite):
                     
-                    # Aggiorniamo anche il campo marcatore_reale
                     db_execute(conn,
                                'UPDATE partite SET risultato_casa_reale=?, '
                                'risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
@@ -582,7 +593,8 @@ def admin_importa_risultati(giornata):
     flash(f'Risultati aggiornati da API: {aggiornate} partite.', 'success')
     return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
 
-# ─── Pagina pronostici torneo admin ──────────────────────────────────────────
+
+# ─── Viste Separate e Reminder ────────────────────────────────────────────────
 
 @admin_bp.route('/admin/pronostici-torneo-pg', endpoint='admin_pronostici_torneo_pg')
 def admin_pronostici_torneo_pg():
@@ -599,8 +611,6 @@ def admin_pronostici_torneo_pg():
                            torneo_locked=torneo_locked,
                            tutti=tutti, session=session)
 
-
-# ─── Reminder manuale fase knockout ──────────────────────────────────────────
 
 @admin_bp.route('/admin/reminder-manuale-fase/<fase>', methods=['POST'],
                 endpoint='admin_invia_reminder_manuale_fase')
@@ -621,7 +631,6 @@ def admin_invia_reminder_manuale_fase(fase):
         pl = [{'squadra_casa': row_get(p, 'squadra_casa'),
                'squadra_ospite': row_get(p, 'squadra_ospite'),
                'data_ora_partita': row_get(p, 'data_ora_partita')} for p in partite]
-        from services.game_logic import FASI_NOMI
         invia_email_async(
             destinatari,
             f'🏆 Fanta Mondiali — {FASI_NOMI.get(fase, fase)}: inserisci i pronostici!',
@@ -632,8 +641,6 @@ def admin_invia_reminder_manuale_fase(fase):
         flash(f'Errore: {e}', 'danger')
     return redirect(url_for('admin.admin_home'))
 
-
-# ─── Pagine separate admin ────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/importa-giocatori-pg', endpoint='admin_importa_giocatori_pg')
 def admin_importa_giocatori_pg():
@@ -668,7 +675,6 @@ def admin_ricalcola_pg():
 @admin_bp.route('/admin/reminder-manuale/<int:giornata>', methods=['POST'],
                 endpoint='admin_invia_reminder_manuale')
 def admin_invia_reminder_manuale(giornata):
-    """Invia reminder manuale per una giornata gironi."""
     if require_admin(): return 'Accesso negato.', 403
     try:
         with db_conn() as conn:
@@ -701,11 +707,6 @@ def admin_invia_reminder_manuale(giornata):
 @admin_bp.route('/admin/importa-giocatori', methods=['POST'],
                 endpoint='admin_importa_giocatori')
 def admin_importa_giocatori():
-    """
-    Importa le rose di tutte le squadre WC 2026 dall'API football-data.org.
-    Gira in background per rispettare il rate limit (10 req/min piano free).
-    Stima: ~6-7 minuti per 48 squadre.
-    """
     if require_admin(): return 'Accesso negato.', 403
 
     from flask import current_app
@@ -717,59 +718,42 @@ def admin_importa_giocatori():
             log.info('[ROSE] ▶ Avvio importazione rose WC 2026...')
             try:
                 code = app.config.get('COMPETITION_CODE', 'WC')
-
-                # Step 1: ottieni la lista completa delle 48 squadre
                 data, err = _api_get(f'/competitions/{code}/teams')
                 if err:
                     log.error(f'[ROSE] Errore lista squadre: {err}')
                     return
                 teams = data.get('teams', [])
-                log.info(f'[ROSE] Trovate {len(teams)} squadre')
-
+                
                 if not teams:
-                    log.warning('[ROSE] Nessuna squadra restituita dall\'API.')
                     return
 
-                # Step 2: svuota la tabella giocatori
                 with db_conn() as conn:
                     db_execute(conn, 'DELETE FROM giocatori')
                     db_commit(conn)
-                log.info('[ROSE] Tabella giocatori svuotata.')
 
-                # Step 3: per ogni squadra recupera la rosa individualmente
-                # (piano free: /teams/{id} restituisce squad completa)
                 totale_inseriti = 0
-                richieste_fatte = 1  # già fatto la chiamata /competitions/WC/teams
+                richieste_fatte = 1
 
                 for i, team in enumerate(teams):
                     team_id   = team.get('id')
-                    # Usa shortName se disponibile (più corto), altrimenti name
                     team_name = (team.get('shortName') or team.get('name') or '').upper()
-
-                    # Prova prima a usare squad già nella risposta /competitions/teams
                     squad = team.get('squad', [])
 
-                    # Se vuoto (frequente su piano free), chiama /teams/{id}
                     if not squad and team_id:
-                        # Rate limiting: max 10 req/min → aspetta se necessario
                         richieste_fatte += 1
                         if richieste_fatte % 9 == 0:
-                            log.info(f'[ROSE] Pausa rate limit dopo {richieste_fatte} chiamate...')
                             _time.sleep(65)
                         else:
-                            _time.sleep(7)  # ~8-9 req/min, sicuro
+                            _time.sleep(7)
 
                         team_data, err2 = _api_get(f'/teams/{team_id}')
                         if err2:
-                            log.warning(f'[ROSE] Errore per {team_name}: {err2}')
                             continue
                         squad = (team_data or {}).get('squad', [])
 
                     if not squad:
-                        log.warning(f'[ROSE] Rosa vuota per {team_name} (id={team_id})')
                         continue
 
-                    # Inserisci i giocatori nel DB
                     inseriti = 0
                     with db_conn() as conn:
                         for player in squad:
@@ -783,33 +767,19 @@ def admin_importa_giocatori():
                         db_commit(conn)
 
                     totale_inseriti += inseriti
-                    log.info(
-                        f'[ROSE] {team_name}: {inseriti} giocatori '
-                        f'({i + 1}/{len(teams)})'
-                    )
-
-                log.info(
-                    f'[ROSE] ✅ Completato: {totale_inseriti} giocatori '
-                    f'da {len(teams)} squadre.'
-                )
 
             except Exception:
                 log.exception('[ROSE] Errore importazione rose')
 
     threading.Thread(target=_importa_rose, daemon=True).start()
-    flash(
-        '🌍 Importazione rose avviata in background (~6-7 minuti per il '
-        'rate limiting API). Controlla i log di Render per il progresso.',
-        'info'
-    )
+    flash('🌍 Importazione rose avviata in background (~6-7 minuti per il rate limiting API).', 'info')
     return redirect(url_for('admin.admin_home'))
-# ─── Selezione Massiva Pronosticabili ─────────────────────────────────────────
+
+
+# ─── Funzionalità Massive e Modifiche Manuali Pronostici ──────────────────────
 
 @admin_bp.route('/admin/massivo-pronosticabile/<int:giornata>/<int:stato>', methods=['POST'], endpoint='admin_massivo_pronosticabile')
 def admin_massivo_pronosticabile(giornata, stato):
-    from flask import flash, redirect, url_for
-    from db_utils import db_conn, db_execute, db_commit
-    if require_admin(): return "Accesso negato.", 403
     nuovo_stato = bool(stato)
     with db_conn() as conn:
         db_execute(conn, "UPDATE partite SET pronosticabile=? WHERE giornata=?", (nuovo_stato, giornata))
@@ -819,14 +789,8 @@ def admin_massivo_pronosticabile(giornata, stato):
     return redirect(url_for('admin.admin_gestisci_partite', giornata=giornata))
 
 
-# ─── Gestione Pronostici Partite (Gironi) ─────────────────────────────────────
-
 @admin_bp.route('/admin/pronostici-partite', methods=['GET', 'POST'], endpoint='admin_pronostici_partite')
 def admin_pronostici_partite():
-    from flask import request, flash, redirect, url_for, render_template, session
-    from db_utils import db_conn, db_fetchall, db_fetchone, db_execute, db_commit, row_get
-    from services.game_logic import _safe_int  # <-- Aggiunto per evitare i crash sui campi vuoti
-
     if require_admin(): return "Accesso negato.", 403
 
     with db_conn() as conn:
@@ -849,12 +813,10 @@ def admin_pronostici_partite():
                             esito = request.form.get(f'esito_{uid}', '').strip()
                             marc_raw = request.form.get(f'marc_{uid}', '').strip()
                             
-                            # Trasforma in numeri veri o lascia None se è vuoto
                             gc = _safe_int(gc_raw, lo=0, hi=20)
                             go = _safe_int(go_raw, lo=0, hi=20)
                             marc = marc_raw if marc_raw else None
 
-                            # Calcolo esito automatico
                             if gc is not None and go is not None:
                                 if gc > go: esito = '1'
                                 elif gc < go: esito = '2'
@@ -895,7 +857,6 @@ def admin_pronostici_partite():
                     continue
                     
                 p = pron.get(uid)
-                
                 esito_val = ''
                 gc_val = ''
                 go_val = ''
@@ -922,23 +883,20 @@ def admin_pronostici_partite():
                 })
 
     return render_template('admin_pronostici_partite.html', partite=partite, partita_sel=partita_sel, utenti_pronostici=utenti_pronostici, session=session)
+
+
 @admin_bp.route('/admin/attiva-giornata', methods=['POST'], endpoint='admin_attiva_giornata')
 def admin_attiva_giornata():
-    """Attiva un round dei gironi (e spegne eventuali fasi KO attive)"""
-    if require_admin(): 
-        return 'Accesso negato.', 403
-        
+    if require_admin(): return 'Accesso negato.', 403
     giornata = _safe_int(request.form.get('giornata'))
     if not giornata:
         flash('Seleziona un round valido da attivare.', 'warning')
         return redirect(url_for('admin.admin_home'))
         
     with db_conn() as conn:
-        # 1. Disattiva tutte le giornate dei gironi e le fasi eliminazione
         db_execute(conn, 'UPDATE stato_giornata SET is_attiva=FALSE')
         db_execute(conn, 'UPDATE stato_fase SET is_attiva=FALSE')
         
-        # 2. Attiva la giornata selezionata
         if USE_POSTGRES:
             db_execute(conn,
                        'INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio) '
@@ -946,7 +904,6 @@ def admin_attiva_giornata():
                        'ON CONFLICT (giornata) DO UPDATE SET is_attiva=TRUE',
                        (giornata,))
         else:
-            # Per SQLite backend locale
             db_execute(conn, 'INSERT OR IGNORE INTO stato_giornata (giornata, is_attiva, is_in_archivio) VALUES (?, 0, 0)', (giornata,))
             db_execute(conn, 'UPDATE stato_giornata SET is_attiva=TRUE WHERE giornata=?', (giornata,))
             
@@ -954,18 +911,15 @@ def admin_attiva_giornata():
         
     flash(f'✅ Round {giornata} attivato con successo!', 'success')
     return redirect(url_for('admin.admin_home'))
+
+
 @admin_bp.route('/admin/modifica-giornata-archiviata/<int:giornata>', methods=['GET', 'POST'], endpoint='admin_modifica_giornata_archiviata')
 def admin_modifica_giornata_archiviata(giornata):
-    """Riapre una giornata archiviata rimettendola come attiva nella Dashboard"""
-    if require_admin(): 
-        return 'Accesso negato.', 403
-        
+    if require_admin(): return 'Accesso negato.', 403
     with db_conn() as conn:
-        # 1. Disattiva temporaneamente qualsiasi altra giornata o fase attiva
         db_execute(conn, 'UPDATE stato_giornata SET is_attiva=FALSE')
         db_execute(conn, 'UPDATE stato_fase SET is_attiva=FALSE')
         
-        # 2. Riattiva la giornata selezionata e la rimuove dall'archivio
         if USE_POSTGRES:
             db_execute(conn, 'UPDATE stato_giornata SET is_attiva=TRUE, is_in_archivio=FALSE WHERE giornata=?', (giornata,))
         else:
@@ -975,20 +929,18 @@ def admin_modifica_giornata_archiviata(giornata):
         
     flash(f'🔄 Round {giornata} riaperto! Ora puoi modificare i risultati dalla Home Admin.', 'success')
     return redirect(url_for('admin.admin_home'))
+
+
 @admin_bp.route('/admin/importa-api-knockout/<fase>', methods=['POST'], endpoint='admin_importa_api_knockout')
 def admin_importa_api_knockout(fase):
-    """Scarica in automatico le partite della fase a eliminazione diretta dall'API."""
     if require_admin(): return 'Accesso negato.', 403
     from flask import current_app
     code = current_app.config.get('COMPETITION_CODE', 'WC')
-    
-    # Richiesta di tutte le partite del torneo all'API
     data, err = _api_get(f'/competitions/{code}/matches')
     if err:
         flash(f'Errore API: {err}', 'danger')
         return redirect(url_for('admin.admin_home'))
 
-    # Mappa le nostre sigle DB con i nomi ufficiali che usa l'API
     stage_map = {
         'r32': ['LAST_32', 'ROUND_OF_32'],
         'r16': ['LAST_16'],
@@ -1008,13 +960,11 @@ def admin_importa_api_knockout(fase):
                 ospite = (m.get('awayTeam', {}).get('name') or 'TBD').upper()
                 data_ora = m.get('utcDate', '')
 
-                # Evita duplicati controllando se la partita è già nel DB
                 exists = db_fetchone(conn,
                     'SELECT id FROM partite WHERE fase=? AND squadra_casa=? AND squadra_ospite=?',
                     (fase, casa, ospite))
 
                 if not exists:
-                    # TRUCCO: Inseriamo giornata=0 per accontentare il vincolo NOT NULL del database
                     db_execute(conn,
                         'INSERT INTO partite (fase, squadra_casa, squadra_ospite, data_ora_partita, pronosticabile, giornata) '
                         'VALUES (?,?,?,?,FALSE,0)',
@@ -1025,6 +975,6 @@ def admin_importa_api_knockout(fase):
     if inserite > 0:
         flash(f'Magia fatta! {inserite} partite importate per {FASI_NOMI.get(fase, fase)}.', 'success')
     else:
-        flash(f'Nessuna nuova partita trovata nell\'API per questa fase. (O l\'API non è ancora aggiornata, o le hai già importate).', 'warning')
+        flash(f'Nessuna nuova partita trovata nell\'API per questa fase.', 'warning')
 
     return redirect(url_for('admin.admin_home'))
