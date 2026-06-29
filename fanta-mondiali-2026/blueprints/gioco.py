@@ -36,7 +36,6 @@ def home():
             return redirect(url_for('auth.logout'))
         uid = row_get(user, 'id')
 
-        # Punteggio
         p = db_fetchone(conn, 'SELECT punteggio_totale FROM punteggi WHERE id_utente=?', (uid,))
         punteggio = row_get(p, 'punteggio_totale') or 0
         rank = db_fetchone(conn,
@@ -44,7 +43,6 @@ def home():
                            (punteggio,))
         posizione = row_get(rank, 'r') or 1
 
-        # Stato giornata (gironi)
         g_row = db_fetchone(conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva=TRUE')
         giornata_attiva = row_get(g_row, 'giornata') if g_row else None
         partite_gironi = []
@@ -54,7 +52,6 @@ def home():
                 'SELECT * FROM partite WHERE giornata=? AND pronosticabile=TRUE ORDER BY data_ora_partita',
                 (giornata_attiva,))
         if not partite_gironi:
-            # Fallback: cerca partite pronosticabili senza risultato
             partite_gironi = db_fetchall(conn,
                 'SELECT * FROM partite WHERE pronosticabile=TRUE '
                 'AND risultato_casa_reale IS NULL '
@@ -62,7 +59,6 @@ def home():
             if partite_gironi and not giornata_attiva:
                 giornata_attiva = row_get(partite_gironi[0], 'giornata')
 
-        # Stato fase knockout
         f_row = db_fetchone(conn, 'SELECT * FROM stato_fase WHERE is_attiva=TRUE')
         fase_attiva = row_get(f_row, 'fase') if f_row else None
         partite_fase = []
@@ -71,7 +67,6 @@ def home():
                                        'SELECT * FROM partite WHERE fase=?',
                                        (fase_attiva,))
 
-        # Pronostici torneo pubblici (visibili quando locked)
         lock_row = db_fetchone(conn,
             'SELECT is_locked FROM stato_pronostici_torneo WHERE id=1')
         torneo_locked = row_get(lock_row, 'is_locked') if lock_row else False
@@ -84,7 +79,6 @@ def home():
                 'FROM utenti u LEFT JOIN pronostici_torneo pt ON u.id=pt.id_utente '
                 'ORDER BY u.nome_utente')
 
-        # Top 5 classifica
         top5 = db_fetchall(conn,
             'SELECT u.nome_utente, p.punteggio_totale FROM utenti u '
             'JOIN punteggi p ON u.id=p.id_utente '
@@ -182,7 +176,6 @@ def pronostici_gironi(giornata):
                                              (uid, giornata))}
 
         if request.method == 'POST':
-            # --- FASE 1: VALIDAZIONE DEI DATI ---
             errori_validazione = False
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
@@ -202,7 +195,6 @@ def pronostici_gironi(giornata):
                 flash("Attenzione: hai compilato solo parzialmente una partita. Inserisci TUTTI i dati (Esito 1X2, Gol Casa, Gol Ospite, Marcatore)!", "warning")
                 return redirect(url_for('gioco.pronostici_gironi', giornata=giornata))
 
-            # --- FASE 2: SALVATAGGIO EFFETTIVO ---
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
                     continue
@@ -326,7 +318,6 @@ def archivio_giornate():
 
 @gioco_bp.route('/classifica-cumulativa/<int:giornata>', endpoint='classifica_cumulativa_giornata')
 def classifica_cumulativa_giornata(giornata):
-    """Ponte di emergenza: reindirizza alla classifica generale."""
     if 'nome_utente' not in session:
         return redirect(url_for('auth.login'))
     return redirect(url_for('gioco.classifica'))
@@ -336,7 +327,6 @@ def classifica_cumulativa_giornata(giornata):
 
 @gioco_bp.route('/bracket', endpoint='bracket')
 def bracket():
-    """Visualizzazione del bracket completo con pronostici dell'utente."""
     if 'nome_utente' not in session:
         return redirect(url_for('auth.login'))
     with db_conn() as conn:
@@ -345,20 +335,17 @@ def bracket():
             return redirect(url_for('auth.logout'))
         uid = row_get(user, 'id')
 
-        # Partite di ogni fase knockout
         fasi_partite = {}
         for fase in ['r32', 'r16', 'qf', 'sf', 'finale', '3posto']:
             fasi_partite[fase] = db_fetchall(conn,
                                              'SELECT * FROM partite WHERE fase=? ORDER BY data_ora_partita',
                                              (fase,))
 
-        # Pronostici eliminazione dell'utente
         pron_elim = {row_get(r, 'id_partita'): r
                      for r in db_fetchall(conn,
                                          'SELECT * FROM pronostici_eliminazione WHERE id_utente=?',
                                          (uid,))}
 
-        # Stato fasi
         stati_fase = {row_get(r, 'fase'): r
                       for r in db_fetchall(conn, 'SELECT * FROM stato_fase')}
 
@@ -373,7 +360,6 @@ def bracket():
 @gioco_bp.route('/bracket/<fase>', methods=['GET', 'POST'],
                 endpoint='pronostici_eliminazione')
 def pronostici_eliminazione(fase):
-    """Pronostici knockout — form gironi (esito+risultato+marcatore) con redirect alla Home."""
     if 'nome_utente' not in session:
         return redirect(url_for('auth.login'))
     with db_conn() as conn:
@@ -395,7 +381,6 @@ def pronostici_eliminazione(fase):
                                              '(SELECT id FROM partite WHERE fase=?)',
                                              (uid, fase))}
 
-        # ── Giocatori con fallback garantito ────────────────────────────────
         tutti_giocatori = db_fetchall(conn,
             'SELECT nome_giocatore, squadra FROM giocatori ORDER BY squadra, nome_giocatore')
         per_sq_db = {}
@@ -420,7 +405,6 @@ def pronostici_eliminazione(fase):
             giocatori_per_partita[pid] = lista
 
         if request.method == 'POST' and not is_locked:
-            # --- FASE 1: VALIDAZIONE DEI DATI ---
             errori_validazione = False
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
@@ -440,7 +424,6 @@ def pronostici_eliminazione(fase):
                 flash("Attenzione: hai compilato solo parzialmente una partita. Inserisci TUTTI i dati (Esito 1X2, Gol Casa, Gol Ospite, Marcatore)!", "warning")
                 return redirect(url_for('gioco.pronostici_eliminazione', fase=fase))
 
-            # --- FASE 2: SALVATAGGIO ---
             for p in partite:
                 if is_partita_scaduta(row_get(p, 'data_ora_partita')):
                     continue
@@ -470,19 +453,43 @@ def pronostici_eliminazione(fase):
                                    (uid, pid, esito, r_casa, r_osp, marc))
             db_commit(conn)
             flash("Pronostici salvati con successo!", "success")
-            return redirect(url_for('auth.home'))
+            return redirect(url_for('gioco.home'))
 
         scadenze = {row_get(p, 'id'): is_partita_scaduta(row_get(p, 'data_ora_partita'))
                     for p in partite}
         
-        # Svelamento live dei pronostici se scaduta o bloccata
         tutti_pron = {}
+        punti_miei = {}
+        
         for p in partite:
             pid = row_get(p, 'id')
+            
+            pron = pron_salvati.get(pid)
+            if pron and row_get(p, 'risultato_casa_reale') is not None:
+                punti_miei[pid] = calcola_punti_pronostico(pron, p)['totale']
+            else:
+                punti_miei[pid] = None
+
             if scadenze.get(pid) or is_locked:
-                tutti_pron[pid] = db_fetchall(conn,
+                rows = db_fetchall(conn,
                     'SELECT u.nome_utente, pe.* FROM pronostici_eliminazione pe '
                     'JOIN utenti u ON pe.id_utente=u.id WHERE pe.id_partita=?', (pid,))
+                
+                arricchiti = []
+                for r in rows:
+                    punti_tot = None
+                    if row_get(p, 'risultato_casa_reale') is not None:
+                        punti_tot = calcola_punti_pronostico(r, p)['totale']
+                    
+                    arricchiti.append({
+                        'nome_utente': row_get(r, 'nome_utente'),
+                        'esito_pronosticato': row_get(r, 'esito_pronosticato'),
+                        'risultato_casa_pronosticato': row_get(r, 'risultato_casa_pronosticato'),
+                        'risultato_ospite_pronosticato': row_get(r, 'risultato_ospite_pronosticato'),
+                        'marcatore_pronosticato': row_get(r, 'marcatore_pronosticato'),
+                        'punti_ottenuti': punti_tot
+                    })
+                tutti_pron[pid] = arricchiti
 
     return render_template('pronostici_eliminazione.html',
                            fase=fase, fase_nome=FASI_NOMI.get(fase, fase),
@@ -491,6 +498,7 @@ def pronostici_eliminazione(fase):
                            is_locked=is_locked,
                            scadenze=scadenze,
                            tutti_pron=tutti_pron,
+                           punti_miei=punti_miei,
                            giocatori_per_partita=giocatori_per_partita,
                            session=session)
 
@@ -500,7 +508,6 @@ def pronostici_eliminazione(fase):
 @gioco_bp.route('/pronostici-torneo', methods=['GET', 'POST'],
                 endpoint='pronostici_torneo')
 def pronostici_torneo():
-    """Inserimento pronostici torneo pre-partenza."""
     if 'nome_utente' not in session:
         return redirect(url_for('auth.login'))
     with db_conn() as conn:
