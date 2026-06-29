@@ -2,11 +2,11 @@
 {% block title %}Admin Bracket{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Dashboard Admin</a>
 </div>
 <div class="page-header">
-  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
-  <h2>🏆 Gestione Bracket</h2>
+  <div class="u-muted-xs">Gestione Bracket</div>
+  <h2>🏆 Fasi a Eliminazione</h2>
 </div>
 <div style="padding:0 16px;">
 
@@ -14,6 +14,7 @@
 {% set partite = fasi_partite.get(fase, []) %}
 {% set sf = stati_fasi.get(fase) %}
 <div class="fsa-card" style="margin-bottom:14px;padding:0;">
+  
   <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <span style="font-family:var(--font-d);font-size:14px;font-weight:700;color:var(--gold);">{{ FASI_NOMI[fase] }}</span>
     <span class="u-muted-xs">({{ partite|length }} partite)</span>
@@ -24,36 +25,60 @@
     {% endif %}
   </div>
 
-  {% for p in partite %}
-  <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-      <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_casa }}</span>
-      <span style="color:var(--muted);font-size:11px;">vs</span>
-      <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_ospite }}</span>
-      {% if p.vincitore %}
-      <span style="font-size:11px;color:var(--gold);margin-left:auto;">✅ {{ p.vincitore }}</span>
-      {% if p.gol_casa_90 is not none %}<span class="u-muted-xs">({{ p.gol_casa_90 }}–{{ p.gol_ospite_90 }} 90')</span>{% endif %}
-      {% endif %}
+  <form method="post" action="{{ url_for('admin.admin_risultati_knockout_fase', fase=fase) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    {% for p in partite %}
+    {% set pid = p.id %}
+    {% set giocatori = giocatori_per_partita.get(pid, []) %}
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+      
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_casa }}</span>
+        <span style="color:var(--muted);font-size:11px;">vs</span>
+        <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_ospite }}</span>
+        
+        {% if p.vincitore %}
+        <span style="font-size:11px;color:var(--gold);margin-left:auto;">✅ Ha passato il turno: {{ p.vincitore }}</span>
+        {% endif %}
+      </div>
+      
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <select name="vincitore_{{ pid }}" class="fsa-select" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px;">
+            <option value="">Chi passa il turno?</option>
+            {% if p.squadra_casa != 'TBD' %}<option value="{{ p.squadra_casa }}" {% if p.vincitore == p.squadra_casa %}selected{% endif %}>{{ p.squadra_casa }}</option>{% endif %}
+            {% if p.squadra_ospite != 'TBD' %}<option value="{{ p.squadra_ospite }}" {% if p.vincitore == p.squadra_ospite %}selected{% endif %}>{{ p.squadra_ospite }}</option>{% endif %}
+          </select>
+          
+          <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_casa_reale if p.risultato_casa_reale is not none else '' }}">
+          <span style="color:var(--muted);font-size:14px;font-weight:bold;">–</span>
+          <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_ospite_reale if p.risultato_ospite_reale is not none else '' }}">
+        </div>
+        
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <select name="marcatore_{{ pid }}" class="fsa-select" style="flex:1;padding:7px 10px;font-size:13px;">
+            <option value="">— Marcatore —</option>
+            <option value="Nessun marcatore" {% if p.marcatore_reale == 'Nessun marcatore' %}selected{% endif %}>Nessun marcatore (0-0)</option>
+            <option value="Autogol" {% if p.marcatore_reale == 'Autogol' %}selected{% endif %}>Autogol</option>
+            {% for g in giocatori %}
+            <option value="{{ g.nome_giocatore }}" {% if p.marcatore_reale == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }} ({{ g.squadra }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
     </div>
-    {% if not p.vincitore %}
-    <form method="post" action="{{ url_for('admin.admin_risultato_knockout', id_partita=p.id) }}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <select name="vincitore" class="fsa-select" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px;">
-        <option value="">Vincitore...</option>
-        {% if p.squadra_casa != 'TBD' %}<option value="{{ p.squadra_casa }}">{{ p.squadra_casa }}</option>{% endif %}
-        {% if p.squadra_ospite != 'TBD' %}<option value="{{ p.squadra_ospite }}">{{ p.squadra_ospite }}</option>{% endif %}
-      </select>
-      <input type="number" name="gol_casa_90" min="0" max="20" class="fsa-input" style="width:42px;text-align:center;padding:7px 4px;font-size:14px;font-family:var(--font-d);" placeholder="0">
-      <span style="color:var(--muted);font-size:11px;">–</span>
-      <input type="number" name="gol_ospite_90" min="0" max="20" class="fsa-input" style="width:42px;text-align:center;padding:7px 4px;font-size:14px;font-family:var(--font-d);" placeholder="0">
-      <button type="submit" class="btn-gold" style="padding:7px 12px;font-size:12px;">Salva</button>
-    </form>
+    {% endfor %}
+    
+    {% if partite %}
+    <div style="padding:12px 16px;">
+      <button type="submit" class="btn-gold" style="width:100%;font-size:15px;padding:12px;">💾 Salva Risultati {{ FASI_NOMI[fase] }}</button>
+    </div>
     {% endif %}
-  </div>
-  {% endfor %}
+  </form>
 
-  <!-- Aggiungi partita -->
   <div style="padding:10px 16px;background:rgba(255,255,255,0.02);">
+    <div class="u-muted-xs" style="margin-bottom:6px;">Aggiungi partita manuale (se non usi API)</div>
     <form method="post" action="{{ url_for('admin.aggiungi_partita_knockout') }}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="fase" value="{{ fase }}">
@@ -67,6 +92,6 @@
 {% endfor %}
 </div>
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
-  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Dashboard Admin</a>
 </div>
 {% endblock %}
