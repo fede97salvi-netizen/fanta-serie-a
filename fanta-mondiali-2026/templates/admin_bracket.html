@@ -6,7 +6,7 @@
 </div>
 <div class="page-header">
   <div class="u-muted-xs">Gestione Bracket</div>
-  <h2>🏆 Fasi a Eliminazione</h2>
+  <h2>🏆 Fasi a Eliminazione (1X2 ai 90')</h2>
 </div>
 <div style="padding:0 16px;">
 
@@ -37,27 +37,15 @@
         <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_casa }}</span>
         <span style="color:var(--muted);font-size:11px;">vs</span>
         <span style="font-family:var(--font-d);font-size:14px;font-weight:700;">{{ p.squadra_ospite }}</span>
-        
-        {% if p.vincitore %}
-        <span style="font-size:11px;color:var(--gold);margin-left:auto;">✅ Ha passato il turno: {{ p.vincitore }}</span>
-        {% endif %}
       </div>
       
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-          <select name="vincitore_{{ pid }}" class="fsa-select" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px;">
-            <option value="">Chi passa il turno?</option>
-            {% if p.squadra_casa != 'TBD' %}<option value="{{ p.squadra_casa }}" {% if p.vincitore == p.squadra_casa %}selected{% endif %}>{{ p.squadra_casa }}</option>{% endif %}
-            {% if p.squadra_ospite != 'TBD' %}<option value="{{ p.squadra_ospite }}" {% if p.vincitore == p.squadra_ospite %}selected{% endif %}>{{ p.squadra_ospite }}</option>{% endif %}
-          </select>
-          
           <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_casa_reale if p.risultato_casa_reale is not none else '' }}">
           <span style="color:var(--muted);font-size:14px;font-weight:bold;">–</span>
           <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_ospite_reale if p.risultato_ospite_reale is not none else '' }}">
-        </div>
-        
-        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-          <select name="marcatore_{{ pid }}" class="fsa-select" style="flex:1;padding:7px 10px;font-size:13px;">
+          
+          <select name="marcatore_{{ pid }}" class="fsa-select" style="flex:1;min-width:140px;padding:7px 10px;font-size:13px;">
             <option value="">— Marcatore —</option>
             <option value="Nessun marcatore" {% if p.marcatore_reale == 'Nessun marcatore' %}selected{% endif %}>Nessun marcatore (0-0)</option>
             <option value="Autogol" {% if p.marcatore_reale == 'Autogol' %}selected{% endif %}>Autogol</option>
