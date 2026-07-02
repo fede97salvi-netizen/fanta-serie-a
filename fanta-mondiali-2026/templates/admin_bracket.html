@@ -40,19 +40,26 @@
       </div>
       
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-          <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_casa_reale if p.risultato_casa_reale is not none else '' }}">
-          <span style="color:var(--muted);font-size:14px;font-weight:bold;">–</span>
-          <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_ospite_reale if p.risultato_ospite_reale is not none else '' }}">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;">
           
-          <select name="marcatore_{{ pid }}" class="fsa-select" style="flex:1;min-width:140px;padding:7px 10px;font-size:13px;">
-            <option value="">— Marcatore —</option>
-            <option value="Nessun marcatore" {% if p.marcatore_reale == 'Nessun marcatore' %}selected{% endif %}>Nessun marcatore (0-0)</option>
-            <option value="Autogol" {% if p.marcatore_reale == 'Autogol' %}selected{% endif %}>Autogol</option>
-            {% for g in giocatori %}
-            <option value="{{ g.nome_giocatore }}" {% if p.marcatore_reale == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }} ({{ g.squadra }})</option>
-            {% endfor %}
-          </select>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:20px;">
+            <input type="number" name="casa_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_casa_reale if p.risultato_casa_reale is not none else '' }}">
+            <span style="color:var(--muted);font-size:14px;font-weight:bold;">–</span>
+            <input type="number" name="ospite_{{ pid }}" min="0" max="20" class="fsa-input" style="width:50px;text-align:center;padding:7px 4px;font-size:16px;font-weight:bold;font-family:var(--font-d);" placeholder="0" value="{{ p.risultato_ospite_reale if p.risultato_ospite_reale is not none else '' }}">
+          </div>
+          
+          <div style="flex:1;min-width:140px;">
+            <div class="u-muted-xs" style="margin-bottom:4px;">Marcatori (Tieni premuto su mobile o usa CTRL/CMD su PC per selezionarne di più)</div>
+            {% set marc_reali = (p.marcatore_reale or '').split(', ') %}
+            <select name="marcatore_{{ pid }}[]" multiple class="fsa-select" style="width:100%;padding:7px;font-size:13px;height:80px;">
+              <option value="Nessun marcatore" {% if 'Nessun marcatore' in marc_reali %}selected{% endif %}>Nessun marcatore (0-0)</option>
+              <option value="Autogol" {% if 'Autogol' in marc_reali %}selected{% endif %}>Autogol</option>
+              {% for g in giocatori %}
+              <option value="{{ g.nome_giocatore }}" {% if g.nome_giocatore in marc_reali %}selected{% endif %}>{{ g.nome_giocatore }} ({{ g.squadra }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
         </div>
       </div>
     </div>
