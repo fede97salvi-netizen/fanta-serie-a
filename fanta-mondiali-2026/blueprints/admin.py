@@ -359,7 +359,15 @@ def admin_risultati_knockout_fase(fase):
             pid = row_get(p, 'id')
             r_casa = _safe_int(request.form.get(f'casa_{pid}', '').strip(), lo=0, hi=20)
             r_osp  = _safe_int(request.form.get(f'ospite_{pid}', '').strip(), lo=0, hi=20)
-            marcatore = (request.form.get(f'marcatore_{pid}') or '').strip() or None
+            
+            # Recupera la lista di marcatori
+            marc_l = request.form.getlist(f'marcatore_{pid}[]')
+            marc_v = [m.strip() for m in marc_l if m.strip() not in ('', 'Nessun marcatore', 'Autogol')]
+            if not marc_v:
+                sp = [m.strip() for m in marc_l if m.strip() in ('Nessun marcatore', 'Autogol')]
+                marcatore = sp[0] if sp else None
+            else:
+                marcatore = ', '.join(marc_v)
             
             db_execute(conn,
                        'UPDATE partite SET risultato_casa_reale=?, risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
