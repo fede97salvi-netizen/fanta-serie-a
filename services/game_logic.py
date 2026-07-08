@@ -11,6 +11,7 @@ Espone:
 
 import logging
 import re
+import unicodedata
 from datetime import datetime
 
 import pytz
@@ -276,3 +277,33 @@ def ricalcola_punteggi_finali() -> str:
                 )
         db_commit(conn)
     return 'Punti finali di stagione calcolati con successo!'
+
+
+# ─── Matching nomi squadre (import risultati/partite) ──────────────────────────
+
+_STOPWORDS_SQUADRA = {
+    'FC', 'AC', 'AS', 'SS', 'SSC', 'US', 'ACF', 'CFC', 'BC', 'CALCIO',
+}
+
+
+def normalizza_squadra(nome: str) -> str:
+    """Normalizza un nome squadra per il confronto:
+    rimuove accenti, punteggiatura, parole comuni (FC, AC, Calcio...) e case."""
+    if not nome:
+        return ''
+    s = unicodedata.normalize('NFKD', str(nome)).encode('ascii', 'ignore').decode()
+    s = re.sub(r'[^A-Za-z0-9 ]', ' ', s).upper()
+    tokens = [t for t in s.split() if t and t not in _STOPWORDS_SQUADRA]
+    return ''.join(tokens)
+
+
+def squadre_compatibili(a: str, b: str) -> bool:
+    """True se due nomi squadra si riferiscono verosimilmente alla stessa squadra.
+    Confronto su forma normalizzata (accenti/suffissi rimossi) con match per
+    uguaglianza o inclusione, così da gestire abbreviazioni (es. INTER vs
+    FC Internazionale Milano) riducendo i falsi positivi dei suffissi comuni."""
+    na = normalizza_squadra(a)
+    nb = normalizza_squadra(b)
+    if not na or not nb:
+        return False
+    return na == nb or na in nb or nb in na

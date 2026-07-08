@@ -191,3 +191,34 @@ def test_tutto_sbagliato_totale_zero():
                       marcatore='Vlahovic')
     out  = calcola_punti_pronostico(pron, p)
     assert out['totale'] == 0
+
+
+# ─── Matching nomi squadre (#12) ──────────────────────────────────────────────
+
+from services.game_logic import squadre_compatibili, normalizza_squadra
+
+
+def test_normalizza_rimuove_suffissi_e_accenti():
+    assert normalizza_squadra('AC Milan') == 'MILAN'
+    assert normalizza_squadra('Juventus FC') == 'JUVENTUS'
+    assert normalizza_squadra('  Hellas Verona  ') == 'HELLASVERONA'
+
+
+def test_match_abbreviazione_inter():
+    assert squadre_compatibili('INTER', 'FC Internazionale Milano')
+    assert squadre_compatibili('MILAN', 'AC Milan')
+    assert squadre_compatibili('Juventus', 'Juventus FC')
+
+
+def test_match_uguali_e_case_insensitive():
+    assert squadre_compatibili('napoli', 'NAPOLI')
+
+
+def test_no_match_squadre_diverse():
+    assert not squadre_compatibili('INTER', 'MILAN')
+    assert not squadre_compatibili('ROMA', 'TORINO')
+
+
+def test_no_match_stringhe_vuote():
+    assert not squadre_compatibili('', 'MILAN')
+    assert not squadre_compatibili('INTER', '')

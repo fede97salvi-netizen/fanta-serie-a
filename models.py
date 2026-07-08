@@ -36,7 +36,7 @@ class Partita(db.Model):
     __tablename__ = 'partite'
 
     id                      = db.Column(db.Integer, primary_key=True)
-    giornata                = db.Column(db.Integer, nullable=False)
+    giornata                = db.Column(db.Integer, nullable=False, index=True)
     squadra_casa            = db.Column(db.Text, nullable=False)
     squadra_ospite          = db.Column(db.Text, nullable=False)
     risultato_casa_reale    = db.Column(db.Integer, nullable=True)
@@ -57,10 +57,10 @@ class PronosticoGiornata(db.Model):
     id                             = db.Column(db.Integer, primary_key=True)
     id_utente                      = db.Column(db.Integer,
                                                 db.ForeignKey('utenti.id'),
-                                                nullable=False)
+                                                nullable=False, index=True)
     id_partita                     = db.Column(db.Integer,
                                                 db.ForeignKey('partite.id'),
-                                                nullable=False)
+                                                nullable=False, index=True)
     esito_pronosticato             = db.Column(db.Text, nullable=True)
     risultato_casa_pronosticato    = db.Column(db.Integer, nullable=True)
     risultato_ospite_pronosticato  = db.Column(db.Integer, nullable=True)
@@ -88,7 +88,7 @@ class PunteggioGiornata(db.Model):
 
     id        = db.Column(db.Integer, primary_key=True)
     id_utente = db.Column(db.Integer, db.ForeignKey('utenti.id'),
-                          nullable=False)
+                          nullable=False, index=True)
     giornata  = db.Column(db.Integer, nullable=False)
     punti     = db.Column(db.Integer, nullable=False, default=0)
 
@@ -118,7 +118,7 @@ class PronosticoIniziale(db.Model):
 
     id            = db.Column(db.Integer, primary_key=True)
     id_utente     = db.Column(db.Integer, db.ForeignKey('utenti.id'),
-                               nullable=False)
+                               nullable=False, index=True)
     squadra_1     = db.Column(db.Text, nullable=True)
     squadra_2     = db.Column(db.Text, nullable=True)
     squadra_3     = db.Column(db.Text, nullable=True)
@@ -144,4 +144,4 @@ class Giocatore(db.Model):
 
     id             = db.Column(db.Integer, primary_key=True)
     nome_giocatore = db.Column(db.Text, nullable=False)
-    squadra        = db.Column(db.Text, nullable=False)
+    squadra        = db.Column(db.Text, nullable=False, index=True)

@@ -24,12 +24,14 @@ from db_utils import (
     row_get, USE_POSTGRES,
 )
 from services.game_logic import (
+    squadre_compatibili,
     calcola_e_aggiorna_punti_giornata,
     ricalcola_punteggi_totali,
     ricalcola_punteggi_finali,
 )
 from services.email_service import invia_email_async, build_email_giornata
 from blueprints.auth import hash_password
+from auth_utils import admin_required
 
 log = logging.getLogger('fanta')
 
@@ -78,9 +80,8 @@ def _safe_int(value, lo=None, hi=None):
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin', endpoint='admin_home')
+@admin_required
 def admin_home():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         ga_row = db_fetchone(
             conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE')
@@ -99,9 +100,8 @@ def admin_home():
 # ─── Utenti ───────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/utenti', endpoint='admin_utenti')
+@admin_required
 def admin_utenti():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         utenti = db_fetchall(
             conn,
@@ -113,9 +113,8 @@ def admin_utenti():
 
 @admin_bp.route('/admin/resetta-password/<int:id_utente>',
                 methods=['POST'], endpoint='admin_resetta_password')
+@admin_required
 def admin_resetta_password(id_utente: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     pw_temp = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
     with db_conn() as conn:
         db_execute(conn,
@@ -132,9 +131,8 @@ def admin_resetta_password(id_utente: int):
 
 @admin_bp.route('/admin/elimina-utente/<int:id_utente>',
                 methods=['POST'], endpoint='admin_elimina_utente')
+@admin_required
 def admin_elimina_utente(id_utente: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         utente = db_fetchone(
             conn, 'SELECT nome_utente, is_admin FROM utenti WHERE id = ?',
@@ -158,9 +156,8 @@ def admin_elimina_utente(id_utente: int):
 # ─── Gestione partite ─────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/gestisci-partite', endpoint='admin_gestisci_partite')
+@admin_required
 def admin_gestisci_partite():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         giornata_sel = request.args.get('giornata', type=int)
         giornate_rows = db_fetchall(
@@ -222,9 +219,8 @@ def admin_gestisci_partite():
 
 @admin_bp.route('/admin/aggiungi-partita',
                 methods=['POST'], endpoint='aggiungi_partita')
+@admin_required
 def aggiungi_partita():
-    if require_admin():
-        return 'Accesso negato.', 403
     giornata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
     if giornata is None:
         flash('Giornata non valida.', 'warning')
@@ -244,9 +240,8 @@ def aggiungi_partita():
 
 @admin_bp.route('/admin/modifica-partita/<int:id_partita>',
                 methods=['POST'], endpoint='admin_modifica_partita')
+@admin_required
 def admin_modifica_partita(id_partita: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     giornata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
     with db_conn() as conn:
         db_execute(conn,
@@ -265,9 +260,8 @@ def admin_modifica_partita(id_partita: int):
 
 @admin_bp.route('/admin/elimina-partita/<int:id_partita>',
                 methods=['POST'], endpoint='admin_elimina_partita')
+@admin_required
 def admin_elimina_partita(id_partita: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         db_execute(conn, 'DELETE FROM partite WHERE id = ?', (id_partita,))
         db_commit(conn)
@@ -277,9 +271,8 @@ def admin_elimina_partita(id_partita: int):
 
 @admin_bp.route('/admin/risultati-giornata/<int:giornata>',
                 methods=['POST'], endpoint='admin_risultati_giornata')
+@admin_required
 def admin_risultati_giornata(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         partite = db_fetchall(
             conn,
@@ -312,9 +305,8 @@ def admin_risultati_giornata(giornata: int):
 
 @admin_bp.route('/admin/importa-risultati/<int:giornata>',
                 methods=['POST'], endpoint='admin_importa_risultati')
+@admin_required
 def admin_importa_risultati(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     try:
         from flask import current_app
         serie_a = current_app.config.get('SERIE_A_CODE', 'SA')
@@ -346,8 +338,8 @@ def admin_importa_risultati(giornata: int):
                 sc  = (row_get(partita, 'squadra_casa')   or '').upper()
                 so  = (row_get(partita, 'squadra_ospite') or '').upper()
                 m   = next((r for r in risultati_api
-                             if (sc in r['home'] or r['home'] in sc)
-                             and (so in r['away'] or r['away'] in so)), None)
+                             if squadre_compatibili(sc, r['home'])
+                             and squadre_compatibili(so, r['away'])), None)
                 if m:
                     db_execute(conn,
                                'UPDATE partite SET risultato_casa_reale=?, '
@@ -371,9 +363,8 @@ def admin_importa_risultati(giornata: int):
 
 @admin_bp.route('/admin/invia-reminder/<int:giornata>',
                 methods=['POST'], endpoint='admin_invia_reminder')
+@admin_required
 def admin_invia_reminder(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     try:
         with db_conn() as conn:
             partite = db_fetchall(
@@ -411,9 +402,8 @@ def admin_invia_reminder(giornata: int):
 
 @admin_bp.route('/admin/aggiorna-risultati-massivo',
                 methods=['POST'], endpoint='admin_aggiorna_risultati_massivo')
+@admin_required
 def admin_aggiorna_risultati_massivo():
-    if require_admin():
-        return 'Accesso negato.', 403
 
     from flask import current_app
     app = current_app._get_current_object()
@@ -424,24 +414,28 @@ def admin_aggiorna_risultati_massivo():
             try:
                 serie_a = app.config.get('SERIE_A_CODE', 'SA')
                 with db_conn() as conn:
-                    giornate = db_fetchall(
-                        conn,
-                        'SELECT giornata FROM stato_giornata '
-                        'WHERE is_in_archivio = TRUE ORDER BY giornata',
-                    )
-                    for i, g_row in enumerate(giornate):
-                        g = row_get(g_row, 'giornata')
-                        if i > 0 and i % 9 == 0:
-                            log.info(f'[MASSIVO] Pausa rate limit...')
-                            time.sleep(62)
-                        try:
-                            data, err = _football_api_get(
-                                f'/competitions/{serie_a}/matches',
-                                {'matchday': g},
-                            )
-                            if err or not data:
-                                log.info(f'[MASSIVO] G{g} saltata: {err}')
-                                continue
+                    giornate = [
+                        row_get(g, 'giornata') for g in db_fetchall(
+                            conn,
+                            'SELECT giornata FROM stato_giornata '
+                            'WHERE is_in_archivio = TRUE ORDER BY giornata',
+                        )
+                    ]
+                for i, g in enumerate(giornate):
+                    if i > 0 and i % 9 == 0:
+                        log.info('[MASSIVO] Pausa rate limit...')
+                        time.sleep(62)
+                    try:
+                        data, err = _football_api_get(
+                            f'/competitions/{serie_a}/matches',
+                            {'matchday': g},
+                        )
+                        if err or not data:
+                            log.info(f'[MASSIVO] G{g} saltata: {err}')
+                            continue
+                        # Connessione dedicata per giornata: non tiene occupata
+                        # una connessione del pool durante le API call e le pause.
+                        with db_conn() as conn:
                             partite_db = db_fetchall(
                                 conn,
                                 'SELECT * FROM partite WHERE giornata = ?', (g,))
@@ -451,10 +445,10 @@ def admin_aggiorna_risultati_massivo():
                                 m  = next(
                                     (r for r in data.get('matches', [])
                                      if (r.get('status') == 'FINISHED'
-                                         and (sc in (r['homeTeam']['name'] or '').upper()
-                                              or (r['homeTeam']['name'] or '').upper() in sc)
-                                         and (so in (r['awayTeam']['name'] or '').upper()
-                                              or (r['awayTeam']['name'] or '').upper() in so))),
+                                         and squadre_compatibili(
+                                             sc, r['homeTeam']['name'])
+                                         and squadre_compatibili(
+                                             so, r['awayTeam']['name']))),
                                     None,
                                 )
                                 if m:
@@ -467,10 +461,10 @@ def admin_aggiorna_risultati_massivo():
                                                 m['score']['fullTime']['away'],
                                                 row_get(partita, 'id')))
                             db_commit(conn)
-                            log.info(f'[MASSIVO] G{g} completata ({i+1}/{len(giornate)})')
-                            time.sleep(7)
-                        except Exception:
-                            log.exception(f'[MASSIVO] Errore G{g}')
+                        log.info(f'[MASSIVO] G{g} completata ({i+1}/{len(giornate)})')
+                        time.sleep(7)
+                    except Exception:
+                        log.exception(f'[MASSIVO] Errore G{g}')
                 log.info('[MASSIVO] Aggiornamento completato.')
             except Exception:
                 log.exception('[MASSIVO] Errore generale')
@@ -483,9 +477,8 @@ def admin_aggiorna_risultati_massivo():
 
 @admin_bp.route('/admin/importa-giornata', methods=['GET', 'POST'],
                 endpoint='admin_importa_giornata')
+@admin_required
 def admin_importa_giornata():
-    if require_admin():
-        return 'Accesso negato.', 403
     partite_da_importare = []
     giornata_selezionata = None
     if request.method == 'POST':
@@ -578,9 +571,8 @@ def admin_importa_giornata():
 
 @admin_bp.route('/admin/email-utenti', methods=['GET', 'POST'],
                 endpoint='admin_email_utenti')
+@admin_required
 def admin_email_utenti():
-    if require_admin():
-        return 'Accesso negato.', 403
     from services.game_logic import EMAIL_RE
     with db_conn() as conn:
         if request.method == 'POST':
@@ -604,9 +596,8 @@ def admin_email_utenti():
 
 @admin_bp.route('/admin/gestisci-email', methods=['GET', 'POST'],
                 endpoint='admin_gestisci_email')
+@admin_required
 def admin_gestisci_email():
-    if require_admin():
-        return 'Accesso negato.', 403
     from services.game_logic import EMAIL_RE
     with db_conn() as conn:
         if request.method == 'POST':
@@ -632,9 +623,8 @@ def admin_gestisci_email():
 
 @admin_bp.route('/admin/archivia-giornata/<int:giornata>',
                 methods=['POST'], endpoint='archivia_giornata')
+@admin_required
 def archivia_giornata(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         db_execute(conn,
                    'UPDATE stato_giornata '
@@ -660,27 +650,24 @@ def archivia_giornata(giornata: int):
 
 @admin_bp.route('/admin/calcola-punti-giornata/<int:giornata>',
                 methods=['POST'], endpoint='admin_calcola_punti_giornata')
+@admin_required
 def admin_calcola_punti_giornata(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     flash(calcola_e_aggiorna_punti_giornata(giornata), 'success')
     return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/calcola-punteggi', methods=['POST'],
                 endpoint='calcola_punteggi')
+@admin_required
 def calcola_punteggi():
-    if require_admin():
-        return 'Accesso negato.', 403
     flash(ricalcola_punteggi_totali(), 'success')
     return redirect(url_for('admin.admin_home'))
 
 
 @admin_bp.route('/admin/gestisci-pronostici/<int:giornata>',
                 methods=['GET', 'POST'], endpoint='admin_gestisci_pronostici')
+@admin_required
 def admin_gestisci_pronostici(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         if request.method == 'POST':
             action = request.form.get('action')
@@ -738,9 +725,8 @@ def admin_gestisci_pronostici(giornata: int):
 
 @admin_bp.route('/admin/gestisci-pronostici-iniziali',
                 endpoint='admin_gestisci_pronostici_iniziali')
+@admin_required
 def admin_gestisci_pronostici_iniziali():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         pronostici = db_fetchall(
             conn,
@@ -757,9 +743,8 @@ def admin_gestisci_pronostici_iniziali():
 
 @admin_bp.route('/admin/elimina-pronostico-iniziale/<int:id_pronostico>',
                 methods=['POST'], endpoint='admin_elimina_pronostico_iniziale')
+@admin_required
 def admin_elimina_pronostico_iniziale(id_pronostico: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         db_execute(conn,
                    'DELETE FROM pronostici_iniziali WHERE id = ?',
@@ -770,9 +755,8 @@ def admin_elimina_pronostico_iniziale(id_pronostico: int):
 
 @admin_bp.route('/admin/gestisci-finalizzazione',
                 endpoint='admin_gestisci_finalizzazione')
+@admin_required
 def admin_gestisci_finalizzazione():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         lock_row  = db_fetchone(
             conn, 'SELECT is_locked FROM stato_pronostici_iniziali WHERE id = 1')
@@ -783,9 +767,8 @@ def admin_gestisci_finalizzazione():
 
 @admin_bp.route('/admin/blocca-pronostici-iniziali',
                 methods=['POST'], endpoint='blocca_pronostici_iniziali')
+@admin_required
 def blocca_pronostici_iniziali():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         db_execute(conn,
                    'UPDATE stato_pronostici_iniziali SET is_locked = TRUE WHERE id = 1')
@@ -795,9 +778,8 @@ def blocca_pronostici_iniziali():
 
 @admin_bp.route('/admin/sblocca-pronostici-iniziali',
                 methods=['POST'], endpoint='sblocca_pronostici_iniziali')
+@admin_required
 def sblocca_pronostici_iniziali():
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         db_execute(conn,
                    'UPDATE stato_pronostici_iniziali SET is_locked = FALSE WHERE id = 1')
@@ -807,9 +789,8 @@ def sblocca_pronostici_iniziali():
 
 @admin_bp.route('/admin/calcola-punti-finali', methods=['GET', 'POST'],
                 endpoint='admin_calcola_punti_finali')
+@admin_required
 def admin_calcola_punti_finali():
-    if require_admin():
-        return 'Accesso negato.', 403
     messaggio = None
     with db_conn() as conn:
         if request.method == 'POST':
@@ -833,9 +814,8 @@ def admin_calcola_punti_finali():
 @admin_bp.route('/admin/modifica-giornata-archiviata/<int:giornata>',
                 methods=['GET', 'POST'],
                 endpoint='admin_modifica_giornata_archiviata')
+@admin_required
 def admin_modifica_giornata_archiviata(giornata: int):
-    if require_admin():
-        return 'Accesso negato.', 403
     with db_conn() as conn:
         if request.method == 'POST':
             partite = db_fetchall(
@@ -900,35 +880,42 @@ def admin_modifica_giornata_archiviata(giornata: int):
 
 @admin_bp.route('/admin/ricalcola-tutta-la-classifica',
                 methods=['POST'], endpoint='admin_ricalcola_tutta_la_classifica')
+@admin_required
 def admin_ricalcola_tutta_la_classifica():
-    if require_admin():
-        return 'Accesso negato.', 403
     flash(ricalcola_punteggi_totali(), 'success')
     return redirect(url_for('admin.admin_home'))
-@admin_bp.route('/attiva-giornata', methods=['POST'])
+
+
+@admin_bp.route('/attiva-giornata', methods=['POST'],
+                endpoint='admin_attiva_giornata')
+@admin_required
 def admin_attiva_giornata():
-    from flask import session, request, flash, redirect, url_for
-    from db_utils import db_conn, db_execute, db_commit
-
-    # Sicurezza: verifichiamo che l'utente sia admin
-    if not session.get('is_admin'):
-        return "Accesso negato.", 403
-
-    giornata = request.form.get('giornata', type=int)
-    if giornata:
-        with db_conn() as conn:
-            # 1. Spengiamo eventuali altre giornate rimaste accese
-            db_execute(conn, "UPDATE stato_giornata SET is_attiva = FALSE")
-            
-            # 2. Accendiamo il nuovo Round
-            db_execute(conn, """
-                INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio)
-                VALUES (?, TRUE, FALSE)
-                ON CONFLICT (giornata) DO UPDATE SET is_attiva = TRUE, is_in_archivio = FALSE
-            """, (giornata,))
-                
-            db_commit(conn)
-        
-        flash(f"⚽ Round {giornata} dei Gironi attivato con successo! Ora è visibile in Home.", "success")
-        
+    giornata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
+    if giornata is None:
+        flash('Giornata non valida.', 'warning')
+        return redirect(url_for('admin.admin_home'))
+    with db_conn() as conn:
+        if USE_POSTGRES:
+            # Spegne tutte le altre giornate, poi attiva quella scelta
+            db_execute(conn, 'UPDATE stato_giornata SET is_attiva = FALSE')
+            db_execute(conn,
+                       'INSERT INTO stato_giornata '
+                       '(giornata, is_attiva, is_in_archivio) '
+                       'VALUES (?, TRUE, FALSE) '
+                       'ON CONFLICT (giornata) DO UPDATE '
+                       'SET is_attiva = TRUE, is_in_archivio = FALSE',
+                       (giornata,))
+        else:
+            db_execute(conn, 'UPDATE stato_giornata SET is_attiva = 0')
+            db_execute(conn,
+                       'INSERT OR IGNORE INTO stato_giornata '
+                       '(giornata, is_attiva, is_in_archivio) VALUES (?, 1, 0)',
+                       (giornata,))
+            db_execute(conn,
+                       'UPDATE stato_giornata '
+                       'SET is_attiva = 1, is_in_archivio = 0 WHERE giornata = ?',
+                       (giornata,))
+        db_commit(conn)
+    flash(f'Giornata {giornata} attivata con successo! Ora e visibile in Home.',
+          'success')
     return redirect(url_for('admin.admin_home'))

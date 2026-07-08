@@ -20,6 +20,7 @@ from flask import (
 
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get
 from services.game_logic import calcola_punti_pronostico, is_partita_scaduta
+from auth_utils import login_required
 
 log = logging.getLogger('fanta')
 
@@ -50,9 +51,8 @@ def _utente_corrente(conn):
 # ─── Route ────────────────────────────────────────────────────────────────────
 
 @gioco_bp.route('/classifica', endpoint='classifica')
+@login_required
 def classifica():
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         classifica_utenti = db_fetchall(
             conn,
@@ -65,9 +65,8 @@ def classifica():
 
 
 @gioco_bp.route('/giornate', endpoint='archivio_giornate')
+@login_required
 def archivio_giornate():
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         giornate = db_fetchall(
             conn,
@@ -79,9 +78,8 @@ def archivio_giornate():
 
 
 @gioco_bp.route('/giornata/<int:giornata>', endpoint='visualizza_giornata')
+@login_required
 def visualizza_giornata(giornata: int):
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         partite_reali = db_fetchall(
             conn,
@@ -97,19 +95,31 @@ def visualizza_giornata(giornata: int):
         )
         utenti = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti')
 
+        # Una sola query: costruisce sia l'indice (uid,pid)->pronostico
+        # sia la mappa pid->{utente->dettaglio} usata dal template.
         pids = [row_get(p, 'id') for p in partite_pron]
         pronostici_idx = {}
+        pronostici_per_partita = {}
         if pids:
             ph = ','.join(['?'] * len(pids))
             rows = db_fetchall(
                 conn,
-                f'SELECT * FROM pronostici_giornata WHERE id_partita IN ({ph})',
+                'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
+                f'JOIN utenti u ON pg.id_utente = u.id '
+                f'WHERE pg.id_partita IN ({ph})',
                 tuple(pids),
             )
-            pronostici_idx = {
-                (row_get(r, 'id_utente'), row_get(r, 'id_partita')): r
-                for r in rows
-            }
+            for r in rows:
+                uid = row_get(r, 'id_utente')
+                pid = row_get(r, 'id_partita')
+                pronostici_idx[(uid, pid)] = r
+                pronostici_per_partita.setdefault(pid, {})[
+                    row_get(r, 'nome_utente')] = {
+                    'esito':     row_get(r, 'esito_pronosticato'),
+                    'r_casa':    row_get(r, 'risultato_casa_pronosticato'),
+                    'r_osp':     row_get(r, 'risultato_ospite_pronosticato'),
+                    'marcatore': row_get(r, 'marcatore_pronosticato'),
+                }
 
         classifica_giornata = []
         for utente in utenti:
@@ -129,28 +139,6 @@ def visualizza_giornata(giornata: int):
             })
         classifica_giornata.sort(key=lambda x: x['punti_totali'], reverse=True)
 
-        pronostici_per_partita = {}
-        if pids:
-            ph = ','.join(['?'] * len(pids))
-            rows = db_fetchall(
-                conn,
-                'SELECT u.nome_utente, pg.id_partita, pg.esito_pronosticato, '
-                'pg.risultato_casa_pronosticato, pg.risultato_ospite_pronosticato, '
-                'pg.marcatore_pronosticato '
-                f'FROM pronostici_giornata pg JOIN utenti u ON pg.id_utente = u.id '
-                f'WHERE pg.id_partita IN ({ph})',
-                tuple(pids),
-            )
-            for r in rows:
-                pid = row_get(r, 'id_partita')
-                pronostici_per_partita.setdefault(pid, {})[
-                    row_get(r, 'nome_utente')] = {
-                    'esito':    row_get(r, 'esito_pronosticato'),
-                    'r_casa':   row_get(r, 'risultato_casa_pronosticato'),
-                    'r_osp':    row_get(r, 'risultato_ospite_pronosticato'),
-                    'marcatore': row_get(r, 'marcatore_pronosticato'),
-                }
-
     return render_template(
         'visualizza_giornata.html',
         giornata=giornata,
@@ -164,9 +152,8 @@ def visualizza_giornata(giornata: int):
 
 @gioco_bp.route('/giornata/<int:giornata>/classifica-cumulativa',
                 endpoint='classifica_cumulativa_giornata')
+@login_required
 def classifica_cumulativa_giornata(giornata: int):
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         rows = db_fetchall(
             conn,
@@ -190,9 +177,8 @@ def classifica_cumulativa_giornata(giornata: int):
 
 @gioco_bp.route('/pronostici-iniziali', methods=['GET', 'POST'],
                 endpoint='pronostici_iniziali')
+@login_required
 def pronostici_iniziali():
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         lock_row  = db_fetchone(
             conn, 'SELECT is_locked FROM stato_pronostici_iniziali WHERE id = 1')
@@ -253,9 +239,8 @@ def pronostici_iniziali():
 @gioco_bp.route('/pronostici-giornata/<int:giornata>',
                 methods=['GET', 'POST'],
                 endpoint='pronostici_giornata')
+@login_required
 def pronostici_giornata(giornata: int):
-    if 'nome_utente' not in session:
-        return redirect(url_for('auth.login'))
     with db_conn() as conn:
         user = _utente_corrente(conn)
         if not user:
@@ -267,17 +252,31 @@ def pronostici_giornata(giornata: int):
             'SELECT * FROM partite WHERE giornata = ? AND pronosticabile = TRUE',
             (giornata,),
         )
+        # Giocatori di tutte le squadre in UNA query (no N+1)
         giocatori_per_partita = {}
+        squadre = set()
         for partita in partite:
-            sc = (row_get(partita, 'squadra_casa')   or '').upper()
-            so = (row_get(partita, 'squadra_ospite') or '').upper()
-            giocatori_per_partita[row_get(partita, 'id')] = db_fetchall(
+            squadre.add((row_get(partita, 'squadra_casa')   or '').upper())
+            squadre.add((row_get(partita, 'squadra_ospite') or '').upper())
+        per_squadra = {}
+        if squadre:
+            ph = ','.join(['?'] * len(squadre))
+            tutti = db_fetchall(
                 conn,
-                'SELECT nome_giocatore, squadra FROM giocatori '
-                'WHERE squadra = ? OR squadra = ? '
-                'ORDER BY squadra, nome_giocatore',
-                (sc, so),
+                f'SELECT nome_giocatore, squadra FROM giocatori '
+                f'WHERE UPPER(squadra) IN ({ph}) '
+                f'ORDER BY squadra, nome_giocatore',
+                tuple(squadre),
             )
+            for g in tutti:
+                per_squadra.setdefault(
+                    (row_get(g, 'squadra') or '').upper(), []).append(g)
+        for partita in partite:
+            pid = row_get(partita, 'id')
+            sc  = (row_get(partita, 'squadra_casa')   or '').upper()
+            so  = (row_get(partita, 'squadra_ospite') or '').upper()
+            giocatori_per_partita[pid] = (
+                per_squadra.get(sc, []) + per_squadra.get(so, []))
 
         pronostici_salvati = db_fetchall(
             conn,
@@ -324,19 +323,27 @@ def pronostici_giornata(giornata: int):
             return redirect(url_for('auth.home'))
 
         scadenze_dict           = {}
-        pronostici_altri_utenti = {}
+        scaduti_pids            = []
         for partita in partite:
             pid     = row_get(partita, 'id')
             scaduto = is_partita_scaduta(row_get(partita, 'data_ora_partita'))
             scadenze_dict[pid] = scaduto
             if scaduto:
-                pronostici_altri_utenti[pid] = db_fetchall(
-                    conn,
-                    'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
-                    'JOIN utenti u ON pg.id_utente = u.id '
-                    'WHERE pg.id_partita = ?',
-                    (pid,),
-                )
+                scaduti_pids.append(pid)
+        # Pronostici altrui per le partite scadute in UNA query (no N+1)
+        pronostici_altri_utenti = {pid: [] for pid in scaduti_pids}
+        if scaduti_pids:
+            ph = ','.join(['?'] * len(scaduti_pids))
+            rows = db_fetchall(
+                conn,
+                'SELECT u.nome_utente, pg.* FROM pronostici_giornata pg '
+                f'JOIN utenti u ON pg.id_utente = u.id '
+                f'WHERE pg.id_partita IN ({ph})',
+                tuple(scaduti_pids),
+            )
+            for r in rows:
+                pronostici_altri_utenti.setdefault(
+                    row_get(r, 'id_partita'), []).append(r)
 
     return render_template(
         'pronostici_giornata.html',

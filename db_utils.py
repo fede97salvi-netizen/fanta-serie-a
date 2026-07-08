@@ -46,17 +46,64 @@ def _new_connection():
     return conn
 
 
+# --- Connection pool (solo PostgreSQL) ---
+# In produzione le connessioni vengono riusate da un pool invece di
+# aprirne una nuova ad ogni richiesta (riduce la latenza verso il DB gestito).
+_pg_pool = None
+
+
+def _get_pg_pool():
+    global _pg_pool
+    if _pg_pool is None:
+        from psycopg2 import pool as _pgpool
+        pool_min = int(os.environ.get('DB_POOL_MIN', '1'))
+        pool_max = int(os.environ.get('DB_POOL_MAX', '10'))
+        _pg_pool = _pgpool.ThreadedConnectionPool(
+            pool_min, pool_max, DATABASE_URL,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+        )
+        log.info(f'Pool PostgreSQL inizializzato ({pool_min}-{pool_max}).')
+    return _pg_pool
+
+
 @contextmanager
 def db_conn():
-    """Context manager: chiude SEMPRE la connessione, anche su eccezione."""
-    conn = _new_connection()
-    try:
-        yield conn
-    finally:
+    """Context manager per una connessione al DB.
+
+    - PostgreSQL: preleva/restituisce una connessione dal pool. Prima di
+      restituirla esegue rollback per non lasciare transazioni pendenti.
+    - SQLite: apre e chiude una connessione dedicata (comportamento storico;
+      i test sostituiscono _new_connection con una connessione in-memory).
+    """
+    if USE_POSTGRES:
+        pool = _get_pg_pool()
+        conn = pool.getconn()
         try:
-            conn.close()
+            yield conn
         except Exception:
-            log.exception('Errore chiusura connessione DB')
+            try:
+                conn.rollback()
+            except Exception:
+                log.exception('Errore rollback connessione DB')
+            raise
+        finally:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                pool.putconn(conn)
+            except Exception:
+                log.exception('Errore restituzione connessione al pool')
+    else:
+        conn = _new_connection()
+        try:
+            yield conn
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                log.exception('Errore chiusura connessione DB')
 
 
 def db_execute(conn, query: str, params=()):

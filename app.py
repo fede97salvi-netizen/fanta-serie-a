@@ -10,7 +10,7 @@ import os
 from datetime import timedelta
 
 import pytz
-from flask import Flask, session
+from flask import Flask, session, g as flask_g, render_template
 from flask_wtf.csrf import generate_csrf
 from flask_talisman import Talisman
 
@@ -232,6 +232,24 @@ def _promuovi_admin_storico(conn):
         log.info(f"Migrazione: promosso '{legacy}' ad admin.")
 
 
+def _create_indexes(conn):
+    """Indici idempotenti su foreign key e colonne di filtro.
+    CREATE INDEX IF NOT EXISTS e' supportato sia da SQLite che da PostgreSQL."""
+    idx = (
+        'CREATE INDEX IF NOT EXISTS ix_partite_giornata ON partite (giornata)',
+        'CREATE INDEX IF NOT EXISTS ix_pg_id_utente ON pronostici_giornata (id_utente)',
+        'CREATE INDEX IF NOT EXISTS ix_pg_id_partita ON pronostici_giornata (id_partita)',
+        'CREATE INDEX IF NOT EXISTS ix_punteggi_giornata_utente ON punteggi_giornata (id_utente)',
+        'CREATE INDEX IF NOT EXISTS ix_giocatori_squadra ON giocatori (squadra)',
+        'CREATE INDEX IF NOT EXISTS ix_pi_id_utente ON pronostici_iniziali (id_utente)',
+    )
+    for stmt in idx:
+        try:
+            db_execute(conn, stmt)
+        except Exception:
+            log.exception('Errore creazione indice')
+
+
 def create_tables():
     with db_conn() as conn:
         if USE_POSTGRES:
@@ -240,6 +258,7 @@ def create_tables():
             _create_tables_sqlite(conn)
         _migrate_schema(conn)
         _promuovi_admin_storico(conn)
+        _create_indexes(conn)
         db_commit(conn)
 
 
@@ -291,6 +310,7 @@ def create_app(config=None) -> Flask:
     app.config['SESSION_COOKIE_SAMESITE'] = cfg.SESSION_COOKIE_SAMESITE
     app.config['SESSION_COOKIE_SECURE']   = getattr(cfg, 'SESSION_COOKIE_SECURE', False)
     app.config['WTF_CSRF_TIME_LIMIT']     = cfg.WTF_CSRF_TIME_LIMIT
+    app.config['WTF_CSRF_ENABLED']        = getattr(cfg, 'WTF_CSRF_ENABLED', True)
     app.config['RATELIMIT_STORAGE_URI']   = cfg.RATELIMIT_STORAGE_URI
 
     # Config esposta ai blueprint
@@ -346,21 +366,35 @@ def create_app(config=None) -> Flask:
     # Context processor globale
     @app.context_processor
     def inject_globals():
-        g_attiva = None
-        try:
-            with db_conn() as conn:
-                row = db_fetchone(
-                    conn,
-                    'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE',
-                )
-                g_attiva = row_get(row, 'giornata') if row else None
-        except Exception:
-            log.exception('Errore lettura giornata attiva')
+        # Cache per-richiesta: evita una connessione DB ad ogni render
+        if hasattr(flask_g, '_giornata_attiva_cache'):
+            g_attiva = flask_g._giornata_attiva_cache
+        else:
+            g_attiva = None
+            try:
+                with db_conn() as conn:
+                    row = db_fetchone(
+                        conn,
+                        'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE',
+                    )
+                    g_attiva = row_get(row, 'giornata') if row else None
+            except Exception:
+                log.exception('Errore lettura giornata attiva')
+            flask_g._giornata_attiva_cache = g_attiva
         return {
             'giornata_attiva': g_attiva,
             'csrf_token':      generate_csrf,
             'is_admin':        bool(session.get('is_admin')),
         }
+
+    # Error handler (pagine 404/500 coerenti col design)
+    @app.errorhandler(404)
+    def _not_found(e):
+        return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def _server_error(e):
+        return render_template('500.html'), 500
 
     # Blueprint
     from blueprints.auth  import auth_bp

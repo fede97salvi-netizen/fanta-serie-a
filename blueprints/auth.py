@@ -2,17 +2,13 @@
 Blueprint auth — gestione autenticazione e profilo utente.
 
 Route:
-  /                        home
+  /                        home (welcome per visitatori, dashboard per utenti)
   /registrazione           registrazione
   /login                   login
   /logout                  logout
   /cambia-password         cambio password forzato
   /profilo                 profilo (email + cambio password volontario)
   /api/profilo-info        endpoint JSON per profilo
-
-NOTA: tutti gli endpoint usano endpoint= espliciti che coincidono
-con i nomi originali di app.py, cosicché url_for() nei template
-non richiede modifiche.
 """
 
 import logging
@@ -70,9 +66,40 @@ def utente_corrente(conn):
 
 
 # ─── Route ──────────────────────────────────────────────────────────────────
-@auth_bp.route('/finta-home', endpoint='home')
+@auth_bp.route('/', endpoint='home')
 def home():
-    return redirect(url_for('gioco.home'))
+    # Visitatore non autenticato -> pagina di benvenuto
+    if 'nome_utente' not in session:
+        return render_template('welcome.html', session=session)
+    # Utente autenticato -> dashboard home con punteggio e posizione
+    with db_conn() as conn:
+        g_row = db_fetchone(
+            conn, 'SELECT giornata FROM stato_giornata WHERE is_attiva = TRUE')
+        giornata_attiva = row_get(g_row, 'giornata') if g_row else None
+        user = utente_corrente(conn)
+        if not user:
+            return redirect(url_for('auth.logout'))
+        uid = row_get(user, 'id')
+        p_row = db_fetchone(
+            conn, 'SELECT punteggio_totale FROM punteggi WHERE id_utente = ?',
+            (uid,),
+        )
+        punteggio_utente = row_get(p_row, 'punteggio_totale') or 0
+        rank_row = db_fetchone(
+            conn,
+            'SELECT COUNT(id) + 1 AS rank FROM punteggi '
+            'WHERE punteggio_totale > ?',
+            (punteggio_utente,),
+        )
+        posizione_utente = row_get(rank_row, 'rank') or 1
+    return render_template(
+        'home.html',
+        giornata_attiva=giornata_attiva,
+        punteggio_utente=punteggio_utente,
+        posizione_utente=posizione_utente,
+        session=session,
+    )
+
 
 @auth_bp.route('/registrazione', methods=['GET', 'POST'], endpoint='registrazione')
 @limiter.limit('10 per hour', methods=['POST'])
@@ -128,7 +155,7 @@ def login():
                                                   row_get(user, 'password')):
                 return render_template('login.html', session=session,
                                        errore='Credenziali non valide. Riprova.')
-            # Migrazione trasparente SHA-256 → PBKDF2
+            # Migrazione trasparente SHA-256 -> PBKDF2
             if _is_legacy_sha256(row_get(user, 'password')):
                 try:
                     db_execute(
@@ -140,11 +167,16 @@ def login():
                     log.info(f'Migrato hash password per {nome_utente}')
                 except Exception:
                     log.exception('Errore upgrade hash password')
-            if request.form.get('remember'):
+            # Rigenera la sessione per prevenire session fixation
+            is_admin_val = bool(row_get(user, 'is_admin'))
+            is_temp      = row_get(user, 'is_temp_password')
+            remember     = bool(request.form.get('remember'))
+            session.clear()
+            if remember:
                 session.permanent = True
             session['nome_utente'] = nome_utente
-            session['is_admin']    = bool(row_get(user, 'is_admin'))
-            if row_get(user, 'is_temp_password'):
+            session['is_admin']    = is_admin_val
+            if is_temp:
                 return redirect(url_for('auth.cambia_password'))
         return redirect(url_for('auth.home'))
     return render_template('login.html', session=session)

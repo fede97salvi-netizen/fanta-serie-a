@@ -54,7 +54,7 @@ class BaseConfig:
     MIN_PASSWORD_LEN = 6
 
     # Limiter
-    RATELIMIT_STORAGE_URI = 'memory://'
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
     RATELIMIT_DEFAULT = []
 
     # Logging

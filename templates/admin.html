@@ -15,7 +15,7 @@
       <button type="submit" class="btn-secondary" onclick="return confirm('Archiviare round {{ giornata_attiva }}?')">📦 Archivia</button>
     </form>
     <a href="{{ url_for('admin.admin_gestisci_partite', giornata=giornata_attiva) }}" class="btn-secondary">✏️ Risultati</a>
-    <form method="post" action="{{ url_for('admin.admin_invia_reminder_manuale', giornata=giornata_attiva) }}" style="display:contents;">
+    <form method="post" action="{{ url_for('admin.admin_invia_reminder', giornata=giornata_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-secondary">📧 Reminder</button>
     </form>

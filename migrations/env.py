@@ -22,10 +22,11 @@ from alembic import context
 # Aggiungi la root del progetto al sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Importa i modelli per l'autogenerazione
-from app import create_app
+# Importa SOLO i metadata dei modelli per l'autogenerazione.
+# NB: non importare 'app' qui: app.py esegue create_app() a import-time
+# (che crea le tabelle) e renderebbe vuoto l'autogenerate.
 from extensions import db
-import models  # noqa: F401 — importa tutti i modelli
+import models  # noqa: F401 — registra i modelli su db.metadata
 
 config = context.config
 
@@ -64,19 +65,21 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Applica migrazioni live sul DB."""
-    flask_app = create_app()
-    with flask_app.app_context():
-        connectable = db.engine
-        with connectable.connect() as connection:
-            context.configure(
-                connection=connection,
-                target_metadata=target_metadata,
-                compare_type=True,
-                render_as_batch=True,   # necessario per SQLite ALTER TABLE
-            )
-            with context.begin_transaction():
-                context.run_migrations()
+    """Applica migrazioni live sul DB (engine costruito dall'URL, senza app)."""
+    connectable = engine_from_config(
+        {'sqlalchemy.url': get_url()},
+        prefix='sqlalchemy.',
+        poolclass=pool.NullPool,
+    )
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            render_as_batch=True,   # necessario per SQLite ALTER TABLE
+        )
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():

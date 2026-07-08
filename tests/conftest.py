@@ -1,8 +1,8 @@
 """
 Fixture condivise per i test pytest.
 
-Usa SQLite in memoria per isolamento totale: ogni test
-ottiene un DB vuoto, nessun effetto sull'ambiente reale.
+Usa SQLite in memoria per isolamento totale: un DB vuoto condiviso per
+sessione, nessun effetto sull'ambiente reale.
 """
 
 import pytest
@@ -19,32 +19,43 @@ def app():
     from config import DevelopmentConfig
 
     class TestConfig(DevelopmentConfig):
-        TESTING        = True
-        DEBUG          = False
-        DATABASE_URL   = ''       # forza SQLite
+        TESTING          = True
+        DEBUG            = False
+        DATABASE_URL     = ''       # forza SQLite
         TALISMAN_ENABLED = False
-        WTF_CSRF_ENABLED = False  # disabilitato per semplicità nei test di route
+        WTF_CSRF_ENABLED = False    # disabilitato per i test di route
 
-    from app import create_app
-    application = create_app(TestConfig())
-
-    # Sovrascrive il DB con SQLite puro in memoria
-    from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit
     import sqlite3
     import db_utils as _dbu
 
+    # Predispone la connessione in-memory condivisa PRIMA di create_app,
+    # così anche il create_tables() interno alla factory usa lo stesso DB.
     _orig_new_conn = _dbu._new_connection
     _shared_conn   = sqlite3.connect(':memory:', check_same_thread=False)
     _shared_conn.row_factory = sqlite3.Row
 
-    def _in_memory_conn():
-        return _shared_conn
+    class _NonClosingConn:
+        """Proxy che condivide un'unica connessione in-memory tra i test.
 
-    _dbu._new_connection = _in_memory_conn
+        db_conn() chiama conn.close() nel finally: senza questo wrapper la
+        connessione (e quindi il DB in-memory) verrebbe distrutta dopo il
+        primo utilizzo. Qui close() e' un no-op; la connessione reale viene
+        chiusa solo nel teardown della fixture.
+        """
+        def __init__(self, conn):
+            object.__setattr__(self, '_conn', conn)
 
-    with application.app_context():
-        from app import create_tables
-        create_tables()
+        def close(self):
+            pass
+
+        def __getattr__(self, name):
+            return getattr(object.__getattribute__(self, '_conn'), name)
+
+    _proxy_conn = _NonClosingConn(_shared_conn)
+    _dbu._new_connection = lambda: _proxy_conn
+
+    from app import create_app
+    application = create_app(TestConfig())
 
     yield application
 
@@ -52,8 +63,10 @@ def app():
     _shared_conn.close()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def client(app):
+    # Function-scoped: ogni test ottiene un client con cookie jar pulito
+    # (evita contaminazione della sessione tra i test).
     return app.test_client()
 
 
@@ -93,6 +106,6 @@ def _crea_utente(nome: str, password: str = 'test123',
         db_execute(conn,
                    'INSERT OR IGNORE INTO punteggi (id_utente, punteggio_totale) '
                    'VALUES (?, 0)',
-                   (row['id'],))
+                   (row_get(row, 'id'),))
         db_commit(conn)
-    return row['id']
+    return row_get(row, 'id')
