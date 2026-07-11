@@ -344,7 +344,9 @@ def create_app(config=None) -> Flask:
         Talisman(
             app,
             content_security_policy=CSP,
-            content_security_policy_nonce_in=['script-src'],
+            # NB: nessun nonce su script-src. Se si aggiunge un nonce, i browser
+            # ignorano 'unsafe-inline' e bloccano gli <script> inline e gli
+            # handler onclick usati nei template (es. il menu utente/drawer).
             force_https=True,
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
