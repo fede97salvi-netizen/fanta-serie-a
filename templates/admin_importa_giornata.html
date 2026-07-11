@@ -16,14 +16,20 @@
     <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="azione" value="carica">
-      <div style="display:flex;gap:10px;align-items:flex-end;">
-        <div class="u-flex-1">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="min-width:140px;">
+          <label class="form-label">Stagione (anno d'inizio)</label>
+          <input type="number" name="stagione" class="form-control" min="2000" max="2100"
+            value="{{ stagione_selezionata }}" placeholder="es. 2026">
+        </div>
+        <div class="u-flex-1" style="min-width:140px;">
           <label class="form-label">Numero giornata</label>
           <input type="number" name="giornata" class="form-control" min="1" max="38"
-            value="{{ giornata_selezionata or giornata_corrente or '' }}" placeholder="es. 35" required>
+            value="{{ giornata_selezionata or '' }}" placeholder="es. 1" required>
         </div>
         <button type="submit" class="btn-primary" style="height:46px;white-space:nowrap;">Carica partite</button>
       </div>
+      <div class="u-muted-sm u-mt-sm">La stagione 2026 indica il campionato 2026/2027.</div>
     </form>
     {% if giornata_corrente %}
     <div class="u-muted-sm u-mt-sm">Giornata corrente Serie A: <strong style="color:var(--azzurro);">{{ giornata_corrente }}</strong></div>
@@ -32,12 +38,13 @@
 
   {% if partite_api %}
   <div class="fsa-section-title">Partite giornata {{ giornata_selezionata }}</div>
-  <div class="alert alert-info u-mb-md">Seleziona le <strong>3 partite</strong> da usare come pronostici. I giocatori verranno importati automaticamente per le squadre selezionate.</div>
+  <div class="alert alert-info u-mb-md">Seleziona fino a <strong>3 partite</strong> da usare come pronosticabili per la giornata.</div>
 
   <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="azione" value="salva">
     <input type="hidden" name="giornata" value="{{ giornata_selezionata }}">
+    <input type="hidden" name="stagione" value="{{ stagione_selezionata }}">
 
     {% for partita in partite_api %}
     <div class="fsa-card" style="margin-bottom:10px;">
@@ -64,7 +71,7 @@
     <div class="u-mt-lg">
       <button type="submit" class="btn-success" id="btn-salva">IMPORTA PARTITE SELEZIONATE</button>
       <div class="u-muted-sm u-mt-sm" style="text-align:center;">
-        Verranno importate anche le rose aggiornate delle squadre selezionate.
+        Le partite selezionate verranno impostate come pronosticabili e la giornata attivata.
       </div>
     </div>
   </form>

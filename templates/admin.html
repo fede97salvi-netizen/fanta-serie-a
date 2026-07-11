@@ -4,15 +4,15 @@
   <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#ef5350;margin-bottom:4px;">Area riservata</div>
   <h1 class="u-hero-xl" style="color:white;">Dashboard Admin</h1>
   {% if giornata_attiva %}
-  <div class="fsa-section-title">⚽ Gironi – Round {{ giornata_attiva }}</div>
+  <div class="fsa-section-title">⚽ Giornata {{ giornata_attiva }}</div>
   <div class="fsa-card" style="display:flex;flex-wrap:wrap;gap:8px;">
     <form method="post" action="{{ url_for('admin.admin_calcola_punti_giornata', giornata=giornata_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn-primary" onclick="return confirm('Calcolare punti round {{ giornata_attiva }}?')">⚡ Calcola punti</button>
+      <button type="submit" class="btn-primary" onclick="return confirm('Calcolare punti giornata {{ giornata_attiva }}?')">⚡ Calcola punti</button>
     </form>
     <form method="post" action="{{ url_for('admin.archivia_giornata', giornata=giornata_attiva) }}" style="display:contents;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn-secondary" onclick="return confirm('Archiviare round {{ giornata_attiva }}?')">📦 Archivia</button>
+      <button type="submit" class="btn-secondary" onclick="return confirm('Archiviare giornata {{ giornata_attiva }}?')">📦 Archivia</button>
     </form>
     <a href="{{ url_for('admin.admin_gestisci_partite', giornata=giornata_attiva) }}" class="btn-secondary">✏️ Risultati</a>
     <form method="post" action="{{ url_for('admin.admin_invia_reminder', giornata=giornata_attiva) }}" style="display:contents;">
@@ -21,16 +21,16 @@
     </form>
   </div>
   {% else %}
-  <div class="fsa-section-title">⚽ Attiva Gironi (Nessun Round in corso)</div>
+  <div class="fsa-section-title">⚽ Attiva giornata (nessuna giornata in corso)</div>
   <div class="fsa-card">
     <form method="post" action="{{ url_for('admin.admin_attiva_giornata') }}" style="display:flex;gap:8px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <select name="giornata" class="fsa-select" style="flex:1;">
-        <option value="1">Round 1</option>
-        <option value="2">Round 2</option>
-        <option value="3">Round 3</option>
+        {% for n in range(1, 39) %}
+        <option value="{{ n }}">Giornata {{ n }}</option>
+        {% endfor %}
       </select>
-      <button type="submit" class="btn-gold">🚀 Attiva Round</button>
+      <button type="submit" class="btn-gold">🚀 Attiva giornata</button>
     </form>
   </div>
   {% endif %}

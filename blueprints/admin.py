@@ -479,46 +479,58 @@ def admin_aggiorna_risultati_massivo():
                 endpoint='admin_importa_giornata')
 @admin_required
 def admin_importa_giornata():
-    partite_da_importare = []
+    from flask import current_app
+    from datetime import datetime
+    serie_a = current_app.config.get('SERIE_A_CODE', 'SA')
+    # Stagione di default: da luglio in poi e' l'anno corrente (2026 = 2026/27)
+    oggi = datetime.now()
+    stagione_default = oggi.year if oggi.month >= 7 else oggi.year - 1
+
+    partite_api          = []
+    selezionate          = set()
     giornata_selezionata = None
+    stagione_selezionata = stagione_default
+
     if request.method == 'POST':
-        giornata_selezionata = _safe_int(request.form.get('giornata'), lo=1, hi=50)
+        azione = request.form.get('azione', 'carica')
+        giornata_selezionata = _safe_int(request.form.get('giornata'), lo=1, hi=38)
+        stagione_selezionata = (_safe_int(request.form.get('stagione'),
+                                          lo=2000, hi=2100) or stagione_default)
         if giornata_selezionata is None:
             flash('Giornata non valida.', 'warning')
             return redirect(url_for('admin.admin_importa_giornata'))
-        from flask import current_app
-        serie_a = current_app.config.get('SERIE_A_CODE', 'SA')
+
         data, err = _football_api_get(
             f'/competitions/{serie_a}/matches',
-            {'matchday': giornata_selezionata},
+            {'matchday': giornata_selezionata, 'season': stagione_selezionata},
         )
         if err:
             flash(f'Errore API: {err}', 'danger')
             return redirect(url_for('admin.admin_importa_giornata'))
-        for m in (data or {}).get('matches', []):
-            partite_da_importare.append({
-                'squadra_casa':   (m['homeTeam']['name'] or '').upper(),
-                'squadra_ospite': (m['awayTeam']['name'] or '').upper(),
-                'data_ora':       m.get('utcDate', ''),
-            })
 
-        if request.form.get('conferma') == '1':
-            psel_idx = request.form.getlist('seleziona[]')
-            partite_sel = []
-            for idx in psel_idx:
-                try:
-                    partite_sel.append(partite_da_importare[int(idx)])
-                except (ValueError, IndexError):
-                    continue
-            if partite_sel:
+        partite_api = [{
+            'id':       m.get('id'),
+            'home':     (m['homeTeam']['name'] or '').upper(),
+            'away':     (m['awayTeam']['name'] or '').upper(),
+            'data_ora': m.get('utcDate', ''),
+        } for m in (data or {}).get('matches', [])]
+
+        if azione == 'salva':
+            ids_sel = {iv for iv in
+                       (_safe_int(v) for v in request.form.getlist('partita_ids'))
+                       if iv is not None}
+            selezionate = ids_sel
+            partite_sel = [p for p in partite_api if p['id'] in ids_sel]
+            if not partite_sel:
+                flash('Seleziona almeno una partita.', 'warning')
+            else:
                 with db_conn() as conn:
                     for p in partite_sel:
                         db_execute(conn,
                                    'INSERT INTO partite (giornata, squadra_casa, '
                                    'squadra_ospite, pronosticabile, data_ora_partita) '
                                    'VALUES (?, ?, ?, TRUE, ?)',
-                                   (giornata_selezionata,
-                                    p['squadra_casa'], p['squadra_ospite'],
+                                   (giornata_selezionata, p['home'], p['away'],
                                     p['data_ora']))
                     if USE_POSTGRES:
                         db_execute(conn,
@@ -554,18 +566,31 @@ def admin_importa_giornata():
                     if destinatari:
                         invia_email_async(
                             destinatari,
-                            f'⚽ FantaSerieA — Giornata {giornata_selezionata} disponibile!',
-                            build_email_giornata(giornata_selezionata, partite_sel),
+                            f'\u26bd FantaSerieA \u2014 Giornata {giornata_selezionata} disponibile!',
+                            build_email_giornata(giornata_selezionata, [
+                                {'squadra_casa':     p['home'],
+                                 'squadra_ospite':   p['away'],
+                                 'data_ora_partita': p['data_ora']}
+                                for p in partite_sel
+                            ]),
                         )
 
                 session['flash_message'] = (
                     f'Giornata {giornata_selezionata}: '
                     f'{len(partite_sel)} partite importate.')
                 return redirect(url_for('admin.admin_home'))
+        elif not partite_api:
+            flash(
+                f'Nessuna partita trovata per la giornata {giornata_selezionata} '
+                f'della stagione {stagione_selezionata}/{stagione_selezionata + 1}. '
+                f'Il calendario potrebbe non essere ancora disponibile su football-data.org.',
+                'warning')
 
     return render_template('admin_importa_giornata.html',
-                           partite=partite_da_importare,
+                           partite_api=partite_api,
+                           selezionate=selezionate,
                            giornata_selezionata=giornata_selezionata,
+                           stagione_selezionata=stagione_selezionata,
                            session=session)
 
 
