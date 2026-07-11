@@ -89,6 +89,12 @@
       <div class="u-muted-xs-mt3">Importa, gestisci risultati</div>
     </a>
 
+    <a href="{{ url_for('admin.admin_importa_giornata') }}" class="fsa-card u-card-link">
+      <div class="u-icon-xl">📅</div>
+      <div class="u-hero">Importa partite</div>
+      <div class="u-muted-xs-mt3">Da API Serie A</div>
+    </a>
+
     <a href="{{ url_for('admin.admin_gestisci_pronostici', giornata=g if giornata_attiva else 1) }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">📊</div>
       <div class="u-hero">Pronostici</div>

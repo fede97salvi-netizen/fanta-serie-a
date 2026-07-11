@@ -9,6 +9,18 @@
 
 <div class="fsa-section u-pt-sm">
 
+  <!-- Import partite: disponibile anche senza giornata attiva -->
+  {% if not giornata_attiva %}
+  <div class="fsa-section-title">Importazione</div>
+  <div style="margin-bottom:16px;">
+    <a href="{{ url_for('admin.admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
+      <div style="font-size:24px;margin-bottom:4px;">📅</div>
+      <div class="u-hero-xs">Importa partite da API</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
+    </a>
+  </div>
+  {% endif %}
+
   <!-- SEZIONE 1: Importazione + Risultati -->
   {% if giornata_attiva %}
   {% set g = giornata_attiva['giornata'] if giornata_attiva is mapping else giornata_attiva %}
