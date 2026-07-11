@@ -7,13 +7,13 @@
     <div class="alert alert-info">🔒 Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div>
     <div class="fsa-card">
       <div class="overflow-x">
-        <table class="fsa-table">
-          <thead><tr><th>Utente</th><th>1°</th><th>2°</th><th>3°</th><th>4°</th><th>Capocannoniere</th></tr></thead>
+        <table class="fsa-table" style="table-layout:fixed;max-width:900px;">
+          <thead><tr><th style="width:18%;">Utente</th><th style="width:15%;text-align:center;">1°</th><th style="width:15%;text-align:center;">2°</th><th style="width:15%;text-align:center;">3°</th><th style="width:15%;text-align:center;">4°</th><th style="width:22%;">Capocannoniere</th></tr></thead>
           <tbody>
             {% for p in pronostici_tutti %}
             <tr {% if p.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
               <td><strong>{{ p.nome_utente }}</strong>{% if p.nome_utente == session.nome_utente %} <span style="font-size:11px;color:var(--azzurro);">✦</span>{% endif %}</td>
-              <td>{{ p.squadra_1 }}</td><td>{{ p.squadra_2 }}</td><td>{{ p.squadra_3 }}</td><td>{{ p.squadra_4 }}</td>
+              <td style="text-align:center;">{{ p.squadra_1 }}</td><td style="text-align:center;">{{ p.squadra_2 }}</td><td style="text-align:center;">{{ p.squadra_3 }}</td><td style="text-align:center;">{{ p.squadra_4 }}</td>
               <td>{{ p.capocannoniere }}</td>
             </tr>
             {% else %}
