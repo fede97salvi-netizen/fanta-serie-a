@@ -12,7 +12,9 @@ Route:
 """
 
 import logging
+import random
 import re
+import string
 
 from flask import (
     Blueprint, render_template, request, redirect,
@@ -180,6 +182,49 @@ def login():
                 return redirect(url_for('auth.cambia_password'))
         return redirect(url_for('auth.home'))
     return render_template('login.html', session=session)
+
+
+@auth_bp.route('/recupera-password', methods=['GET', 'POST'],
+               endpoint='recupera_password')
+@limiter.limit('5 per hour', methods=['POST'])
+def recupera_password():
+    """Recupero password self-service (solo utenti NON admin).
+
+    Genera una password temporanea mostrata a schermo; al primo accesso
+    l'utente sara' obbligato a impostarne una nuova (is_temp_password).
+    """
+    if 'nome_utente' in session:
+        return redirect(url_for('auth.home'))
+    if request.method == 'POST':
+        nome_utente = (request.form.get('nome_utente') or '').strip()
+        if len(nome_utente) < 2:
+            return render_template('recupera_password.html', session=session,
+                                   errore='Inserisci il tuo nome utente.')
+        with db_conn() as conn:
+            user = db_fetchone(
+                conn, 'SELECT id, is_admin FROM utenti WHERE nome_utente = ?',
+                (nome_utente,),
+            )
+            if not user:
+                return render_template('recupera_password.html', session=session,
+                                       errore='Nessun utente con questo nome.')
+            if row_get(user, 'is_admin'):
+                return render_template(
+                    'recupera_password.html', session=session,
+                    errore="Per gli account amministratore contatta direttamente l'admin.")
+            pw_temp = ''.join(
+                random.choices(string.ascii_letters + string.digits, k=8))
+            db_execute(
+                conn,
+                'UPDATE utenti SET password = ?, is_temp_password = TRUE '
+                'WHERE id = ?',
+                (hash_password(pw_temp), row_get(user, 'id')),
+            )
+            db_commit(conn)
+            log.info(f'Reset password self-service per {nome_utente}')
+        return render_template('recupera_password.html', session=session,
+                               nome_utente=nome_utente, password_temp=pw_temp)
+    return render_template('recupera_password.html', session=session)
 
 
 @auth_bp.route('/logout', endpoint='logout')

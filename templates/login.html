@@ -25,7 +25,10 @@
       </div>
       <button type="submit" class="btn-success">Accedi</button>
     </form>
-    <p class="u-muted-md u-mt-lg" style="text-align:center;">
+    <p class="u-muted-md u-mt-md" style="text-align:center;">
+      <a href="{{ url_for('auth.recupera_password') }}" style="color:var(--azzurro);text-decoration:none;">Password dimenticata?</a>
+    </p>
+    <p class="u-muted-md u-mt-sm" style="text-align:center;">
       Non hai un account? <a href="{{ url_for('auth.registrazione') }}" style="color:var(--azzurro);text-decoration:none;">Registrati qui</a>
     </p>
   </div>

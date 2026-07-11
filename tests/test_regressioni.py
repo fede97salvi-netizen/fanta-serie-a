@@ -82,3 +82,23 @@ def test_admin_required_blocca_non_admin(client):
         s['is_admin'] = False
     r = client.get('/admin')
     assert r.status_code == 403
+
+
+# ─── Recupero password self-service ───────────────────────────────────────────
+
+def test_recupera_password_non_admin(client):
+    _crea_utente('reset_user', 'vecchia1', is_admin=False)
+    r = client.post('/recupera-password', data={'nome_utente': 'reset_user'})
+    assert r.status_code == 200
+    assert 'Password temporanea' in r.data.decode('utf-8')
+
+
+def test_recupera_password_admin_negato(client):
+    _crea_utente('reset_admin', is_admin=True)
+    r = client.post('/recupera-password', data={'nome_utente': 'reset_admin'})
+    assert 'amministratore' in r.data.decode('utf-8').lower()
+
+
+def test_recupera_password_utente_inesistente(client):
+    r = client.post('/recupera-password', data={'nome_utente': 'nessuno_xyz'})
+    assert 'Nessun utente' in r.data.decode('utf-8')
