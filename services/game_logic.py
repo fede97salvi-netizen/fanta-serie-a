@@ -29,6 +29,14 @@ PUNTI_BONUS_TRIPLA = 1
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
+def pulisci_username(nome: str) -> str:
+    """Rimuove tutti gli spazi (inizio, fine e interni) da uno username,
+    per evitare problemi di confronto/duplicati nelle query."""
+    if not nome:
+        return ''
+    return re.sub(r'\s+', '', str(nome))
+
+
 # ─── Date / timezone ─────────────────────────────────────────────────────────
 
 def parse_flexible_datetime(date_string: str) -> datetime | None:

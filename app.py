@@ -17,7 +17,7 @@ from flask_talisman import Talisman
 from config import get_config
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
-from services.game_logic import parse_flexible_datetime
+from services.game_logic import parse_flexible_datetime, pulisci_username
 
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
@@ -250,6 +250,35 @@ def _create_indexes(conn):
             log.exception('Errore creazione indice')
 
 
+def _pulisci_username_spazi(conn):
+    """Migrazione una-tantum: rimuove gli spazi dagli username esistenti.
+    In caso di collisione (due nomi che, ripuliti, coinciderebbero) lascia
+    invariato il secondo e registra un warning."""
+    try:
+        rows = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti')
+    except Exception:
+        log.exception('Errore lettura utenti per pulizia username')
+        return
+    presenti = {row_get(r, 'nome_utente'): row_get(r, 'id') for r in rows}
+    for r in rows:
+        orig = row_get(r, 'nome_utente') or ''
+        pulito = pulisci_username(orig)
+        if pulito == orig or not pulito:
+            continue
+        altro = presenti.get(pulito)
+        if altro is not None and altro != row_get(r, 'id'):
+            log.warning(
+                f"Username '{orig}' non normalizzato: collide con '{pulito}'.")
+            continue
+        try:
+            db_execute(conn, 'UPDATE utenti SET nome_utente = ? WHERE id = ?',
+                       (pulito, row_get(r, 'id')))
+            presenti[pulito] = row_get(r, 'id')
+            log.info(f"Username normalizzato: '{orig}' -> '{pulito}'")
+        except Exception:
+            log.exception('Errore normalizzazione username')
+
+
 def create_tables():
     with db_conn() as conn:
         if USE_POSTGRES:
@@ -258,6 +287,7 @@ def create_tables():
             _create_tables_sqlite(conn)
         _migrate_schema(conn)
         _promuovi_admin_storico(conn)
+        _pulisci_username_spazi(conn)
         _create_indexes(conn)
         db_commit(conn)
 

@@ -102,3 +102,24 @@ def test_recupera_password_admin_negato(client):
 def test_recupera_password_utente_inesistente(client):
     r = client.post('/recupera-password', data={'nome_utente': 'nessuno_xyz'})
     assert 'Nessun utente' in r.data.decode('utf-8')
+
+
+# ─── Username senza spazi ─────────────────────────────────────────────────────
+
+def test_registrazione_rimuove_spazi_username(client):
+    from db_utils import db_conn, db_fetchone
+    client.post('/registrazione',
+                data={'nome_utente': '  gio vanni ', 'password': 'pass123'},
+                follow_redirects=True)
+    with db_conn() as conn:
+        r = db_fetchone(conn,
+                        "SELECT id FROM utenti WHERE nome_utente = 'giovanni'")
+    assert r is not None
+
+
+def test_login_con_spazi_trova_utente_pulito(client):
+    _crea_utente('paolo', 'pass123')
+    r = client.post('/login',
+                    data={'nome_utente': ' pa olo ', 'password': 'pass123'},
+                    follow_redirects=False)
+    assert r.status_code == 302  # spazi rimossi -> match con 'paolo'

@@ -25,7 +25,7 @@ from hashlib import sha256
 
 from db_utils import db_conn, db_execute, db_fetchone, db_commit, row_get
 from extensions import limiter
-from services.game_logic import EMAIL_RE
+from services.game_logic import EMAIL_RE, pulisci_username
 
 log = logging.getLogger('fanta')
 
@@ -107,7 +107,7 @@ def home():
 @limiter.limit('10 per hour', methods=['POST'])
 def registrazione():
     if request.method == 'POST':
-        nome_utente = (request.form.get('nome_utente') or '').strip()
+        nome_utente = pulisci_username(request.form.get('nome_utente'))
         password    = request.form.get('password') or ''
         if len(nome_utente) < 2:
             return render_template('registrazione.html', session=session,
@@ -146,7 +146,7 @@ def registrazione():
 @limiter.limit('5 per minute; 30 per hour', methods=['POST'])
 def login():
     if request.method == 'POST':
-        nome_utente = (request.form.get('nome_utente') or '').strip()
+        nome_utente = pulisci_username(request.form.get('nome_utente'))
         password    = request.form.get('password') or ''
         with db_conn() as conn:
             user = db_fetchone(
@@ -196,7 +196,7 @@ def recupera_password():
     if 'nome_utente' in session:
         return redirect(url_for('auth.home'))
     if request.method == 'POST':
-        nome_utente = (request.form.get('nome_utente') or '').strip()
+        nome_utente = pulisci_username(request.form.get('nome_utente'))
         if len(nome_utente) < 2:
             return render_template('recupera_password.html', session=session,
                                    errore='Inserisci il tuo nome utente.')

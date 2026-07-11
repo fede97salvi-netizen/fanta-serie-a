@@ -247,3 +247,16 @@ def test_parse_datetime_datetime_local():
 def test_scadenza_con_data_api_z():
     assert is_partita_scaduta('2020-01-01T12:00:00Z') is True
     assert is_partita_scaduta('2099-01-01T12:00:00Z') is False
+
+
+# ─── Pulizia username (no spazi) ──────────────────────────────────────────────
+
+from services.game_logic import pulisci_username
+
+
+def test_pulisci_username_rimuove_spazi():
+    assert pulisci_username('  mir ko ') == 'mirko'
+    assert pulisci_username('mario rossi') == 'mariorossi'
+    assert pulisci_username('\tpippo\n') == 'pippo'
+    assert pulisci_username('') == ''
+    assert pulisci_username(None) == ''
