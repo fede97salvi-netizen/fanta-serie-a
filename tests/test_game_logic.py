@@ -222,3 +222,28 @@ def test_no_match_squadre_diverse():
 def test_no_match_stringhe_vuote():
     assert not squadre_compatibili('', 'MILAN')
     assert not squadre_compatibili('INTER', '')
+
+
+# ─── Parsing date API (fix orario/scadenze) ───────────────────────────────────
+
+from services.game_logic import parse_flexible_datetime, is_partita_scaduta
+
+
+def test_parse_datetime_iso_con_z():
+    d = parse_flexible_datetime('2026-08-24T18:30:00Z')
+    assert d is not None and d.year == 2026 and d.hour == 18 and d.minute == 30
+
+
+def test_parse_datetime_iso_con_offset():
+    d = parse_flexible_datetime('2026-08-24T18:30:00+00:00')
+    assert d is not None and d.hour == 18
+
+
+def test_parse_datetime_datetime_local():
+    d = parse_flexible_datetime('2026-08-24T18:30')
+    assert d is not None and d.minute == 30
+
+
+def test_scadenza_con_data_api_z():
+    assert is_partita_scaduta('2020-01-01T12:00:00Z') is True
+    assert is_partita_scaduta('2099-01-01T12:00:00Z') is False

@@ -230,9 +230,30 @@ def pronostici_iniziali():
             conn, 'SELECT * FROM pronostici_iniziali WHERE id_utente = ?',
             (user_id,),
         )
+        # Squadre per i menu a tendina: unione delle squadre presenti in
+        # partite e nelle rose (giocatori).
+        squadre_rows = db_fetchall(
+            conn,
+            'SELECT squadra FROM ('
+            '  SELECT squadra_casa AS squadra FROM partite'
+            '  UNION SELECT squadra_ospite FROM partite'
+            '  UNION SELECT squadra FROM giocatori'
+            ') t WHERE squadra IS NOT NULL AND squadra != %s '
+            'ORDER BY squadra' % ("''",),
+        )
+        squadre = [row_get(r, 'squadra') for r in squadre_rows]
+        # Capocannoniere: nomi giocatori dalle rose (niente Nessun/Autogol).
+        giocatori_rows = db_fetchall(
+            conn,
+            'SELECT DISTINCT nome_giocatore FROM giocatori '
+            'ORDER BY nome_giocatore',
+        )
+        giocatori = [row_get(r, 'nome_giocatore') for r in giocatori_rows]
         return render_template('pronostici_iniziali.html',
                                is_locked=is_locked,
                                pronostico=pronostico,
+                               squadre=squadre,
+                               giocatori=giocatori,
                                session=session)
 
 

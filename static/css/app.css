@@ -148,3 +148,17 @@
 
     /* Testo centrato */
     .u-center-mb    { text-align:center; margin-bottom:24px; }
+
+/* Evidenziazione bottone Esito (1/X/2) nei pronostici giornata.
+   Spostata qui da <style> inline perché la CSP blocca gli style-src-elem inline. */
+input[type="radio"].esito-radio:checked + .esito-btn,
+.esito-btn.selected {
+  background: var(--blue-mid) !important;
+  border-color: var(--azzurro) !important;
+  color: #fff !important;
+}
+label:has(.esito-radio:checked) .esito-btn {
+  background: var(--blue-mid);
+  border-color: var(--azzurro);
+  color: #fff;
+}

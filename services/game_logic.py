@@ -34,10 +34,16 @@ EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 def parse_flexible_datetime(date_string: str) -> datetime | None:
     if not date_string:
         return None
+    s = str(date_string).strip()
+    # Normalizza il fuso ISO 8601 restituito dall'API (es. "2026-08-24T18:30:00Z"
+    # o "...+00:00") in un datetime naive in UTC, che poi viene convertito a Roma.
+    if s.endswith('Z'):
+        s = s[:-1]
+    s = re.sub(r'[+-]\d{2}:\d{2}$', '', s)
     for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M',
                 '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
         try:
-            return datetime.strptime(date_string, fmt)
+            return datetime.strptime(s, fmt)
         except ValueError:
             continue
     return None
