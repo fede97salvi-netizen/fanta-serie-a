@@ -1,33 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Risultati Torneo{% endblock %}
+{% block title %}Risultati Torneo – Admin{% endblock %}
 {% block content %}
 <div class="btn-back-bar">
-  <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back">← Dashboard Admin</a>
 </div>
 <div class="page-header">
-  <a href="{{ url_for('admin.admin_home') }}" class="u-muted-xs" style="text-decoration:none;">← Admin</a>
-  <h2>🌍 Risultati Torneo</h2>
+  <div class="u-muted-xs">Fine Stagione</div>
+  <h2>🌍 Risultati Finali Torneo</h2>
 </div>
-<div class="u-card-form">
-  <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
-    Compila a fine torneo. Il sistema calcolerà automaticamente i bonus per tutti i partecipanti.
-  </p>
-  <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {% for campo, label in [('vincitore','🏆 Vincitore (+40pt)'),('finalista','🥈 Finalista (+20pt)'),
-                             ('semifinalista_1','4️⃣ Semifinalista 1 (+10pt)'),('semifinalista_2','4️⃣ Semifinalista 2 (+10pt)'),
-                             ('capocannoniere','⚽ Capocannoniere (+25pt)')] %}
-    <div style="margin-bottom:14px;">
-      <label class="fsa-label">{{ label }}</label>
-      <input type="text" name="{{ campo }}" class="fsa-input"
-             value="{{ rf[campo] if rf and rf[campo] else '' }}" placeholder="Nome squadra / giocatore">
-    </div>
-    {% endfor %}
-    <button type="submit" class="btn-gold" style="width:100%;justify-content:center;padding:14px;font-size:16px;">
-      💾 Salva e calcola bonus
-    </button>
-  </form>
+
+<div style="padding:0 16px 24px;">
+  <div class="fsa-card">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="fsa-label">🏆 Squadra Vincitrice</div>
+      <select name="vincitore" class="fsa-select" style="margin-bottom:16px;">
+        <option value="">— Seleziona —</option>
+        {% for sq in squadre %}
+        <option value="{{ sq }}" {% if rf and rf.vincitore == sq %}selected{% endif %}>{{ sq }}</option>
+        {% endfor %}
+      </select>
+      
+      <div class="fsa-label">🥈 Squadra Finalista</div>
+      <select name="finalista" class="fsa-select" style="margin-bottom:16px;">
+        <option value="">— Seleziona —</option>
+        {% for sq in squadre %}
+        <option value="{{ sq }}" {% if rf and rf.finalista == sq %}selected{% endif %}>{{ sq }}</option>
+        {% endfor %}
+      </select>
+      
+      <div class="fsa-label">⚽ Capocannoniere</div>
+      <div class="u-muted-xs" style="margin-bottom:6px;">*Lista generata dai nomi inseriti dagli utenti</div>
+      <select name="capocannoniere" class="fsa-select" style="margin-bottom:24px;">
+        <option value="">— Seleziona —</option>
+        {% for cap in capocannonieri_votati %}
+        <option value="{{ cap }}" {% if rf and rf.capocannoniere == cap %}selected{% endif %}>{{ cap }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn-gold" style="width:100%;font-size:16px;padding:12px;">⚡ Salva e Assegna Punti</button>
+    </form>
+  </div>
 </div>
+{% endblock %}
 <div class="btn-back-bar" style="padding:14px 16px 24px;">
   <a href="{ url_for('admin.admin_home') }" class="btn-back">← Admin</a>
 </div>
