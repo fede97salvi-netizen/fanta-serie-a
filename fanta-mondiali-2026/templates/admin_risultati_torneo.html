@@ -31,11 +31,15 @@
       </select>
       
       <div class="fsa-label">⚽ Capocannoniere</div>
-      <div class="u-muted-xs" style="margin-bottom:6px;">*Lista generata dai nomi inseriti dagli utenti</div>
-      <select name="capocannoniere" class="fsa-select" style="margin-bottom:24px;">
-        <option value="">— Seleziona —</option>
+      <div class="u-muted-xs" style="margin-bottom:6px;">*Tieni premuto CTRL/CMD o seleziona più nomi da mobile per le varianti/parimerito</div>
+      
+      <!-- Trasformiamo in lista in modo da leggere le selezioni multiple salvate -->
+      {% set cap_salvati = (rf.capocannoniere or '').split(', ') if rf else [] %}
+      
+      <select name="capocannoniere[]" multiple class="fsa-select" style="margin-bottom:24px; height: 120px;">
+        <option value="">— Nessuno / Svuota selezione —</option>
         {% for cap in capocannonieri_votati %}
-        <option value="{{ cap }}" {% if rf and rf.capocannoniere == cap %}selected{% endif %}>{{ cap }}</option>
+        <option value="{{ cap }}" {% if cap in cap_salvati %}selected{% endif %}>{{ cap }}</option>
         {% endfor %}
       </select>
 
