@@ -497,22 +497,37 @@ def admin_sblocca_torneo():
 @admin_bp.route('/admin/risultati-torneo', methods=['GET', 'POST'],
                 endpoint='admin_risultati_torneo')
 def admin_risultati_torneo():
+    """Inserimento risultati finali del torneo (solo 3 campi, con menu a tendina dinamici)."""
     if require_admin(): return 'Accesso negato.', 403
+    
     with db_conn() as conn:
         if request.method == 'POST':
             db_execute(conn,
                        'UPDATE risultati_torneo SET vincitore=?, finalista=?, '
-                       'semifinalista_1=?, semifinalista_2=?, capocannoniere=? WHERE id=1',
+                       'capocannoniere=? WHERE id=1',
                        (request.form.get('vincitore'), request.form.get('finalista'),
-                        request.form.get('semifinalista_1'), request.form.get('semifinalista_2'),
                         request.form.get('capocannoniere')))
             db_commit(conn)
+            
+            # Calcola in automatico i punti finali appena salvi
             msg = calcola_e_aggiorna_punti_torneo()
             flash(msg, 'success')
             return redirect(url_for('admin.admin_home'))
+            
         rf = db_fetchone(conn, 'SELECT * FROM risultati_torneo WHERE id=1')
-    return render_template('admin_risultati_torneo.html', rf=rf, session=session)
+        
+        # --- LOGICA INTELLIGENTE: Estrai opzioni esatte ---
+        # 1. Squadre (dalla tabella partite, come per i pronostici utente)
+        squadre = [row_get(r, 'squadra_casa') for r in db_fetchall(conn, 'SELECT DISTINCT squadra_casa FROM partite ORDER BY squadra_casa')]
+        
+        # 2. Capocannonieri (estraiamo i nomi ESATTI digitati/selezionati dagli utenti)
+        capocannonieri_votati = [row_get(r, 'capocannoniere') for r in db_fetchall(conn, "SELECT DISTINCT capocannoniere FROM pronostici_torneo WHERE capocannoniere IS NOT NULL AND capocannoniere != '' ORDER BY capocannoniere")]
 
+    return render_template('admin_risultati_torneo.html', 
+                           rf=rf, 
+                           squadre=squadre, 
+                           capocannonieri_votati=capocannonieri_votati, 
+                           session=session)
 
 # ─── Utility Ricalcola ────────────────────────────────────────────────────────
 
