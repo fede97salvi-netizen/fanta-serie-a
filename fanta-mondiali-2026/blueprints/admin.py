@@ -502,11 +502,20 @@ def admin_risultati_torneo():
     
     with db_conn() as conn:
         if request.method == 'POST':
+            vincitore = request.form.get('vincitore')
+            finalista = request.form.get('finalista')
+            
+            # --- LOGICA SELEZIONE MULTIPLA ---
+            # Recupera la lista di capocannonieri selezionati dal form HTML
+            cap_list = request.form.getlist('capocannoniere[]')
+            # Pulisce la lista tenendo solo i nomi validi e li unisce con una virgola
+            cap_validi = [c.strip() for c in cap_list if c.strip()]
+            cap_stringa = ", ".join(cap_validi) if cap_validi else None
+
             db_execute(conn,
                        'UPDATE risultati_torneo SET vincitore=?, finalista=?, '
                        'capocannoniere=? WHERE id=1',
-                       (request.form.get('vincitore'), request.form.get('finalista'),
-                        request.form.get('capocannoniere')))
+                       (vincitore, finalista, cap_stringa))
             db_commit(conn)
             
             # Calcola in automatico i punti finali appena salvi
@@ -516,11 +525,8 @@ def admin_risultati_torneo():
             
         rf = db_fetchone(conn, 'SELECT * FROM risultati_torneo WHERE id=1')
         
-        # --- LOGICA INTELLIGENTE: Estrai opzioni esatte ---
-        # 1. Squadre (dalla tabella partite, come per i pronostici utente)
+        # Estrai opzioni esatte dal DB
         squadre = [row_get(r, 'squadra_casa') for r in db_fetchall(conn, 'SELECT DISTINCT squadra_casa FROM partite ORDER BY squadra_casa')]
-        
-        # 2. Capocannonieri (estraiamo i nomi ESATTI digitati/selezionati dagli utenti)
         capocannonieri_votati = [row_get(r, 'capocannoniere') for r in db_fetchall(conn, "SELECT DISTINCT capocannoniere FROM pronostici_torneo WHERE capocannoniere IS NOT NULL AND capocannoniere != '' ORDER BY capocannoniere")]
 
     return render_template('admin_risultati_torneo.html', 
