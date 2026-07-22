@@ -234,18 +234,29 @@ def calcola_punti_torneo(pronostico, risultati) -> dict:
            'vincitore_ok': False, 'capocannoniere_ok': False}
     if not pronostico or not risultati:
         return out
-    def match(cp, cr):
-        return ((row_get(pronostico, cp) or '').strip().lower() ==
-                (row_get(risultati, cr)  or '').strip().lower())
-    if match('vincitore', 'vincitore'):
+        
+    # 1. Controllo Vincitore (Corrispondenza esatta)
+    p_vinc = (row_get(pronostico, 'vincitore') or '').strip().lower()
+    r_vinc = (row_get(risultati, 'vincitore') or '').strip().lower()
+    
+    if p_vinc and p_vinc == r_vinc:
         out['vincitore']    = PUNTI_TORNEO['vincitore']
         out['vincitore_ok'] = True
-    if match('capocannoniere', 'capocannoniere'):
+
+    # 2. Controllo Capocannoniere (Corrispondenza multipla)
+    p_cap = (row_get(pronostico, 'capocannoniere') or '').strip().lower()
+    r_cap_raw = row_get(risultati, 'capocannoniere') or ''
+    
+    # "Spezza" i capocannonieri reali ad ogni virgola per gestire i parimerito
+    cap_reali_lista = [c.strip().lower() for c in r_cap_raw.split(',') if c.strip()]
+    
+    if p_cap and p_cap in cap_reali_lista:
         out['capocannoniere']    = PUNTI_TORNEO['capocannoniere']
         out['capocannoniere_ok'] = True
+
+    # 3. Totale
     out['totale'] = out['vincitore'] + out['capocannoniere']
     return out
-
 
 def calcola_e_aggiorna_punti_torneo() -> str:
     with db_conn() as conn:
