@@ -1,15 +1,12 @@
 import pandas as pd
-import sqlite3
 import os
+import sys
 
-DATABASE_FILE = 'database.db'
 CSV_FILE = 'Quotazioni_Fantacalcio_Stagione_2026_27.csv'
 COLONNA_NOME_GIOCATORE = 'Nome' 
 COLONNA_SQUADRA = 'Squadra'
 
 # --- IL NOSTRO "TRADUTTORE" AUTOMATICO ---
-# A sinistra il nome usato dal Fantacalcio (CSV)
-# A destra il nome ufficiale usato dalla API (football-data.org)
 MAPPATURA_SQUADRE = {
     "INTER": "FC INTERNAZIONALE MILANO",
     "JUVENTUS": "JUVENTUS FC",
@@ -33,6 +30,18 @@ MAPPATURA_SQUADRE = {
     "SASSUOLO": "US SASSUOLO CALCIO"
 }
 
+def get_connection():
+    """Cerca la connessione a Supabase (PostgreSQL), altrimenti usa SQLite locale."""
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        import psycopg2
+        # SQLAlchemy/Supabase url fix
+        url = database_url.replace('postgres://', 'postgresql://', 1)
+        return psycopg2.connect(url), True
+    else:
+        import sqlite3
+        return sqlite3.connect('database.db'), False
+
 def importa_giocatori_da_csv():
     print(f"Lettura del file CSV: {CSV_FILE}")
     if not os.path.exists(CSV_FILE):
@@ -46,29 +55,30 @@ def importa_giocatori_da_csv():
         print(f"Errore durante la lettura del CSV: {e}")
         return
 
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn, is_postgres = get_connection()
     cursor = conn.cursor()
     
     print("Pulizia della tabella 'giocatori'...")
     cursor.execute("DELETE FROM giocatori")
     conn.commit()
     
+    # Su Postgres il segnaposto per le variabili è %s, su SQLite è ?
+    placeholder = "%s" if is_postgres else "?"
+    query_inserimento = f"INSERT INTO giocatori (nome_giocatore, squadra) VALUES ({placeholder}, {placeholder})"
+    
     giocatori_aggiunti = 0
     for index, riga in df.iterrows():
         nome = riga[COLONNA_NOME_GIOCATORE]
-        # Prendiamo il nome dal CSV, rimuoviamo spazi extra e lo facciamo MAIUSCOLO
         squadra_csv = str(riga[COLONNA_SQUADRA]).upper().strip() 
-        
-        # Traduciamo il nome se esiste nel nostro dizionario, altrimenti teniamo l'originale
         squadra_finale = MAPPATURA_SQUADRE.get(squadra_csv, squadra_csv)
         
-        cursor.execute("INSERT INTO giocatori (nome_giocatore, squadra) VALUES (?, ?)", (nome, squadra_finale))
+        cursor.execute(query_inserimento, (nome, squadra_finale))
         giocatori_aggiunti += 1
             
     conn.commit()
     conn.close()
     
-    print(f"\n--- Importazione completata! Giocatori aggiunti: {giocatori_aggiunti} ---")
+    print(f"\n--- Importazione completata su {'Supabase' if is_postgres else 'Database Locale'}! Giocatori aggiunti: {giocatori_aggiunti} ---")
 
 if __name__ == '__main__':
     importa_giocatori_da_csv()
