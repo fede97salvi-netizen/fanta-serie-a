@@ -82,7 +82,14 @@
   <!-- Menu funzionalità -->
   <div class="fsa-section-title">Funzionalità</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-
+<form method="post" action="{{ url_for('admin.admin_importa_giocatori_csv') }}" class="u-contents">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="fsa-card u-card-link" style="width:100%;border:1px solid var(--border);cursor:pointer;font-family:var(--font-b);text-align:left;background:linear-gradient(135deg,var(--green) 0%,var(--green-light) 100%);color:white;" onclick="return confirm('Vuoi importare il nuovo listone giocatori dal file CSV locale?')">
+        <div class="u-icon-xl">🏃‍♂️</div>
+        <div class="u-hero" style="color:white;">Importa Giocatori</div>
+        <div class="u-muted-xs-mt3" style="color:rgba(255,255,255,0.9);">Da file CSV</div>
+      </button>
+    </form>
     <a href="{{ url_for('admin.admin_gestisci_partite') }}" class="fsa-card u-card-link">
       <div class="u-icon-xl">⚽</div>
       <div class="u-hero">Partite</div>
