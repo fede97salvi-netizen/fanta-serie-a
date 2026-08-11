@@ -1,0 +1,499 @@
+;
+Nome;Squadra
+Svilar;Roma
+Martinez Jo.;Inter
+Carnesecchi;Atalanta
+Butez;Como
+Maignan;Milan
+De Gea;Fiorentina
+Meret;Napoli
+Skorupski;Bologna
+Caprile;Cagliari
+Di Gregorio;Juventus
+Mandas;Lazio
+Okoye;Udinese
+Bijlow;Genoa
+Falcone;Lecce
+Daffara;Parma
+Suzuki;Parma
+Muric;Sassuolo
+Perin;Juventus
+Stankovic F.;Venezia
+Thiam;Monza
+Milinkovic-Savic V.;Napoli
+Palmisani;Frosinone
+Desplanches;Frosinone
+Provedel;Inter
+Sportiello;Atalanta
+Happonen;Bologna
+Pessina Mas.;Bologna
+Sherri;Cagliari
+Tornqvist;Como
+Vigorito;Como
+Christensen O.;Fiorentina
+Lezzerini;Fiorentina
+Lolic;Frosinone
+Sommariva;Genoa
+Stolz;Genoa
+Di Gennaro;Inter
+Pinsoglio;Juventus
+Motta;Lazio
+Renzetti;Lazio
+Samooja;Lecce
+Terracciano;Milan
+Torriani;Milan
+Pizzignacco;Monza
+Strajnar;Monza
+Contini;Napoli
+Corvi;Parma
+De Marzi;Roma
+Gollini;Roma
+Russo A.;Sassuolo
+Turati;Sassuolo
+Mascardi;Torino
+Paleari;Torino
+Siviero;Torino
+Padelli;Udinese
+Piana;Udinese
+Grandi;Venezia
+Pozzi;Venezia
+Vismara;Atalanta
+Satalino;Sassuolo
+Dimarco;Inter
+Wesley;Roma
+Akanji;Inter
+Bremer;Juventus
+Mancini;Roma
+Bastoni;Inter
+Pavlovic;Milan
+Rrahmani;Napoli
+Kalulu;Juventus
+N'Dicka;Roma
+Solet;Udinese
+Stones;Inter
+Gila;Milan
+Di Lorenzo;Napoli
+Ostigard;Genoa
+Bisseck;Inter
+Scalvini;Atalanta
+Ramon;Como
+Dodò;Fiorentina
+Hermoso;Roma
+Vasquez;Genoa
+Cambiaso;Juventus
+Chalobah T.;Como
+Hien;Atalanta
+Zappacosta;Atalanta
+Lucumì;Bologna
+Miranda J.;Bologna
+Mina;Cagliari
+Dragusin;Fiorentina
+Jimenez A.;Fiorentina
+Norton-Cuffy;Genoa
+Celik;Juventus
+Bartesaghi;Milan
+Spinazzola;Napoli
+Delprato;Parma
+Valeri;Parma
+Koulierakis;Roma
+Vojvoda;Udinese
+Couto;Como
+Obert;Cagliari
+Kaiki;Como
+Carlos Augusto;Inter
+Doekhi;Lazio
+Romagnoli;Lazio
+Tiago Gabriel;Lecce
+Gabbia;Milan
+Tomori;Milan
+Buongiorno;Napoli
+Idzes;Sassuolo
+Coco;Torino
+Ismajli;Torino
+Kristensen T.;Udinese
+Ahanor;Atalanta
+Bellanova;Atalanta
+Bernasconi;Atalanta
+Heggem;Bologna
+Zortea;Bologna
+Valle;Como
+Valdepenas;Fiorentina
+Viery;Fiorentina
+Monterisi;Frosinone
+Marcandalli;Genoa
+Pavard;Inter
+Tavares N.;Lazio
+Marusic;Lazio
+Gallo;Lecce
+Mangas;Monza
+Beukema;Napoli
+Circati;Parma
+Comuzzo;Torino
+Kamara H.;Udinese
+Bella-Kotchap;Venezia
+Kolasinac;Atalanta
+Vitik;Bologna
+Holm;Bologna
+Kofler;Cagliari
+Zè Pedro;Cagliari
+Kempf;Como
+Parisi;Fiorentina
+Bracaglia;Frosinone
+Oyono A.;Frosinone
+Martin;Genoa
+Kelly L.;Juventus
+Pedraza;Lazio
+Gaspar K.;Lecce
+Veiga D.;Lecce
+Olivera;Napoli
+Rensch;Roma
+Pedersen;Torino
+Moreno M.;Venezia
+Haps;Venezia
+Zappa;Cagliari
+Smolcic I.;Como
+Pongracic;Fiorentina
+Calvani;Frosinone
+Mitaj;Genoa
+Gatti;Juventus
+Siebert;Lecce
+Delli Carri;Monza
+Lucchesi;Monza
+Birindelli;Monza
+Valenti;Parma
+Ghilardi;Roma
+Walukiewicz;Sassuolo
+Doig;Sassuolo
+Comert;Torino
+Kabasele;Udinese
+Bertola;Udinese
+Zanoli;Udinese
+Arizala;Udinese
+Halhal;Venezia
+Correia T.;Venezia
+Kossounou;Atalanta
+Casale;Bologna
+Rodriguez Ju.;Cagliari
+Idrissi R.;Cagliari
+Ranieri L.;Fiorentina
+Joao Mario;Fiorentina
+Akpoguma;Frosinone
+Cittadini;Frosinone
+Provstgaard;Lazio
+Floriani Mussolini;Lazio
+De Winter;Milan
+Athekame;Milan
+Estupinan;Milan
+Kouadio;Monza
+Carboni A.;Monza
+Troilo;Parma
+Britschgi;Parma
+Candè;Sassuolo
+Schingtienne;Venezia
+Sverko;Venezia
+Hainaut;Venezia
+Helland;Bologna
+Alhassane;Bologna
+Van Der Brempt;Como
+Otoa;Genoa
+Puczka;Genoa
+Sabelli;Genoa
+Lazzari;Lazio
+Pellegrini Lu.;Lazio
+Jean;Lecce
+Diawara S.;Milan
+Marin R.;Napoli
+Biraghi;Torino
+Palma;Udinese
+Ebosse;Udinese
+Franjic;Venezia
+Sagrado;Venezia
+Aurelio;Cagliari
+De Silvestri;Bologna
+Raterink;Cagliari
+Goldaniga;Como
+Cuenca A.;Como
+Amey;Frosinone
+Gelli J.;Frosinone
+Oyono J.;Frosinone
+Corrado;Frosinone
+Matturro;Genoa
+Rugani;Juventus
+Cabal;Juventus
+Patric;Lazio
+Perez M.;Lecce
+Ndaba;Lecce
+Antov;Monza
+Bakoune;Monza
+Marianucci;Napoli
+Mazzocchi;Napoli
+Ndiaye;Parma
+Carboni F.;Parma
+Ziolkowski;Roma
+Missori;Sassuolo
+Pieragnolo;Sassuolo
+Mlacic;Udinese
+Abankwah;Udinese
+Gomes;Venezia
+Paz N.;Como
+McTominay;Napoli
+Calhanoglu;Inter
+Orsolini;Bologna
+Pulisic;Milan
+Rabiot;Milan
+Baturina;Como
+Da Cunha;Como
+Zaniolo;Udinese
+Atta;Fiorentina
+Barella;Inter
+McKennie;Juventus
+Zaccagni;Lazio
+De Bruyne;Napoli
+Vlasic;Torino
+Gudmundsson A.;Fiorentina
+Taylor K.;Lazio
+Ederson D.S.;Atalanta
+Samardzic;Atalanta
+Rodriguez Je.;Como
+Alajbegovic;Juventus
+Conceicao;Juventus
+Modric;Milan
+Mastantuono;Fiorentina
+Rowe;Bologna
+Baldanzi;Genoa
+Zambo Anguissa;Napoli
+Perrone;Como
+Zielinski;Inter
+Thuram K.;Juventus
+Saelemaekers;Milan
+Politano;Napoli
+Konè M.;Roma
+Thorstvedt;Sassuolo
+Casadei;Torino
+Ekkelenkamp;Udinese
+Pellegrini Lo.;Roma
+Pasalic;Atalanta
+Bernardeschi;Bologna
+Mandragora;Fiorentina
+Cancellieri;Lazio
+Isaksen;Lazio
+Konè I.;Sassuolo
+Odgaard;Bologna
+Cambiaghi;Bologna
+Fagioli;Fiorentina
+Ndour;Fiorentina
+Diouf;Inter
+Sucic P.;Inter
+Locatelli;Juventus
+Colpani;Monza
+Vergara;Napoli
+Cristante;Roma
+Gaetano;Atalanta
+Ferguson;Bologna
+Fazzini;Cagliari
+Calò;Frosinone
+Frendrup;Genoa
+Frattesi;Inter
+Pessina;Monza
+Lobotka;Napoli
+Bernabè;Parma
+Volpato;Sassuolo
+Oristanio;Torino
+Unai Gomez;Udinese
+Sow;Genoa
+Zalewski;Atalanta
+Pobega;Bologna
+Adopo;Cagliari
+Winks;Cagliari
+Caqueret;Como
+Liberali;Como
+Oulai;Fiorentina
+Ellertsson;Genoa
+Zhegrova;Juventus
+Rovella;Lazio
+Coulibaly L.;Lecce
+Pierotti;Lecce
+Chukwueze;Milan
+Akinsanmiro;Monza
+Nicolussi Caviglia;Parma
+Karlstrom;Udinese
+Basic;Venezia
+Amondarain;Bologna
+Romano;Cagliari
+Felici;Cagliari
+Milla;Como
+Addai;Como
+Zerbin;Frosinone
+Meichtry;Genoa
+Traorè Hj.;Genoa
+Mkhitaryan;Inter
+Koopmeiners;Juventus
+Dele-Bashiru;Lazio
+Berisha M.;Lecce
+Gandelman;Lecce
+Fofana Y.;Milan
+Keita M.;Parma
+Ondrejka;Parma
+Pisilli;Roma
+Matic;Sassuolo
+Adzic;Sassuolo
+Bakola;Sassuolo
+Cacciamani;Torino
+Gineitis;Torino
+Piotrowski;Udinese
+Busio;Venezia
+Sohm;Venezia
+Perez K.;Venezia
+De Roon;Atalanta
+Moro N.;Bologna
+Prati;Cagliari
+Fabbian;Fiorentina
+Cichella;Frosinone
+Koutsoupias;Frosinone
+Amorim;Genoa
+Luis Henrique;Inter
+Douglas Luiz;Juventus
+Cataldi;Lazio
+Ngom;Lecce
+Ricci S.;Milan
+Jashari;Milan
+Loftus-Cheek;Milan
+Folorunsho;Napoli
+Almqvist;Parma
+El Aynaoui;Roma
+Fitz-Jim;Torino
+Ilkhan;Torino
+Njie;Torino
+Sulemana I.;Atalanta
+Dominguez B.;Sassuolo
+Deiola;Cagliari
+Brescianini;Fiorentina
+Gelli F.;Frosinone
+Fini ;Frosinone
+Messias;Genoa
+Stankovic A.;Inter
+Miretti;Juventus
+Colombo L.;Monza
+Gilmour;Napoli
+Sorensen O.;Parma
+Diallo O.;Parma
+Aboukhlal;Torino
+Miller L.;Udinese
+Helgason;Venezia
+El Azzouzi O.;Bologna
+Fadera;Como
+Hasa;Frosinone
+Masini;Frosinone
+Venturino;Genoa
+Maleh;Lecce
+Musah;Milan
+Ciurria;Monza
+Ordonez C.;Parma
+Boloca;Sassuolo
+Lipani;Sassuolo
+Chakvetadze;Udinese
+Duncan;Venezia
+Liteta;Cagliari
+Lahdo;Como
+El Azzouzi A.;Frosinone
+Kone B.;Frosinone
+Belahyane;Lazio
+Przyborek;Lazio
+Gorter;Lecce
+Kaba;Lecce
+Fofana Sa.;Lecce
+Cremaschi;Parma
+Iannoni;Sassuolo
+Ilic;Torino
+Anjorin;Torino
+Camara A.;Udinese
+Zarraga;Udinese
+Dagasso;Venezia
+Martinez L.;Inter
+Malen;Roma
+Thuram;Inter
+Hojlund;Napoli
+Ramos G.;Milan
+Kolo Muani;Juventus
+Kean;Fiorentina
+Yildiz;Juventus
+Douvikas;Como
+Scamacca;Atalanta
+Davis K.;Udinese
+Krstovic;Atalanta
+Leao;Milan
+Berardi;Sassuolo
+De Ketelaere;Atalanta
+Dovbyk;Bologna
+Esposito F.P.;Inter
+Pellegrino M.;Parma
+Laurientè;Sassuolo
+Simeone;Torino
+Santos A.;Napoli
+Dybala;Roma
+Castro S.;Roma
+Raspadori;Atalanta
+Esposito Se.;Cagliari
+Nkunku;Milan
+Pinamonti;Sassuolo
+Kevin Carlos;Cagliari
+Soulè;Roma
+Adams A.;Venezia
+Diao;Como
+Colombo;Genoa
+Tourè E.;Parma
+Dia;Lazio
+Ratkov;Lazio
+Lukaku;Napoli
+Bowie;Sassuolo
+Ghedjemis;Frosinone
+David;Juventus
+Geubbels;Lecce
+Cutrone;Monza
+Adams C.;Torino
+Dallinga;Bologna
+Piccoli;Fiorentina
+Vitinha O.;Genoa
+Yeboah J.;Venezia
+Rrahmani Al.;Venezia
+Raimondo;Frosinone
+Bonny;Inter
+Stulic;Lecce
+Zapata D.;Torino
+Sulemana K.;Atalanta
+Mutandwa;Cagliari
+Boga;Juventus
+Noslin;Lazio
+Gimenez;Milan
+Neres;Napoli
+Maldini;Cagliari
+Camarda;Milan
+Mota;Monza
+Frigan;Parma
+Adorante;Venezia
+Borrelli;Cagliari
+Mendy P.;Cagliari
+Morata;Como
+Kvernadze;Frosinone
+Havel;Genoa
+Giovane;Napoli
+Kulenovic;Torino
+Gueye;Udinese
+Robinson J.;Monza
+Kuhn;Como
+Ekhator;Juventus
+N'Dri;Lecce
+Varela G.;Monza
+Lang;Napoli
+Lucca;Napoli
+Elphege;Parma
+Petagna;Monza
+Buksa;Udinese
+Albarracin;Cagliari
+Trepy;Cagliari
+Azon;Como
+Vaz;Roma
+Moro L.;Sassuolo
+Bayo V.;Udinese
+Lisman;Venezia
+Lauberbach;Venezia
