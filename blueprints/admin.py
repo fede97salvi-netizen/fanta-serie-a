@@ -944,3 +944,53 @@ def admin_attiva_giornata():
     flash(f'Giornata {giornata} attivata con successo! Ora e visibile in Home.',
           'success')
     return redirect(url_for('admin.admin_home'))
+
+@admin_bp.route('/admin/importa-giocatori-csv', methods=['POST'], endpoint='admin_importa_giocatori_csv')
+@admin_required
+def admin_importa_giocatori_csv():
+    import os
+    import pandas as pd
+    
+    csv_path = 'Quotazioni_Fantacalcio_Stagione_2026_27.csv'
+    
+    if not os.path.exists(csv_path):
+        flash(f"ERRORE: File '{csv_path}' non trovato nella cartella principale.", 'danger')
+        return redirect(url_for('admin.admin_home'))
+        
+    MAPPATURA_SQUADRE = {
+        "INTER": "FC INTERNAZIONALE MILANO", "JUVENTUS": "JUVENTUS FC",
+        "MILAN": "AC MILAN", "ROMA": "AS ROMA", "NAPOLI": "SSC NAPOLI",
+        "LAZIO": "SS LAZIO", "FIORENTINA": "ACF FIORENTINA",
+        "ATALANTA": "ATALANTA BC", "BOLOGNA": "BOLOGNA FC 1909",
+        "TORINO": "TORINO FC", "GENOA": "GENOA CFC", "LECCE": "US LECCE",
+        "UDINESE": "UDINESE CALCIO", "CAGLIARI": "CAGLIARI CALCIO",
+        "MONZA": "AC MONZA", "COMO": "COMO 1907", "PARMA": "PARMA CALCIO 1913",
+        "VENEZIA": "VENEZIA FC", "FROSINONE": "FROSINONE CALCIO",
+        "SASSUOLO": "US SASSUOLO CALCIO"
+    }
+
+    try:
+        df = pd.read_csv(csv_path, encoding='latin-1', sep=';')
+        
+        with db_conn() as conn:
+            # Svuotiamo i vecchi giocatori
+            db_execute(conn, "DELETE FROM giocatori")
+            
+            aggiunti = 0
+            for index, riga in df.iterrows():
+                nome = str(riga['Nome']).strip()
+                squadra_csv = str(riga['Squadra']).upper().strip()
+                squadra_finale = MAPPATURA_SQUADRE.get(squadra_csv, squadra_csv)
+                
+                # db_execute gestisce la sintassi per Supabase o SQLite
+                db_execute(conn, "INSERT INTO giocatori (nome_giocatore, squadra) VALUES (?, ?)", (nome, squadra_finale))
+                aggiunti += 1
+                
+            db_commit(conn)
+            
+        flash(f"Magia completata! {aggiunti} giocatori importati con successo dal CSV.", 'success')
+    except Exception as e:
+        log.exception("Errore importazione CSV")
+        flash(f"Errore durante la lettura del CSV: {e}", 'danger')
+        
+    return redirect(url_for('admin.admin_home'))
