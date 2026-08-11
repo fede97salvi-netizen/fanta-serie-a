@@ -970,7 +970,8 @@ def admin_importa_giocatori_csv():
     }
 
     try:
-        df = pd.read_csv(csv_path, encoding='latin-1', sep=';')
+        # ECCO LA MAGIA: skiprows=1 dice al sistema di ignorare la prima riga "sporca" del file!
+        df = pd.read_csv(csv_path, encoding='latin-1', sep=';', skiprows=1)
         
         with db_conn() as conn:
             # Svuotiamo i vecchi giocatori
@@ -982,7 +983,7 @@ def admin_importa_giocatori_csv():
                 squadra_csv = str(riga['Squadra']).upper().strip()
                 squadra_finale = MAPPATURA_SQUADRE.get(squadra_csv, squadra_csv)
                 
-                # db_execute gestisce la sintassi per Supabase o SQLite
+                # db_execute gestisce automaticamente la sintassi per Supabase!
                 db_execute(conn, "INSERT INTO giocatori (nome_giocatore, squadra) VALUES (?, ?)", (nome, squadra_finale))
                 aggiunti += 1
                 
