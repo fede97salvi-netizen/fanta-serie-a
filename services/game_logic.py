@@ -251,45 +251,79 @@ def ricalcola_punteggi_totali() -> str:
 
 
 def ricalcola_punteggi_finali() -> str:
-    """Ricalcola totali stagione + bonus pronostici iniziali. Idempotente."""
+    """Ricalcola i totali stagionali e assegna i bonus per i pronostici iniziali."""
     with db_conn() as conn:
+        # 1. Verifica di sicurezza: i risultati finali esistono?
         rf = db_fetchone(conn, 'SELECT * FROM risultati_finali WHERE id = 1')
         if not rf or not row_get(rf, 'squadra_1'):
             return 'Errore: inserire prima i risultati reali di fine stagione.'
 
+    # 2. Azzera eventuali bonus precedenti e ricalcola i punti base delle giornate
     ricalcola_punteggi_totali()
 
     with db_conn() as conn:
         rf = db_fetchone(conn, 'SELECT * FROM risultati_finali WHERE id = 1')
+        
+        # 3. Mappiamo le 4 squadre reali arrivate in Champions League
+        top4_reali = [
+            (row_get(rf, 'squadra_1') or '').strip().lower(),
+            (row_get(rf, 'squadra_2') or '').strip().lower(),
+            (row_get(rf, 'squadra_3') or '').strip().lower(),
+            (row_get(rf, 'squadra_4') or '').strip().lower()
+        ]
+
+        # 4. Inizio ciclo: analizziamo i pronostici di ogni singolo utente
         for utente in db_fetchall(conn, 'SELECT id FROM utenti'):
-            uid   = row_get(utente, 'id')
-            pron  = db_fetchone(
+            uid = row_get(utente, 'id')
+            pron = db_fetchone(
                 conn,
                 'SELECT * FROM pronostici_iniziali WHERE id_utente = ?',
                 (uid,),
             )
+            
+            # Se l'utente non ha salvato i pronostici a inizio anno, lo saltiamo
             if not pron:
                 continue
-            punti, corrette = 0, 0
+            
+            punti_bonus = 0
+            
+            # --- A. LOGICA SQUADRE (Prime 4 Classificate) ---
             for i in range(1, 5):
-                k = f'squadra_{i}'
-                if ((row_get(pron, k) or '').strip().lower()
-                        == (row_get(rf, k) or '').strip().lower()):
-                    punti += 20
-                    corrette += 1
-            if corrette == 4:
-                punti += 10
-            if ((row_get(pron, 'capocannoniere') or '').strip().lower()
-                    == (row_get(rf, 'capocannoniere') or '').strip().lower()):
-                punti += 20
-            if punti:
+                colonna = f'squadra_{i}'
+                squadra_pronosticata = (row_get(pron, colonna) or '').strip().lower()
+                
+                if not squadra_pronosticata:
+                    continue
+                    
+                # Step 1: La squadra pronosticata si è piazzata tra le prime 4?
+                if squadra_pronosticata in top4_reali:
+                    punti_bonus += 5
+                    
+                    # Step 2: La posizione pronosticata è anche quella esatta?
+                    squadra_esatta = (row_get(rf, colonna) or '').strip().lower()
+                    if squadra_pronosticata == squadra_esatta:
+                        punti_bonus += 10
+                        
+            # --- B. LOGICA CAPOCANNONIERE ---
+            p_cap = (row_get(pron, 'capocannoniere') or '').strip().lower()
+            r_cap_raw = row_get(rf, 'capocannoniere') or ''
+            
+            # Dividiamo i nomi per gestire l'eventualità di capocannonieri a pari merito
+            cap_reali_lista = [c.strip().lower() for c in r_cap_raw.split(',') if c.strip()]
+            
+            if p_cap and p_cap in cap_reali_lista:
+                punti_bonus += 15
+                
+            # --- C. AGGIORNAMENTO DEL DATABASE ---
+            if punti_bonus > 0:
                 db_execute(
                     conn,
-                    'UPDATE punteggi SET punteggio_totale = punteggio_totale + ? '
-                    'WHERE id_utente = ?',
-                    (punti, uid),
+                    'UPDATE punteggi SET punteggio_totale = punteggio_totale + ? WHERE id_utente = ?',
+                    (punti_bonus, uid),
                 )
+                
         db_commit(conn)
+        
     return 'Punti finali di stagione calcolati con successo!'
 
 
