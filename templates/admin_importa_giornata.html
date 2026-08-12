@@ -36,10 +36,15 @@
     {% endif %}
   </div>
 
+  {% if partite_api %}
+  <div class="fsa-section-title">Partite giornata {{ giornata_selezionata }}</div>
+  <div class="alert alert-info u-mb-md">Seleziona fino a <strong>3 partite</strong> da usare come pronosticabili per la giornata.</div>
+  
   <!-- IL NOSTRO TASTO MAGICO DEL SORTEGGIO -->
   <button type="button" class="btn-warning u-mb-md" style="width:100%; font-family:var(--font-b); font-size: 16px; cursor: pointer; padding: 12px; border-radius: 12px;" onclick="sorteggiaCasuali()">
     🎲 SORTEGGIA 3 PARTITE CASUALI
   </button>
+
   <form method="post" action="{{ url_for('admin.admin_importa_giornata') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="azione" value="salva">
@@ -76,13 +81,13 @@
     </div>
   </form>
 
- <script>
+  <script>
     // --- IL MOTORE DEL TASTO MAGICO ---
     function sorteggiaCasuali() {
       // 1. Prende tutte le caselline della pagina
       const checkboxes = Array.from(document.querySelectorAll('input[name="partita_ids"]'));
       
-      // 2. Deseleziona tutto (nel caso tu avessi già cliccato qualcosa)
+      // 2. Deseleziona tutto
       checkboxes.forEach(cb => cb.checked = false);
       
       // 3. Mescola l'elenco delle partite come un mazzo di carte
@@ -102,20 +107,6 @@
 
     // --- VECCHIA FUNZIONE (Limita selezione manuale a max 3 partite) ---
     const checkboxes = document.querySelectorAll('input[name="partita_ids"]');
-    checkboxes.forEach(cb => {
-      cb.addEventListener('change', () => {
-        const checked = document.querySelectorAll('input[name="partita_ids"]:checked');
-        if (checked.length > 3) {
-          cb.checked = false;
-          return;
-        }
-        const btn = document.getElementById('btn-salva');
-        btn.textContent = checked.length > 0
-          ? `IMPORTA ${checked.length} PARTITE SELEZIONATE`
-          : 'IMPORTA PARTITE SELEZIONATE';
-      });
-    });
-  </script>
     checkboxes.forEach(cb => {
       cb.addEventListener('change', () => {
         const checked = document.querySelectorAll('input[name="partita_ids"]:checked');
