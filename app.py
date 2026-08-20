@@ -18,7 +18,7 @@ from config import get_config
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
-from invia_notifiche import invia_promemoria_generale, invia_promemoria_partite
+from invia_notifiche import invia_promemoria_generale, invia_promemoria_partite, salva_subscription_push
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
@@ -450,29 +450,8 @@ def serve_sw():
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
-    nome_utente = session.get('nome_utente')
-    subscription = request.json
-    subscription_json = json.dumps(subscription)
-
     try:
-        with db_conn() as conn:
-            id_utente = None
-            if nome_utente:
-                row = db_fetchone(conn, "SELECT id FROM utenti WHERE nome_utente = ?", (nome_utente,))
-                id_utente = row_get(row, 'id') if row else None
-
-            db_execute(
-                conn,
-                """
-                INSERT INTO push_subscriptions (id_utente, subscription_info, nome_utente)
-                VALUES (?, ?, ?)
-                ON CONFLICT (id_utente) DO UPDATE
-                    SET subscription_info = excluded.subscription_info,
-                        nome_utente = excluded.nome_utente
-                """,
-                (id_utente, subscription_json, nome_utente or 'ospite')
-            )
-            db_commit(conn)
+        salva_subscription_push(session.get('nome_utente'), request.json)
     except Exception:
         log.exception('Errore salvataggio iscrizione push')
         return jsonify({'status': 'error', 'error': 'Errore salvataggio sul server'}), 500
@@ -483,8 +462,8 @@ def salva_iscrizione_push():
 @app.route('/test_spara_notifica')
 def test_spara_notifica():
     esito = invia_promemoria_generale(
-        "Ciao Froci 🌈 ⏰",
-        "Se leggi questo messaggio, sei ricchione!"
+        "FantaSerieA: Sveglia! ⏰",
+        "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
     )
     return esito
 
@@ -493,8 +472,8 @@ def test_spara_notifica():
 @app.route('/test_promemoria_partite')
 def test_promemoria_partite():
     esito = invia_promemoria_generale(
-       "Ciao Froci 🌈 ⏰",
-        "Se leggi questo messaggio, sei ricchione!"
+        "⏰ Manca mezz'ora!",
+        "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
     )
     return esito
 

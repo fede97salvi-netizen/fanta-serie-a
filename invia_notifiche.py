@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytz
 from pywebpush import webpush, WebPushException
 
-from db_utils import db_conn, db_execute, db_fetchall, db_commit, row_get
+from db_utils import db_conn, db_execute, db_fetchall, db_fetchone, db_commit, row_get
 from services.game_logic import parse_flexible_datetime
 
 # Finestra in cui una partita viene considerata "in arrivo tra mezz'ora":
@@ -13,6 +13,51 @@ from services.game_logic import parse_flexible_datetime
 # Actions (il cron gira ogni 10 minuti ma può slittare).
 FINESTRA_MIN_MINUTI = 15
 FINESTRA_MAX_MINUTI = 35
+
+
+def salva_subscription_push(nome_utente, subscription):
+    """Salva/aggiorna la push subscription di un utente.
+
+    Deduplica eventuali righe "orfane" della stessa subscription (stesso
+    endpoint) salvate con un id_utente diverso — es. un'iscrizione fatta
+    prima del login: il browser riusa la subscription esistente quando ci
+    si iscrive di nuovo con la stessa chiave pubblica, quindi senza questa
+    pulizia lo stesso dispositivo finirebbe per ricevere ogni notifica due
+    volte (una per riga).
+    """
+    subscription_json = json.dumps(subscription)
+    endpoint_nuovo = (subscription or {}).get('endpoint')
+
+    with db_conn() as conn:
+        id_utente = None
+        if nome_utente:
+            row = db_fetchone(conn, "SELECT id FROM utenti WHERE nome_utente = ?", (nome_utente,))
+            id_utente = row_get(row, 'id') if row else None
+
+        if endpoint_nuovo:
+            esistenti = db_fetchall(
+                conn, "SELECT id, id_utente, subscription_info FROM push_subscriptions")
+            for r in esistenti:
+                info = row_get(r, 'subscription_info')
+                if isinstance(info, str):
+                    info = json.loads(info)
+                stesso_endpoint = (info or {}).get('endpoint') == endpoint_nuovo
+                if stesso_endpoint and row_get(r, 'id_utente') != id_utente:
+                    db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                               (row_get(r, 'id'),))
+
+        db_execute(
+            conn,
+            """
+            INSERT INTO push_subscriptions (id_utente, subscription_info, nome_utente)
+            VALUES (?, ?, ?)
+            ON CONFLICT (id_utente) DO UPDATE
+                SET subscription_info = excluded.subscription_info,
+                    nome_utente = excluded.nome_utente
+            """,
+            (id_utente, subscription_json, nome_utente or 'ospite')
+        )
+        db_commit(conn)
 
 def invia_promemoria_generale(titolo, messaggio):
     chiave_privata = os.environ.get('VAPID_PRIVATE_KEY')
