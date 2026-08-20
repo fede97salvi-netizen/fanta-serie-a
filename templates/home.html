@@ -5,7 +5,17 @@
   <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--azzurro);margin-bottom:4px;">
     {% if giornata_attiva %}Giornata {{ giornata_attiva }} · In corso{% else %}Nessuna giornata attiva{% endif %}
   </div>
-  <h1 class="u-hero-xxl" style="color:white;margin-bottom:16px;">Bentornato, {{ session.nome_utente }}!</h1>
+  
+  <!-- INIZIO ZONA FLEXBOX: Titolo e Bottone sulla stessa riga -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h1 class="u-hero-xxl" style="color:white; margin: 0;">Bentornato, {{ session.nome_utente }}!</h1>
+    
+    <button onclick="attivaNotifiche()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
+      🔔 Notifiche
+    </button>
+  </div>
+  <!-- FINE ZONA FLEXBOX -->
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     <div style="background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
       <div class="u-muted-xs" style="margin-bottom:4px;">Punteggio totale</div>
@@ -17,9 +27,7 @@
     </div>
   </div>
 </div>
-<button onclick="attivaNotifiche()" style="padding: 10px; background-color: #007bff; color: white; border-radius: 5px; border: none; cursor: pointer;">
-    🔔 Attiva Notifiche Push
-</button>
+
 <div class="fsa-section">
   <div class="fsa-section-title">Azione rapida</div>
   {% if giornata_attiva %}
