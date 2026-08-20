@@ -483,8 +483,8 @@ def salva_iscrizione_push():
 @app.route('/test_spara_notifica')
 def test_spara_notifica():
     esito = invia_promemoria_generale(
-        "FantaSerieA: Sveglia! ⏰",
-        "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
+        "Ciao Froci 🌈 ⏰",
+        "Se leggi questo messaggio, sei ricchione!"
     )
     return esito
 
