@@ -19,6 +19,12 @@ services:
         sync: false
       - key: EMAIL_FROM_ADDRESS
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CLAIM_EMAIL
+        sync: false
 
 databases:
   - name: fanta-serie-a-db
