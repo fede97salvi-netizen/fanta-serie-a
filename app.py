@@ -10,7 +10,7 @@ import os
 import json
 from datetime import timedelta, datetime
 import pytz
-from flask import Flask, session, g as flask_g, render_template, request, jsonify
+from flask import Flask, session, g as flask_g, render_template, request, jsonify, send_from_directory
 from flask_wtf.csrf import generate_csrf
 from flask_talisman import Talisman
 
@@ -414,11 +414,16 @@ def create_app(config=None) -> Flask:
 
 app = create_app()
 
+# ROTTA AGGIUNTA PER SERVIRE IL SERVICE WORKER
+@app.route('/sw.js')
+def serve_sw():
+    # Dice a Flask di prendere il file sw.js dalla cartella principale e inviarlo
+    return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
+
 # ROTTA AGGIUNTA PER SALVARE LE ISCRIZIONI ALLE NOTIFICHE PUSH
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
-    # Cerca l'id utente nella sessione. (A seconda di come hai salvato l'id al login)
     id_utente = session.get('user_id') or session.get('id_utente') or session.get('id')
     
     if not id_utente:
