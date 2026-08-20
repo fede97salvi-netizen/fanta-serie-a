@@ -488,6 +488,16 @@ def test_spara_notifica():
     )
     return esito
 
+# ROTTA DI TEST PER IL MESSAGGIO DI PROMEMORIA 30' PRIMA
+# Manda solo la notifica di prova, senza creare o toccare nessuna partita.
+@app.route('/test_promemoria_partite')
+def test_promemoria_partite():
+    esito = invia_promemoria_generale(
+        "⏰ Manca mezz'ora!",
+        "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
+    )
+    return esito
+
 # ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita,
 # chiamata periodicamente da GitHub Actions (vedi .github/workflows).
 @app.route('/cron/invia_promemoria_partite', methods=['POST'])
