@@ -1,0 +1,18 @@
+name: Promemoria Partite
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # ogni 10 minuti
+  workflow_dispatch:          # permette l'avvio manuale dal tab Actions
+
+jobs:
+  promemoria:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama la rotta di promemoria
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sf -X POST "$APP_URL/cron/invia_promemoria_partite" \
+            -H "X-Cron-Secret: $CRON_SECRET"
