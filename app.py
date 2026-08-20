@@ -472,8 +472,8 @@ def test_spara_notifica():
 @app.route('/test_promemoria_partite')
 def test_promemoria_partite():
     esito = invia_promemoria_generale(
-        "⏰ Manca mezz'ora!",
-        "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
+        "🌈 Ciao froci!",
+        "Questo è un test se lo ricevi, sei ricchione! (PAMA MERDA)."
     )
     return esito
 
