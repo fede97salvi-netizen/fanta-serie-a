@@ -420,15 +420,11 @@ app = create_app()
 def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
-# ROTTA PER SALVARE LE ISCRIZIONI PUSH
+# ROTTA PER SALVARE LE ISCRIZIONI PUSH (CORRETTA)
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
-    id_utente = session.get('user_id') or session.get('id_utente') or session.get('id')
-    
-    if not id_utente:
-        return jsonify({'error': 'Non autorizzato'}), 401
-
+    nome_utente = session.get('nome_utente', 'ospite')
     subscription = request.json
     subscription_json = json.dumps(subscription)
 
@@ -436,12 +432,10 @@ def salva_iscrizione_push():
         db_execute(
             conn,
             """
-            INSERT INTO push_subscriptions (id_utente, subscription_info) 
-            VALUES (%s, %s) 
-            ON CONFLICT (id_utente) 
-            DO UPDATE SET subscription_info = EXCLUDED.subscription_info
+            INSERT INTO push_subscriptions (subscription_info, nome_utente) 
+            VALUES (%s, %s)
             """,
-            (id_utente, subscription_json)
+            (subscription_json, nome_utente)
         )
         db_commit(conn)
         
