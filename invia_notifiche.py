@@ -17,11 +17,12 @@ def invia_promemoria_generale(titolo, messaggio):
     print(f"Trovati {len(utenti_iscritti)} dispositivi iscritti. Inizio invio...")
 
     inviati = 0
+    errori = []
     for utente in utenti_iscritti:
         sub_info = utente[0] if isinstance(utente, tuple) else utente['subscription_info']
         if isinstance(sub_info, str):
             sub_info = json.loads(sub_info)
-            
+
         try:
             webpush(
                 subscription_info=sub_info,
@@ -31,6 +32,13 @@ def invia_promemoria_generale(titolo, messaggio):
             )
             inviati += 1
         except WebPushException as ex:
-            print("Invio fallito:", repr(ex))
-            
-    return f"Notifiche inviate a {inviati} dispositivi!"
+            dettaglio = str(ex)
+            if ex.response is not None:
+                dettaglio += f" | status={ex.response.status_code} body={ex.response.text}"
+            print("Invio fallito:", dettaglio)
+            errori.append(dettaglio)
+
+    esito = f"Notifiche inviate a {inviati} dispositivi!"
+    if errori:
+        esito += " Errori: " + " || ".join(errori)
+    return esito
