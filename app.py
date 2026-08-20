@@ -105,6 +105,13 @@ def _create_tables_postgres(conn):
         giornata INTEGER NOT NULL,
         punti INTEGER NOT NULL DEFAULT 0,
         UNIQUE (id_utente, giornata))""")
+    db_execute(conn, """CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
+        subscription_info JSONB NOT NULL,
+        nome_utente TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (id_utente))""")
     db_execute(conn,
                "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
                "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
@@ -172,6 +179,13 @@ def _create_tables_sqlite(conn):
         punti INTEGER NOT NULL DEFAULT 0,
         UNIQUE (id_utente, giornata),
         FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
+        subscription_info TEXT NOT NULL,
+        nome_utente TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (id_utente))""")
 
 def _migrate_schema(conn):
     if USE_POSTGRES:
@@ -424,21 +438,33 @@ def serve_sw():
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
-    nome_utente = session.get('nome_utente', 'ospite')
+    nome_utente = session.get('nome_utente')
     subscription = request.json
     subscription_json = json.dumps(subscription)
 
-    with db_conn() as conn:
-        db_execute(
-            conn,
-            """
-            INSERT INTO push_subscriptions (subscription_info, nome_utente) 
-            VALUES (?, ?)
-            """,
-            (subscription_json, nome_utente)
-        )
-        db_commit(conn)
-        
+    try:
+        with db_conn() as conn:
+            id_utente = None
+            if nome_utente:
+                row = db_fetchone(conn, "SELECT id FROM utenti WHERE nome_utente = ?", (nome_utente,))
+                id_utente = row_get(row, 'id') if row else None
+
+            db_execute(
+                conn,
+                """
+                INSERT INTO push_subscriptions (id_utente, subscription_info, nome_utente)
+                VALUES (?, ?, ?)
+                ON CONFLICT (id_utente) DO UPDATE
+                    SET subscription_info = excluded.subscription_info,
+                        nome_utente = excluded.nome_utente
+                """,
+                (id_utente, subscription_json, nome_utente or 'ospite')
+            )
+            db_commit(conn)
+    except Exception:
+        log.exception('Errore salvataggio iscrizione push')
+        return jsonify({'status': 'error', 'error': 'Errore salvataggio sul server'}), 500
+
     return jsonify({'status': 'success'})
 
 # ROTTA DI TEST PER INVIARE LA NOTIFICA
