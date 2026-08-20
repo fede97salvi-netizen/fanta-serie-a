@@ -18,6 +18,7 @@ from config import get_config
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
+from invia_notifiche import invia_promemoria_generale
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
@@ -414,13 +415,12 @@ def create_app(config=None) -> Flask:
 
 app = create_app()
 
-# ROTTA AGGIUNTA PER SERVIRE IL SERVICE WORKER
+# ROTTA PER SERVIRE IL SERVICE WORKER
 @app.route('/sw.js')
 def serve_sw():
-    # Dice a Flask di prendere il file sw.js dalla cartella principale e inviarlo
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
-# ROTTA AGGIUNTA PER SALVARE LE ISCRIZIONI ALLE NOTIFICHE PUSH
+# ROTTA PER SALVARE LE ISCRIZIONI PUSH
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
@@ -446,6 +446,15 @@ def salva_iscrizione_push():
         db_commit(conn)
         
     return jsonify({'status': 'success'})
+
+# ROTTA DI TEST PER INVIARE LA NOTIFICA
+@app.route('/test_spara_notifica')
+def test_spara_notifica():
+    esito = invia_promemoria_generale(
+        "FantaSerieA: Sveglia! ⏰",
+        "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
+    )
+    return esito
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
