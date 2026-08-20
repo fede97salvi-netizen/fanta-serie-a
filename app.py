@@ -7,10 +7,10 @@ Chiamare create_app() per ottenere un'istanza configurata.
 
 import logging
 import os
-from datetime import timedelta
-
+import json
+from datetime import timedelta, datetime
 import pytz
-from flask import Flask, session, g as flask_g, render_template
+from flask import Flask, session, g as flask_g, render_template, request, jsonify
 from flask_wtf.csrf import generate_csrf
 from flask_talisman import Talisman
 
@@ -19,9 +19,6 @@ from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
 
-import json  # <-- Ecco la nostra riga! Basta aggiungerla qui in mezzo.
-from datetime import datetime
-from flask import Flask, request, jsonify, session
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
@@ -30,22 +27,9 @@ logging.basicConfig(
 )
 log = logging.getLogger('fanta')
 
-
 # ─── CSP (Content Security Policy) ───────────────────────────────────────────
-# Calibrata sul progetto reale:
-# - style-src 'self':         CSS in static/css/app.css + Google Fonts
-# - script-src 'self' 'unsafe-inline': piccoli script inline in base.html
-#   (menu avatar, tab-bar highlight). Rimuovere 'unsafe-inline' quando
-#   questi script verranno spostati in file .js statici.
-# - img-src 'self' data::     possibili favicon inline base64
-# - font-src:                 Google Fonts
-
 CSP = {
     'default-src':  "'self'",
-    # Separazione CSP Level 3 per stili:
-    # - style-src-elem: solo CSS da file (no <style> inline injection)
-    # - style-src-attr: permette style="" attributi (necessari nei template)
-    # - style-src: fallback per browser vecchi (stesso di attr)
     'style-src':      ["'self'", "'unsafe-inline'",
                        'https://fonts.googleapis.com',
                        'https://fonts.gstatic.com'],
@@ -62,7 +46,6 @@ CSP = {
     'base-uri':     "'self'",
     'form-action':  "'self'",
 }
-
 
 # ─── Schema DB ────────────────────────────────────────────────────────────────
 
@@ -125,7 +108,6 @@ def _create_tables_postgres(conn):
                "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
                "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
     db_execute(conn, "INSERT INTO risultati_finali (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
-
 
 def _create_tables_sqlite(conn):
     conn.execute("""CREATE TABLE IF NOT EXISTS utenti (
@@ -190,9 +172,7 @@ def _create_tables_sqlite(conn):
         UNIQUE (id_utente, giornata),
         FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
 
-
 def _migrate_schema(conn):
-    """Migrazioni idempotenti: aggiunge colonne mancanti su DB esistenti."""
     if USE_POSTGRES:
         try:
             db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT")
@@ -215,7 +195,6 @@ def _migrate_schema(conn):
             except Exception:
                 log.exception('Errore aggiunta colonna is_admin')
 
-
 def _promuovi_admin_storico(conn):
     row = db_fetchone(conn,
                       "SELECT COUNT(*) AS c FROM utenti WHERE is_admin = TRUE"
@@ -233,10 +212,7 @@ def _promuovi_admin_storico(conn):
                        (legacy,))
         log.info(f"Migrazione: promosso '{legacy}' ad admin.")
 
-
 def _create_indexes(conn):
-    """Indici idempotenti su foreign key e colonne di filtro.
-    CREATE INDEX IF NOT EXISTS e' supportato sia da SQLite che da PostgreSQL."""
     idx = (
         'CREATE INDEX IF NOT EXISTS ix_partite_giornata ON partite (giornata)',
         'CREATE INDEX IF NOT EXISTS ix_pg_id_utente ON pronostici_giornata (id_utente)',
@@ -251,11 +227,7 @@ def _create_indexes(conn):
         except Exception:
             log.exception('Errore creazione indice')
 
-
 def _pulisci_username_spazi(conn):
-    """Migrazione una-tantum: rimuove gli spazi dagli username esistenti.
-    In caso di collisione (due nomi che, ripuliti, coinciderebbero) lascia
-    invariato il secondo e registra un warning."""
     try:
         rows = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti')
     except Exception:
@@ -280,7 +252,6 @@ def _pulisci_username_spazi(conn):
         except Exception:
             log.exception('Errore normalizzazione username')
 
-
 def create_tables():
     with db_conn() as conn:
         if USE_POSTGRES:
@@ -292,7 +263,6 @@ def create_tables():
         _pulisci_username_spazi(conn)
         _create_indexes(conn)
         db_commit(conn)
-
 
 # ─── Filtri Jinja ─────────────────────────────────────────────────────────────
 
@@ -326,7 +296,6 @@ def _register_filters(app: Flask):
                     .strftime('%d/%m/%Y %H:%M'))
         except Exception:
             return str(s)
-
 
 # ─── Factory ──────────────────────────────────────────────────────────────────
 
@@ -370,15 +339,12 @@ def create_app(config=None) -> Flask:
     limiter.init_app(app)
     db.init_app(app)
 
-    # Flask-Talisman (solo in produzione o se forzato)
+    # Flask-Talisman
     talisman_enabled = getattr(cfg, 'TALISMAN_ENABLED', False)
     if talisman_enabled:
         Talisman(
             app,
             content_security_policy=CSP,
-            # NB: nessun nonce su script-src. Se si aggiunge un nonce, i browser
-            # ignorano 'unsafe-inline' e bloccano gli <script> inline e gli
-            # handler onclick usati nei template (es. il menu utente/drawer).
             force_https=True,
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
@@ -387,7 +353,6 @@ def create_app(config=None) -> Flask:
             referrer_policy='strict-origin-when-cross-origin',
         )
     else:
-        # In sviluppo: solo X-Frame-Options manuale
         @app.after_request
         def _add_minimal_headers(response):
             response.headers.setdefault('X-Frame-Options', 'DENY')
@@ -400,7 +365,6 @@ def create_app(config=None) -> Flask:
     # Context processor globale
     @app.context_processor
     def inject_globals():
-        # Cache per-richiesta: evita una connessione DB ad ogni render
         if hasattr(flask_g, '_giornata_attiva_cache'):
             g_attiva = flask_g._giornata_attiva_cache
         else:
@@ -421,7 +385,6 @@ def create_app(config=None) -> Flask:
             'is_admin':        bool(session.get('is_admin')),
         }
 
-    # Error handler (pagine 404/500 coerenti col design)
     @app.errorhandler(404)
     def _not_found(e):
         return render_template('404.html'), 404
@@ -439,7 +402,6 @@ def create_app(config=None) -> Flask:
     app.register_blueprint(gioco_bp)
     app.register_blueprint(admin_bp)
 
-    # Schema DB al primo avvio
     with app.app_context():
         try:
             create_tables()
@@ -448,29 +410,23 @@ def create_app(config=None) -> Flask:
 
     return app
 
-
 # ─── Entry point (locale / gunicorn) ─────────────────────────────────────────
 
-app = create_app()   # usato da gunicorn: gunicorn app:app
+app = create_app()
 
-if __name__ == '__main__':
-    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
-    app.run(host='127.0.0.1', port=5000, debug=debug_mode)
-from flask import request, jsonify
-import json
-from db_utils import db_conn, db_execute
-
+# ROTTA AGGIUNTA PER SALVARE LE ISCRIZIONI ALLE NOTIFICHE PUSH
 @app.route('/salva_iscrizione_push', methods=['POST'])
+@csrf.exempt
 def salva_iscrizione_push():
-    # Prendi l'ID dell'utente attualmente loggato (adatta in base a come gestisci le sessioni)
-    id_utente = session.get('user_id') 
+    # Cerca l'id utente nella sessione. (A seconda di come hai salvato l'id al login)
+    id_utente = session.get('user_id') or session.get('id_utente') or session.get('id')
+    
     if not id_utente:
         return jsonify({'error': 'Non autorizzato'}), 401
 
     subscription = request.json
     subscription_json = json.dumps(subscription)
 
-    # Salviamo nel database
     with db_conn() as conn:
         db_execute(
             conn,
@@ -482,4 +438,10 @@ def salva_iscrizione_push():
             """,
             (id_utente, subscription_json)
         )
+        db_commit(conn)
+        
     return jsonify({'status': 'success'})
+
+if __name__ == '__main__':
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(host='127.0.0.1', port=5000, debug=debug_mode)
