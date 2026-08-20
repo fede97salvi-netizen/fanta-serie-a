@@ -131,46 +131,46 @@
         if (el) el.textContent = 'Email non impostata';
       });
     {% endif %}
- <script>
-async function attivaNotifiche() {
-    // 1. Controlliamo se il telefono supporta questa tecnologia
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        try {
-            // 2. Svegliamo il nostro "fattorino" invisibile (sw.js)
-            const register = await navigator.serviceWorker.register('/sw.js');
+  </script> <!-- ⚠️ QUESTA È LA RIGA CORRETTA -->
 
-            // 3. Chiediamo il permesso all'utente
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                alert('Hai rifiutato le notifiche. Nessun problema!');
-                return;
-            }
+  <script>
+  async function attivaNotifiche() {
+      // 1. Controlliamo se il telefono supporta questa tecnologia
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+          try {
+              // 2. Svegliamo il nostro "fattorino" invisibile (sw.js)
+              const register = await navigator.serviceWorker.register('/sw.js');
 
-            // 4. Creiamo l'abbonamento crittografato
-            // ⚠️ ATTENZIONE: INSERISCI QUI LA TUA CHIAVE PUBBLICA VAPID VERA
-            const publicVapidKey = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
-            const subscription = await register.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: publicVapidKey
-            });
+              // 3. Chiediamo il permesso all'utente
+              const permission = await Notification.requestPermission();
+              if (permission !== 'granted') {
+                  alert('Hai rifiutato le notifiche. Nessun problema!');
+                  return;
+              }
 
-            // 5. Spediamo il "biglietto da visita" a Python
-            await fetch('/salva_iscrizione_push', {
-                method: 'POST',
-                body: JSON.stringify(subscription),
-                headers: { 'Content-Type': 'application/json' }
-            });
+              // 4. Creiamo l'abbonamento crittografato
+              const publicVapidKey = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
+              const subscription = await register.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: publicVapidKey
+              });
 
-            alert('Notifiche attivate con successo! 🚀');
-        } catch (error) {
-            // ECCO LA NOVITA': Se si rompe qualcosa, il telefono ce lo scriverà a schermo
-            alert('Errore tecnico: ' + error.message);
-            console.error('Errore durante l\'attivazione:', error);
-        }
-    } else {
-        alert('Mi spiace, il tuo browser o il tuo telefono non supportano le notifiche push.');
-    }
-}
-</script>
+              // 5. Spediamo il "biglietto da visita" a Python
+              await fetch('/salva_iscrizione_push', {
+                  method: 'POST',
+                  body: JSON.stringify(subscription),
+                  headers: { 'Content-Type': 'application/json' }
+              });
+
+              alert('Notifiche attivate con successo! 🚀');
+          } catch (error) {
+              alert('Errore tecnico: ' + error.message);
+              console.error('Errore durante l\'attivazione:', error);
+          }
+      } else {
+          alert('Mi spiace, il tuo browser o il tuo telefono non supportano le notifiche push.');
+      }
+  }
+  </script>
 </body>
 </html>
