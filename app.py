@@ -18,7 +18,7 @@ from config import get_config
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
-from invia_notifiche import invia_promemoria_generale
+from invia_notifiche import invia_promemoria_generale, invia_promemoria_partite
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,8 @@ def _create_tables_postgres(conn):
         risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
         marcatore_reale TEXT,
         pronosticabile BOOLEAN NOT NULL DEFAULT FALSE,
-        data_ora_partita TEXT)""")
+        data_ora_partita TEXT,
+        promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE)""")
     db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_giornata (
         id SERIAL PRIMARY KEY,
         id_utente INTEGER NOT NULL REFERENCES utenti(id),
@@ -138,7 +139,8 @@ def _create_tables_sqlite(conn):
         risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
         marcatore_reale TEXT,
         pronosticabile BOOLEAN NOT NULL DEFAULT 0,
-        data_ora_partita TEXT)""")
+        data_ora_partita TEXT,
+        promemoria_inviato BOOLEAN NOT NULL DEFAULT 0)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_giornata (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_utente INTEGER NOT NULL,
@@ -193,6 +195,8 @@ def _migrate_schema(conn):
             db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT")
             db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
                              "is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
+                             "promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE")
         except Exception:
             log.exception('Errore migrazione schema (postgres)')
     else:
@@ -209,6 +213,14 @@ def _migrate_schema(conn):
                              "is_admin BOOLEAN NOT NULL DEFAULT 0")
             except Exception:
                 log.exception('Errore aggiunta colonna is_admin')
+        cur = conn.execute("PRAGMA table_info(partite)")
+        cols_partite = {r[1] for r in cur.fetchall()}
+        if 'promemoria_inviato' not in cols_partite:
+            try:
+                conn.execute("ALTER TABLE partite ADD COLUMN "
+                             "promemoria_inviato BOOLEAN NOT NULL DEFAULT 0")
+            except Exception:
+                log.exception('Errore aggiunta colonna promemoria_inviato')
 
 def _promuovi_admin_storico(conn):
     row = db_fetchone(conn,
@@ -475,6 +487,19 @@ def test_spara_notifica():
         "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
     )
     return esito
+
+# ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita,
+# chiamata periodicamente da GitHub Actions (vedi .github/workflows).
+@app.route('/cron/invia_promemoria_partite', methods=['POST'])
+@csrf.exempt
+def cron_invia_promemoria_partite():
+    secret_atteso = os.environ.get('CRON_SECRET')
+    if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
+        return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
+
+    esito = invia_promemoria_partite()
+    log.info(f"[cron promemoria] {esito}")
+    return jsonify({'status': 'ok', 'esito': esito})
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
