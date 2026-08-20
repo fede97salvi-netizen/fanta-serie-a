@@ -19,7 +19,9 @@ from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
 
-
+import json  # <-- Ecco la nostra riga! Basta aggiungerla qui in mezzo.
+from datetime import datetime
+from flask import Flask, request, jsonify, session
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
