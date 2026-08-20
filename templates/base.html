@@ -119,7 +119,6 @@
       document.getElementById('profileOverlay').classList.remove('open');
       document.getElementById('profileDrawer').classList.remove('open');
     }
-    // Carica email utente nel drawer
     {% if 'nome_utente' in session %}
     fetch('/api/profilo-info')
       .then(r => r.json())
@@ -131,44 +130,56 @@
         if (el) el.textContent = 'Email non impostata';
       });
     {% endif %}
-  </script> <!-- ⚠️ QUESTA È LA RIGA CORRETTA -->
+  </script>
 
   <script>
+  function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+  }
+
   async function attivaNotifiche() {
-      // 1. Controlliamo se il telefono supporta questa tecnologia
       if ('serviceWorker' in navigator && 'PushManager' in window) {
           try {
-              // 2. Svegliamo il nostro "fattorino" invisibile (sw.js)
               const register = await navigator.serviceWorker.register('/sw.js');
-
-              // 3. Chiediamo il permesso all'utente
               const permission = await Notification.requestPermission();
               if (permission !== 'granted') {
-                  alert('Hai rifiutato le notifiche. Nessun problema!');
+                  alert('Hai rifiutato le notifiche!');
                   return;
               }
 
-              // 4. Creiamo l'abbonamento crittografato
               const publicVapidKey = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
+              const convertedVapidKey = urlBase64ToUint8Array(publicVapidKey);
+
               const subscription = await register.pushManager.subscribe({
                   userVisibleOnly: true,
-                  applicationServerKey: publicVapidKey
+                  applicationServerKey: convertedVapidKey
               });
 
-              // 5. Spediamo il "biglietto da visita" a Python
-              await fetch('/salva_iscrizione_push', {
+              const response = await fetch('/salva_iscrizione_push', {
                   method: 'POST',
                   body: JSON.stringify(subscription),
                   headers: { 'Content-Type': 'application/json' }
               });
 
-              alert('Notifiche attivate con successo! 🚀');
+              const resData = await response.json();
+              if (resData.status === 'success') {
+                  alert('Notifiche attivate con successo! 🚀');
+              } else {
+                  alert('Errore dal server: ' + (resData.error || 'Generico'));
+              }
           } catch (error) {
               alert('Errore tecnico: ' + error.message);
               console.error('Errore durante l\'attivazione:', error);
           }
       } else {
-          alert('Mi spiace, il tuo browser o il tuo telefono non supportano le notifiche push.');
+          alert('Il tuo browser o telefono non supporta le notifiche push.');
       }
   }
   </script>
