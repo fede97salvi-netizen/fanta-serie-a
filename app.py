@@ -324,7 +324,7 @@ def create_app(config=None) -> Flask:
     app.config['EMAIL_FROM_ADDRESS'] = cfg.EMAIL_FROM_ADDRESS
     app.config['APP_URL']           = cfg.APP_URL
 
-    # SQLAlchemy — usato per i modelli / Alembic
+    # SQLAlchemy
     db_url = getattr(cfg, 'DATABASE_URL', '')
     if db_url:
         if db_url.startswith('postgres://'):
@@ -420,7 +420,7 @@ app = create_app()
 def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
-# ROTTA PER SALVARE LE ISCRIZIONI PUSH (CORRETTA)
+# ROTTA PER SALVARE LE ISCRIZIONI PUSH (CON SEGNAPOSTO ?)
 @app.route('/salva_iscrizione_push', methods=['POST'])
 @csrf.exempt
 def salva_iscrizione_push():
@@ -433,7 +433,7 @@ def salva_iscrizione_push():
             conn,
             """
             INSERT INTO push_subscriptions (subscription_info, nome_utente) 
-            VALUES (%s, %s)
+            VALUES (?, ?)
             """,
             (subscription_json, nome_utente)
         )
