@@ -456,3 +456,30 @@ app = create_app()   # usato da gunicorn: gunicorn app:app
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(host='127.0.0.1', port=5000, debug=debug_mode)
+from flask import request, jsonify
+import json
+from db_utils import db_conn, db_execute
+
+@app.route('/salva_iscrizione_push', methods=['POST'])
+def salva_iscrizione_push():
+    # Prendi l'ID dell'utente attualmente loggato (adatta in base a come gestisci le sessioni)
+    id_utente = session.get('user_id') 
+    if not id_utente:
+        return jsonify({'error': 'Non autorizzato'}), 401
+
+    subscription = request.json
+    subscription_json = json.dumps(subscription)
+
+    # Salviamo nel database
+    with db_conn() as conn:
+        db_execute(
+            conn,
+            """
+            INSERT INTO push_subscriptions (id_utente, subscription_info) 
+            VALUES (%s, %s) 
+            ON CONFLICT (id_utente) 
+            DO UPDATE SET subscription_info = EXCLUDED.subscription_info
+            """,
+            (id_utente, subscription_json)
+        )
+    return jsonify({'status': 'success'})
