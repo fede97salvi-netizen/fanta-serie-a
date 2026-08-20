@@ -146,7 +146,8 @@ async function attivaNotifiche() {
                 return;
             }
 
-            // 4. Creiamo l'abbonamento crittografato (ATTENZIONE: inserisci qui la TUA chiave pubblica VAPID)
+            // 4. Creiamo l'abbonamento crittografato
+            // ⚠️ ATTENZIONE: INSERISCI QUI LA TUA CHIAVE PUBBLICA VAPID VERA
             const publicVapidKey = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
             const subscription = await register.pushManager.subscribe({
                 userVisibleOnly: true,
@@ -162,10 +163,12 @@ async function attivaNotifiche() {
 
             alert('Notifiche attivate con successo! 🚀');
         } catch (error) {
+            // ECCO LA NOVITA': Se si rompe qualcosa, il telefono ce lo scriverà a schermo
+            alert('Errore tecnico: ' + error.message);
             console.error('Errore durante l\'attivazione:', error);
         }
     } else {
-        alert('Mi spiace, il tuo browser non supporta le notifiche push.');
+        alert('Mi spiace, il tuo browser o il tuo telefono non supportano le notifiche push.');
     }
 }
 </script>
