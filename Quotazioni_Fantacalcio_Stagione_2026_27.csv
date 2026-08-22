@@ -1,9 +1,9 @@
-;
 Nome;Squadra
 Svilar;Roma
 Martinez Jo.;Inter
 Carnesecchi;Atalanta
 Butez;Como
+Vicario;Juventus
 Maignan;Milan
 De Gea;Fiorentina
 Meret;Napoli
@@ -15,7 +15,6 @@ Okoye;Udinese
 Bijlow;Genoa
 Falcone;Lecce
 Daffara;Parma
-Suzuki;Parma
 Muric;Sassuolo
 Perin;Juventus
 Stankovic F.;Venezia
@@ -39,7 +38,6 @@ Di Gennaro;Inter
 Pinsoglio;Juventus
 Motta;Lazio
 Renzetti;Lazio
-Samooja;Lecce
 Terracciano;Milan
 Torriani;Milan
 Pizzignacco;Monza
@@ -59,7 +57,13 @@ Grandi;Venezia
 Pozzi;Venezia
 Vismara;Atalanta
 Satalino;Sassuolo
+Penev;Lecce
+Pisseri;Frosinone
+Radunovic;Cagliari
+Montipò;Venezia
+Bleve;Lecce
 Dimarco;Inter
+Molina N.;Roma
 Wesley;Roma
 Akanji;Inter
 Bremer;Juventus
@@ -73,6 +77,7 @@ Solet;Udinese
 Stones;Inter
 Gila;Milan
 Di Lorenzo;Napoli
+Spence;Inter
 Ostigard;Genoa
 Bisseck;Inter
 Scalvini;Atalanta
@@ -84,7 +89,7 @@ Cambiaso;Juventus
 Chalobah T.;Como
 Hien;Atalanta
 Zappacosta;Atalanta
-Lucumì;Bologna
+Lucumì;Juventus
 Miranda J.;Bologna
 Mina;Cagliari
 Dragusin;Fiorentina
@@ -110,7 +115,7 @@ Buongiorno;Napoli
 Idzes;Sassuolo
 Coco;Torino
 Ismajli;Torino
-Kristensen T.;Udinese
+Kristensen T.;Atalanta
 Ahanor;Atalanta
 Bellanova;Atalanta
 Bernasconi;Atalanta
@@ -127,10 +132,10 @@ Marusic;Lazio
 Gallo;Lecce
 Mangas;Monza
 Beukema;Napoli
-Circati;Parma
 Comuzzo;Torino
 Kamara H.;Udinese
 Bella-Kotchap;Venezia
+Obrador;Sassuolo
 Kolasinac;Atalanta
 Vitik;Bologna
 Holm;Bologna
@@ -150,6 +155,8 @@ Rensch;Roma
 Pedersen;Torino
 Moreno M.;Venezia
 Haps;Venezia
+Fortini;Torino
+Leysen F.;Sassuolo
 Zappa;Cagliari
 Smolcic I.;Como
 Pongracic;Fiorentina
@@ -171,6 +178,8 @@ Zanoli;Udinese
 Arizala;Udinese
 Halhal;Venezia
 Correia T.;Venezia
+Terzic;Frosinone
+Favasuli;Napoli
 Kossounou;Atalanta
 Casale;Bologna
 Rodriguez Ju.;Cagliari
@@ -182,7 +191,6 @@ Cittadini;Frosinone
 Provstgaard;Lazio
 Floriani Mussolini;Lazio
 De Winter;Milan
-Athekame;Milan
 Estupinan;Milan
 Kouadio;Monza
 Carboni A.;Monza
@@ -209,19 +217,16 @@ Ebosse;Udinese
 Franjic;Venezia
 Sagrado;Venezia
 Aurelio;Cagliari
+Terracciano F.;Milan
 De Silvestri;Bologna
-Raterink;Cagliari
 Goldaniga;Como
-Cuenca A.;Como
 Amey;Frosinone
-Gelli J.;Frosinone
 Oyono J.;Frosinone
 Corrado;Frosinone
 Matturro;Genoa
 Rugani;Juventus
 Cabal;Juventus
 Patric;Lazio
-Perez M.;Lecce
 Ndaba;Lecce
 Antov;Monza
 Bakoune;Monza
@@ -235,6 +240,9 @@ Pieragnolo;Sassuolo
 Mlacic;Udinese
 Abankwah;Udinese
 Gomes;Venezia
+Odenthal;Sassuolo
+Omar Fayed;Frosinone
+Cinquegrano;Sassuolo
 Paz N.;Como
 McTominay;Napoli
 Calhanoglu;Inter
@@ -242,6 +250,7 @@ Orsolini;Bologna
 Pulisic;Milan
 Rabiot;Milan
 Baturina;Como
+Mora;Roma
 Da Cunha;Como
 Zaniolo;Udinese
 Atta;Fiorentina
@@ -259,6 +268,8 @@ Alajbegovic;Juventus
 Conceicao;Juventus
 Modric;Milan
 Mastantuono;Fiorentina
+Moreira;Milan
+Jones C.;Inter
 Rowe;Bologna
 Baldanzi;Genoa
 Zambo Anguissa;Napoli
@@ -288,12 +299,13 @@ Locatelli;Juventus
 Colpani;Monza
 Vergara;Napoli
 Cristante;Roma
+Schmid;Frosinone
 Gaetano;Atalanta
 Ferguson;Bologna
 Fazzini;Cagliari
 Calò;Frosinone
 Frendrup;Genoa
-Frattesi;Inter
+Frattesi;Lazio
 Pessina;Monza
 Lobotka;Napoli
 Bernabè;Parma
@@ -318,6 +330,7 @@ Akinsanmiro;Monza
 Nicolussi Caviglia;Parma
 Karlstrom;Udinese
 Basic;Venezia
+Tourè I.;Monza
 Amondarain;Bologna
 Romano;Cagliari
 Felici;Cagliari
@@ -333,7 +346,6 @@ Berisha M.;Lecce
 Gandelman;Lecce
 Fofana Y.;Milan
 Keita M.;Parma
-Ondrejka;Parma
 Pisilli;Roma
 Matic;Sassuolo
 Adzic;Sassuolo
@@ -344,6 +356,7 @@ Piotrowski;Udinese
 Busio;Venezia
 Sohm;Venezia
 Perez K.;Venezia
+Grillitsch;Frosinone
 De Roon;Atalanta
 Moro N.;Bologna
 Prati;Cagliari
@@ -380,8 +393,9 @@ Diallo O.;Parma
 Aboukhlal;Torino
 Miller L.;Udinese
 Helgason;Venezia
+Cissè A.;Milan
 El Azzouzi O.;Bologna
-Fadera;Como
+Fadera;Cagliari
 Hasa;Frosinone
 Masini;Frosinone
 Venturino;Genoa
@@ -409,6 +423,9 @@ Anjorin;Torino
 Camara A.;Udinese
 Zarraga;Udinese
 Dagasso;Venezia
+Forson O.;Monza
+Laerke;Lecce
+Comotto;Milan
 Martinez L.;Inter
 Malen;Roma
 Thuram;Inter
@@ -426,7 +443,7 @@ Berardi;Sassuolo
 De Ketelaere;Atalanta
 Dovbyk;Bologna
 Esposito F.P.;Inter
-Pellegrino M.;Parma
+Pellegrino M.;Fiorentina
 Laurientè;Sassuolo
 Simeone;Torino
 Santos A.;Napoli
@@ -444,15 +461,14 @@ Colombo;Genoa
 Tourè E.;Parma
 Dia;Lazio
 Ratkov;Lazio
-Lukaku;Napoli
 Bowie;Sassuolo
+Romero D.;Parma
 Ghedjemis;Frosinone
 David;Juventus
 Geubbels;Lecce
 Cutrone;Monza
 Adams C.;Torino
-Dallinga;Bologna
-Piccoli;Fiorentina
+Piccoli;Bologna
 Vitinha O.;Genoa
 Yeboah J.;Venezia
 Rrahmani Al.;Venezia
@@ -471,6 +487,7 @@ Camarda;Milan
 Mota;Monza
 Frigan;Parma
 Adorante;Venezia
+Milik;Juventus
 Borrelli;Cagliari
 Mendy P.;Cagliari
 Morata;Como
@@ -487,13 +504,13 @@ Varela G.;Monza
 Lang;Napoli
 Lucca;Napoli
 Elphege;Parma
-Petagna;Monza
 Buksa;Udinese
 Albarracin;Cagliari
 Trepy;Cagliari
 Azon;Como
 Vaz;Roma
-Moro L.;Sassuolo
 Bayo V.;Udinese
 Lisman;Venezia
 Lauberbach;Venezia
+Lontani;Parma
+De Martis;Parma
