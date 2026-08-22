@@ -970,9 +970,12 @@ def admin_importa_giocatori_csv():
     }
 
     try:
-        # ECCO LA MAGIA: skiprows=1 dice al sistema di ignorare la prima riga "sporca" del file!
-        df = pd.read_csv(csv_path, encoding='latin-1', sep=';', skiprows=1)
-        
+        df = pd.read_csv(csv_path, encoding='latin-1', sep=';')
+        if 'Nome' not in df.columns or 'Squadra' not in df.columns:
+            # Alcuni export hanno una riga "sporca" prima della vera
+            # intestazione (es. un titolo): si riprova saltandola.
+            df = pd.read_csv(csv_path, encoding='latin-1', sep=';', skiprows=1)
+
         with db_conn() as conn:
             # Svuotiamo i vecchi giocatori
             db_execute(conn, "DELETE FROM giocatori")
