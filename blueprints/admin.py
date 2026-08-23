@@ -28,6 +28,7 @@ from services.game_logic import (
     calcola_e_aggiorna_punti_giornata,
     ricalcola_punteggi_totali,
     ricalcola_punteggi_finali,
+    pulisci_username,
 )
 from services.email_service import invia_email_async, build_email_giornata
 from blueprints.auth import hash_password
@@ -132,6 +133,41 @@ def admin_resetta_password(id_utente: int):
         db_commit(conn)
     nome = row_get(utente, 'nome_utente') if utente else 'Utente'
     flash(f'Password temporanea per {nome}: {pw_temp}', 'success')
+    return redirect(url_for('admin.admin_utenti'))
+
+
+@admin_bp.route('/admin/rinomina-utente/<int:id_utente>',
+                methods=['POST'], endpoint='admin_rinomina_utente')
+@admin_required
+def admin_rinomina_utente(id_utente: int):
+    nuovo_nome = pulisci_username(request.form.get('nuovo_nome_utente'))
+    if len(nuovo_nome) < 2:
+        flash('Il nuovo nome utente deve avere almeno 2 caratteri.', 'warning')
+        return redirect(url_for('admin.admin_utenti'))
+
+    with db_conn() as conn:
+        utente = db_fetchone(conn, 'SELECT nome_utente FROM utenti WHERE id = ?',
+                             (id_utente,))
+        if not utente:
+            flash('Utente non trovato.', 'warning')
+            return redirect(url_for('admin.admin_utenti'))
+
+        conflitto = db_fetchone(
+            conn, 'SELECT id FROM utenti WHERE nome_utente = ? AND id != ?',
+            (nuovo_nome, id_utente))
+        if conflitto:
+            flash(f'Il nome utente "{nuovo_nome}" è già in uso.', 'warning')
+            return redirect(url_for('admin.admin_utenti'))
+
+        vecchio_nome = row_get(utente, 'nome_utente')
+        db_execute(conn, 'UPDATE utenti SET nome_utente = ? WHERE id = ?',
+                   (nuovo_nome, id_utente))
+        db_execute(conn, 'UPDATE push_subscriptions SET nome_utente = ? WHERE id_utente = ?',
+                   (nuovo_nome, id_utente))
+        db_commit(conn)
+
+    flash(f'Utente "{vecchio_nome}" rinominato in "{nuovo_nome}". '
+          f'Se ha una sessione aperta dovrà rientrare con il nuovo nome.', 'success')
     return redirect(url_for('admin.admin_utenti'))
 
 
