@@ -105,8 +105,14 @@ def admin_utenti():
     with db_conn() as conn:
         utenti = db_fetchall(
             conn,
-            'SELECT id, nome_utente, is_temp_password, is_admin '
-            'FROM utenti ORDER BY nome_utente',
+            'SELECT u.id, u.nome_utente, u.is_temp_password, u.is_admin, '
+            '       COUNT(pg.id) AS num_pronostici, '
+            '       MAX(p.giornata) AS ultima_giornata '
+            'FROM utenti u '
+            'LEFT JOIN pronostici_giornata pg ON pg.id_utente = u.id '
+            'LEFT JOIN partite p ON p.id = pg.id_partita '
+            'GROUP BY u.id, u.nome_utente, u.is_temp_password, u.is_admin '
+            'ORDER BY (COUNT(pg.id) = 0) DESC, u.nome_utente',
         )
     return render_template('admin_utenti.html', utenti=utenti, session=session)
 
