@@ -19,17 +19,25 @@
             {% endif %}
           </td>
           <td>
-            <div style="display:flex;gap:6px;">
-              <form method="post" action="{{ url_for('admin.admin_resetta_password', id_utente=utente.id) }}" class="u-inline">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;gap:6px;">
+                <form method="post" action="{{ url_for('admin.admin_resetta_password', id_utente=utente.id) }}" class="u-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-warning u-btn-xs" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</button>
+                </form>
+                {% if not utente.is_admin %}
+                <form method="post" action="{{ url_for('admin.admin_elimina_utente', id_utente=utente.id) }}" class="u-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</button>
+                </form>
+                {% endif %}
+              </div>
+              <form method="post" action="{{ url_for('admin.admin_rinomina_utente', id_utente=utente.id) }}" style="display:flex;gap:4px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-warning u-btn-xs" onclick="return confirm('Resettare password di {{ utente.nome_utente }}?')">Reset pw</button>
+                <input type="text" name="nuovo_nome_utente" placeholder="nuovo nome" required
+                       style="width:90px;font-size:12px;padding:2px 6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+                <button type="submit" class="btn-secondary u-btn-xs">Rinomina</button>
               </form>
-              {% if not utente.is_admin %}
-              <form method="post" action="{{ url_for('admin.admin_elimina_utente', id_utente=utente.id) }}" class="u-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare {{ utente.nome_utente }}?')">Elimina</button>
-              </form>
-              {% endif %}
             </div>
           </td>
         </tr>
