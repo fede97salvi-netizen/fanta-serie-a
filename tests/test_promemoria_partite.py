@@ -40,7 +40,7 @@ def _vapid_env(monkeypatch):
     monkeypatch.setenv('VAPID_PRIVATE_KEY', 'chiave-finta')
 
 
-def test_invia_solo_a_chi_non_ha_pronosticato(app, monkeypatch):
+def test_invia_a_tutti_gli_iscritti_anche_a_chi_ha_gia_pronosticato(app, monkeypatch):
     inviate = []
 
     def _fake_webpush(subscription_info, data, vapid_private_key, vapid_claims):
@@ -66,8 +66,8 @@ def test_invia_solo_a_chi_non_ha_pronosticato(app, monkeypatch):
     esito = invia_promemoria_partite()
 
     assert f'https://example.test/{uid_senza_pronostico}' in inviate
-    assert f'https://example.test/{uid_con_pronostico}' not in inviate
-    assert 'Notifiche inviate: 1' in esito
+    assert f'https://example.test/{uid_con_pronostico}' in inviate
+    assert 'Notifiche inviate: 2' in esito
 
     with db_conn() as conn:
         partita = db_fetchone(conn, 'SELECT promemoria_inviato FROM partite WHERE id = ?', (pid,))
