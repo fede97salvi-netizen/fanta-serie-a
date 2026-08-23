@@ -109,8 +109,8 @@ def _formatta_orario_italia(data_ora_utc_str):
 
 
 def invia_promemoria_partite():
-    """Avvisa gli utenti che non hanno ancora pronosticato una partita che
-    inizia tra FINESTRA_MIN_MINUTI e FINESTRA_MAX_MINUTI minuti.
+    """Avvisa tutti gli utenti iscritti che una partita inizia tra
+    FINESTRA_MIN_MINUTI e FINESTRA_MAX_MINUTI minuti.
 
     Idempotente: ogni partita viene processata una sola volta grazie al
     flag partite.promemoria_inviato, così anche se lo scheduler esterno
@@ -151,16 +151,10 @@ def invia_promemoria_partite():
             orario_locale = _formatta_orario_italia(row_get(partita, 'data_ora_partita'))
 
             destinatari = db_fetchall(
-                conn,
-                "SELECT ps.id_utente, ps.subscription_info FROM push_subscriptions ps "
-                "WHERE ps.id_utente IS NOT NULL AND ps.id_utente NOT IN ("
-                "  SELECT id_utente FROM pronostici_giornata WHERE id_partita = ?"
-                ")",
-                (pid,),
-            )
+                conn, "SELECT id_utente, subscription_info FROM push_subscriptions")
 
             titolo = "⏰ Manca mezz'ora!"
-            messaggio = f"{casa} - {ospite} inizia alle {orario_locale}. Non hai ancora pronosticato!"
+            messaggio = f"{casa} - {ospite} inizia alle {orario_locale}!"
 
             for dest in destinatari:
                 id_utente = row_get(dest, 'id_utente')
