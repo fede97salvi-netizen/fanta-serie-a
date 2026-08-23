@@ -4,13 +4,20 @@
 <div class="page-header"><span class="page-title">Gestione utenti</span></div>
 <div class="fsa-section u-pt-sm">
   <div class="fsa-card u-p-0">
-    <table class="fsa-table" style="table-layout:fixed;max-width:680px;">
-      <thead><tr><th class="u-pl-sm" style="width:12%;">ID</th><th style="width:48%;">Utente</th><th style="width:40%;">Azioni</th></tr></thead>
+    <table class="fsa-table" style="table-layout:fixed;max-width:820px;">
+      <thead><tr><th class="u-pl-sm" style="width:8%;">ID</th><th style="width:32%;">Utente</th><th style="width:28%;">Attività</th><th style="width:32%;">Azioni</th></tr></thead>
       <tbody>
         {% for utente in utenti %}
         <tr>
           <td class="u-muted u-pl-sm">{{ utente.id }}</td>
           <td><strong>{{ utente.nome_utente }}</strong>{% if utente.is_temp_password %} <span class="badge badge-locked" style="font-size:10px;">temp</span>{% endif %}</td>
+          <td>
+            {% if utente.num_pronostici == 0 %}
+              <span class="badge badge-locked" style="font-size:10px;">mai attivo</span>
+            {% else %}
+              <span class="u-muted" style="font-size:12px;">{{ utente.num_pronostici }} pronostic{{ 'o' if utente.num_pronostici == 1 else 'i' }}<br>ultima: G{{ utente.ultima_giornata }}</span>
+            {% endif %}
+          </td>
           <td>
             <div style="display:flex;gap:6px;">
               <form method="post" action="{{ url_for('admin.admin_resetta_password', id_utente=utente.id) }}" class="u-inline">
