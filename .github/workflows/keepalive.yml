@@ -1,14 +1,8 @@
-name: Supabase Keep-Alive
-on:
-  schedule:
-    - cron: '0 6 */2 * *'    # ogni 2 giorni alle 06:00 UTC
-  workflow_dispatch:          # avvio manuale dal tab Actions
-
-jobs:
-  keepalive:
-    runs-on: ubuntu-latest    # psql già preinstallato
-    steps:
-      - name: Ping DB Serie A
+      - name: Diagnostica DB
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
-        run: psql "$DB_URL" -c "select now();"
+        run: |
+          psql "$DB_URL" -c "select current_database(), current_user, inet_server_addr();"
+          psql "$DB_URL" -c "show search_path;"
+          psql "$DB_URL" -c "select count(*) from public.utenti;"
+          psql "$DB_URL" -c "select schemaname, tablename from pg_tables where tablename in ('utenti','stato_giornata');"
