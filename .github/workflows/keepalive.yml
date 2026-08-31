@@ -1,20 +1,14 @@
 name: Supabase Keep-Alive
-
 on:
   schedule:
     - cron: '0 6 */2 * *'    # ogni 2 giorni alle 06:00 UTC
-  workflow_dispatch:          # permette l'avvio manuale dal tab Actions
+  workflow_dispatch:          # avvio manuale dal tab Actions
 
 jobs:
   keepalive:
-    runs-on: ubuntu-latest    # ha già psql preinstallato
+    runs-on: ubuntu-latest    # psql già preinstallato
     steps:
       - name: Ping DB Serie A
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
-        run: psql "$DB_URL" -c "select now();"
-
-      - name: Ping DB Mondiali
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL_MONDIALI }}
         run: psql "$DB_URL" -c "select now();"
