@@ -1,0 +1,12 @@
+name: Diagnostica DB
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostica:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query di controllo
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
+        run: psql "$DB_URL" -c "select current_database(), inet_server_addr(), (select count(*) from public.utenti) as n;"
