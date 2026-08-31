@@ -6,27 +6,8 @@ on:
 
 jobs:
   keepalive:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    # psql già preinstallato
     steps:
-      - name: Check DB URL shape
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
-        run: |
-          python3 - <<'EOF'
-          import os, urllib.parse as u
-          raw = os.environ["DB_URL"]
-          print("len raw:", len(raw))
-          print("whitespace ai bordi:", raw != raw.strip())
-          print("apici ai bordi:", raw[:1] in "\"'" or raw[-1:] in "\"'")
-          p = u.urlparse(raw.strip())
-          print("scheme:", p.scheme)
-          print("user:", p.username)
-          print("host:", p.hostname, "port:", p.port, "db:", p.path)
-          pw = p.password or ""
-          print("password len:", len(pw))
-          print("password ha % :", "%" in pw)
-          EOF
-
       - name: Ping DB Serie A
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
