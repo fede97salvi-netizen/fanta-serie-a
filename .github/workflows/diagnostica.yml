@@ -9,4 +9,7 @@ jobs:
       - name: Query di controllo
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL_SERIEA }}
-        run: psql "$DB_URL" -c "select current_database(), inet_server_addr(), (select count(*) from public.utenti) as n;"
+        run: |
+          psql "$DB_URL" -c "select current_user, session_user;"
+          psql "$DB_URL" -c "show search_path;"
+          psql "$DB_URL" -c "select count(*) from utenti;"
