@@ -195,6 +195,67 @@ def admin_elimina_utente(id_utente: int):
     return redirect(url_for('admin.admin_utenti'))
 
 
+# ─── Pagamenti ────────────────────────────────────────────────────────────────
+
+@admin_bp.route('/admin/pagamenti', endpoint='admin_pagamenti')
+@admin_required
+def admin_pagamenti():
+    with db_conn() as conn:
+        utenti = db_fetchall(
+            conn,
+            'SELECT u.id, u.nome_utente, '
+            '       COALESCE(pa.ha_pagato, FALSE) AS ha_pagato, '
+            '       pa.importo, pa.data_pagamento, pa.note '
+            'FROM utenti u '
+            'LEFT JOIN pagamenti pa ON pa.id_utente = u.id '
+            'ORDER BY ha_pagato ASC, u.nome_utente'
+            if USE_POSTGRES else
+            'SELECT u.id, u.nome_utente, '
+            '       COALESCE(pa.ha_pagato, 0) AS ha_pagato, '
+            '       pa.importo, pa.data_pagamento, pa.note '
+            'FROM utenti u '
+            'LEFT JOIN pagamenti pa ON pa.id_utente = u.id '
+            'ORDER BY ha_pagato ASC, u.nome_utente',
+        )
+        n_pagati = sum(1 for u in utenti if row_get(u, 'ha_pagato'))
+    return render_template('admin_pagamenti.html', utenti=utenti,
+                           n_pagati=n_pagati, n_totali=len(utenti), session=session)
+
+
+@admin_bp.route('/admin/pagamenti/<int:id_utente>/aggiorna',
+                methods=['POST'], endpoint='admin_aggiorna_pagamento')
+@admin_required
+def admin_aggiorna_pagamento(id_utente: int):
+    ha_pagato = bool(request.form.get('ha_pagato'))
+    importo = (request.form.get('importo') or '').strip()
+    data_pagamento = (request.form.get('data_pagamento') or '').strip()
+    note = (request.form.get('note') or '').strip()
+
+    try:
+        importo_val = float(importo.replace(',', '.')) if importo else None
+    except ValueError:
+        flash('Importo non valido.', 'warning')
+        return redirect(url_for('admin.admin_pagamenti'))
+
+    with db_conn() as conn:
+        db_execute(
+            conn,
+            """
+            INSERT INTO pagamenti (id_utente, ha_pagato, importo, data_pagamento, note)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (id_utente) DO UPDATE
+                SET ha_pagato = excluded.ha_pagato,
+                    importo = excluded.importo,
+                    data_pagamento = excluded.data_pagamento,
+                    note = excluded.note
+            """,
+            (id_utente, ha_pagato, importo_val, data_pagamento or None, note or None),
+        )
+        db_commit(conn)
+
+    return redirect(url_for('admin.admin_pagamenti'))
+
+
 # ─── Gestione partite ─────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/gestisci-partite', endpoint='admin_gestisci_partite')
