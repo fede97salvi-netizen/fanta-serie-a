@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a></div>
+<div class="page-header"><span class="page-title">Pagamenti</span></div>
+<div class="fsa-section u-pt-sm">
+  <p class="u-muted" style="margin-bottom:14px;">
+    <strong style="color:var(--text);">{{ n_pagati }}</strong> su <strong style="color:var(--text);">{{ n_totali }}</strong> hanno pagato la quota.
+  </p>
+  {% for utente in utenti %}
+  <form id="pagamento-{{ utente.id }}" method="post"
+        action="{{ url_for('admin.admin_aggiorna_pagamento', id_utente=utente.id) }}"></form>
+  {% endfor %}
+  <div class="fsa-card u-p-0">
+    <table class="fsa-table" style="table-layout:fixed;max-width:920px;">
+      <thead>
+        <tr>
+          <th class="u-pl-sm" style="width:20%;">Utente</th>
+          <th style="width:10%;">Pagato</th>
+          <th style="width:14%;">Importo</th>
+          <th style="width:16%;">Data</th>
+          <th style="width:24%;">Note</th>
+          <th style="width:16%;">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for utente in utenti %}
+        {% set form_id = 'pagamento-' ~ utente.id %}
+        <tr>
+          <td class="u-pl-sm"><strong>{{ utente.nome_utente }}</strong></td>
+          <td>
+            <input type="checkbox" name="ha_pagato" value="1" form="{{ form_id }}" {% if utente.ha_pagato %}checked{% endif %}>
+          </td>
+          <td>
+            <input type="text" name="importo" form="{{ form_id }}" value="{{ utente.importo if utente.importo is not none else '' }}"
+                   placeholder="€" style="width:70px;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          </td>
+          <td>
+            <input type="text" name="data_pagamento" form="{{ form_id }}" value="{{ utente.data_pagamento or '' }}"
+                   placeholder="gg/mm/aaaa" style="width:100px;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          </td>
+          <td>
+            <input type="text" name="note" form="{{ form_id }}" value="{{ utente.note or '' }}"
+                   placeholder="note" style="width:100%;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          </td>
+          <td>
+            <input type="hidden" name="csrf_token" form="{{ form_id }}" value="{{ csrf_token() }}">
+            <button type="submit" form="{{ form_id }}" class="btn-secondary u-btn-xs">Salva</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+  <div class="u-mt-md" style="display:flex;gap:10px;">
+    <a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary">👥 Gestione utenti</a>
+    <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a>
+  </div>
+{% endblock %}
