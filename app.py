@@ -113,6 +113,13 @@ def _create_tables_postgres(conn):
         nome_utente TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (id_utente))""")
+    db_execute(conn, """CREATE TABLE IF NOT EXISTS pagamenti (
+        id SERIAL PRIMARY KEY,
+        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
+        ha_pagato BOOLEAN NOT NULL DEFAULT FALSE,
+        importo REAL,
+        data_pagamento TEXT,
+        note TEXT)""")
     db_execute(conn,
                "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
                "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
@@ -188,6 +195,13 @@ def _create_tables_sqlite(conn):
         nome_utente TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (id_utente))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS pagamenti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
+        ha_pagato BOOLEAN NOT NULL DEFAULT 0,
+        importo REAL,
+        data_pagamento TEXT,
+        note TEXT)""")
 
 def _migrate_schema(conn):
     if USE_POSTGRES:
@@ -472,8 +486,8 @@ def test_spara_notifica():
 @app.route('/test_promemoria_partite')
 def test_promemoria_partite():
     esito = invia_promemoria_generale(
-        "🌈 Ciao froci!",
-        "Questo è un test se lo ricevi, sei ricchione! (PAMA MERDA)."
+        "⏰ Manca mezz'ora!",
+        "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
     )
     return esito
 
@@ -486,9 +500,10 @@ def cron_invia_promemoria_partite():
     if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
         return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
 
+    fonte = request.args.get('fonte', 'sconosciuta')
     esito = invia_promemoria_partite()
-    log.info(f"[cron promemoria] {esito}")
-    return jsonify({'status': 'ok', 'esito': esito})
+    log.info(f"[cron promemoria] (fonte: {fonte}) {esito}")
+    return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
