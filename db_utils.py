@@ -78,6 +78,22 @@ def db_conn():
     if USE_POSTGRES:
         pool = _get_pg_pool()
         conn = pool.getconn()
+
+        # Supabase chiude le connessioni rimaste inattive troppo a lungo
+        # (es. durante la notte): il pool non se ne accorge da solo e
+        # continuerebbe a restituire una connessione "morta". Un ping
+        # leggero prima dell'uso evita che la prima richiesta di giornata
+        # fallisca con un errore di connessione.
+        try:
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1')
+        except Exception:
+            try:
+                pool.putconn(conn, close=True)
+            except Exception:
+                log.exception('Errore scarto connessione morta')
+            conn = pool.getconn()
+
         try:
             yield conn
         except Exception:
