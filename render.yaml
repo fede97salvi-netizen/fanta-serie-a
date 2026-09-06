@@ -6,9 +6,7 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: fanta-serie-a-db
-          property: connectionString
+        sync: false       # Supabase — impostato a mano nella dashboard di Render
       - key: SECRET_KEY
         generateValue: true
       - key: FOOTBALL_API_KEY
@@ -25,8 +23,3 @@ services:
         sync: false
       - key: VAPID_CLAIM_EMAIL
         sync: false
-
-databases:
-  - name: fanta-serie-a-db
-    databaseName: fantaseriea
-    plan: free
