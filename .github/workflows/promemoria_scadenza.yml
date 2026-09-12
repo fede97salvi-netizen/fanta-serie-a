@@ -1,0 +1,18 @@
+name: Promemoria Scadenza
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # ogni 5 minuti
+  workflow_dispatch:          # permette l'avvio manuale dal tab Actions
+
+jobs:
+  promemoria_scadenza:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama la rotta dell'alert ultimi minuti
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sf -X POST "$APP_URL/cron/invia_promemoria_scadenza" \
+            -H "X-Cron-Secret: $CRON_SECRET"

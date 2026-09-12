@@ -14,6 +14,15 @@ from services.game_logic import parse_flexible_datetime
 FINESTRA_MIN_MINUTI = 15
 FINESTRA_MAX_MINUTI = 35
 
+# Finestra per l'alert "ultimi minuti": solo a chi non ha ancora pronosticato.
+# Volutamente stretta (un solo ciclo di cron da 10') per restare a ridosso del
+# calcio d'inizio: a differenza di GitHub Actions, cron-job.org non salta i
+# giri, quindi il rischio di perdere l'invio per un ritardo dello scheduler è
+# basso. Se in futuro si notassero partite senza questo alert, allargare
+# FINESTRA_FINALE_MAX_MINUTI (es. a 15) per avere più margine.
+FINESTRA_FINALE_MIN_MINUTI = 0
+FINESTRA_FINALE_MAX_MINUTI = 10
+
 
 def salva_subscription_push(nome_utente, subscription):
     """Salva/aggiorna la push subscription di un utente.
@@ -180,6 +189,93 @@ def invia_promemoria_partite():
                                    (id_utente,))
 
             db_execute(conn, "UPDATE partite SET promemoria_inviato = TRUE WHERE id = ?", (pid,))
+
+        db_commit(conn)
+
+    esito = (f"Partite processate: {len(partite_da_avvisare)}. "
+             f"Notifiche inviate: {totale_inviate}. Errori: {totale_errori}.")
+    if dettagli:
+        esito += " | " + " || ".join(dettagli)
+    return esito
+
+
+def invia_promemoria_scadenza():
+    """Avvisa, tra FINESTRA_FINALE_MIN_MINUTI e FINESTRA_FINALE_MAX_MINUTI
+    minuti dall'inizio di una partita, solo gli utenti iscritti alle notifiche
+    che per quella partita non hanno ancora inserito il pronostico.
+
+    Idempotente come invia_promemoria_partite, ma con un flag separato
+    (partite.promemoria_scadenza_inviato) così i due avvisi non
+    interferiscono tra loro.
+    """
+    chiave_privata = os.environ.get('VAPID_PRIVATE_KEY')
+    email = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:admin@fantaseriea.com')
+    if not chiave_privata:
+        return "Errore: VAPID_PRIVATE_KEY mancante nelle variabili di ambiente Render"
+
+    ora_utc = datetime.now(timezone.utc)
+    totale_inviate = 0
+    totale_errori = 0
+    dettagli = []
+
+    with db_conn() as conn:
+        candidate = db_fetchall(
+            conn,
+            "SELECT * FROM partite WHERE pronosticabile = TRUE "
+            "AND data_ora_partita IS NOT NULL AND promemoria_scadenza_inviato = FALSE",
+        )
+
+        partite_da_avvisare = []
+        for partita in candidate:
+            orario_naive = parse_flexible_datetime(row_get(partita, 'data_ora_partita'))
+            if not orario_naive:
+                continue
+            minuti_a_inizio = (
+                orario_naive.replace(tzinfo=timezone.utc) - ora_utc
+            ).total_seconds() / 60
+            if FINESTRA_FINALE_MIN_MINUTI <= minuti_a_inizio <= FINESTRA_FINALE_MAX_MINUTI:
+                partite_da_avvisare.append(partita)
+
+        for partita in partite_da_avvisare:
+            pid = row_get(partita, 'id')
+            casa = row_get(partita, 'squadra_casa')
+            ospite = row_get(partita, 'squadra_ospite')
+
+            destinatari = db_fetchall(
+                conn,
+                "SELECT id_utente, subscription_info FROM push_subscriptions "
+                "WHERE id_utente IS NOT NULL AND id_utente NOT IN "
+                "(SELECT id_utente FROM pronostici_giornata WHERE id_partita = ?)",
+                (pid,),
+            )
+
+            titolo = "⚠️ Ultimi minuti!"
+            messaggio = f"{casa} - {ospite} sta per iniziare e non hai ancora inserito il pronostico!"
+
+            for dest in destinatari:
+                id_utente = row_get(dest, 'id_utente')
+                sub_info = row_get(dest, 'subscription_info')
+                if isinstance(sub_info, str):
+                    sub_info = json.loads(sub_info)
+                try:
+                    webpush(
+                        subscription_info=sub_info,
+                        data=json.dumps({"title": titolo, "body": messaggio}),
+                        vapid_private_key=chiave_privata,
+                        vapid_claims={"sub": email},
+                    )
+                    totale_inviate += 1
+                except WebPushException as ex:
+                    totale_errori += 1
+                    status = ex.response.status_code if ex.response is not None else None
+                    dettagli.append(f"partita {pid} utente {id_utente}: status={status}")
+                    if status in (404, 410):
+                        # Subscription non più valida lato browser: la rimuoviamo
+                        # per non ritentare inutilmente ad ogni prossimo giro.
+                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id_utente = ?",
+                                   (id_utente,))
+
+            db_execute(conn, "UPDATE partite SET promemoria_scadenza_inviato = TRUE WHERE id = ?", (pid,))
 
         db_commit(conn)
 

@@ -18,7 +18,10 @@ from config import get_config
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
-from invia_notifiche import invia_promemoria_generale, invia_promemoria_partite, salva_subscription_push
+from invia_notifiche import (
+    invia_promemoria_generale, invia_promemoria_partite,
+    invia_promemoria_scadenza, salva_subscription_push,
+)
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
@@ -71,7 +74,8 @@ def _create_tables_postgres(conn):
         marcatore_reale TEXT,
         pronosticabile BOOLEAN NOT NULL DEFAULT FALSE,
         data_ora_partita TEXT,
-        promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE)""")
+        promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE,
+        promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT FALSE)""")
     db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_giornata (
         id SERIAL PRIMARY KEY,
         id_utente INTEGER NOT NULL REFERENCES utenti(id),
@@ -147,7 +151,8 @@ def _create_tables_sqlite(conn):
         marcatore_reale TEXT,
         pronosticabile BOOLEAN NOT NULL DEFAULT 0,
         data_ora_partita TEXT,
-        promemoria_inviato BOOLEAN NOT NULL DEFAULT 0)""")
+        promemoria_inviato BOOLEAN NOT NULL DEFAULT 0,
+        promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT 0)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_giornata (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_utente INTEGER NOT NULL,
@@ -211,6 +216,8 @@ def _migrate_schema(conn):
                              "is_admin BOOLEAN NOT NULL DEFAULT FALSE")
             db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
                              "promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE")
+            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
+                             "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT FALSE")
         except Exception:
             log.exception('Errore migrazione schema (postgres)')
     else:
@@ -235,6 +242,12 @@ def _migrate_schema(conn):
                              "promemoria_inviato BOOLEAN NOT NULL DEFAULT 0")
             except Exception:
                 log.exception('Errore aggiunta colonna promemoria_inviato')
+        if 'promemoria_scadenza_inviato' not in cols_partite:
+            try:
+                conn.execute("ALTER TABLE partite ADD COLUMN "
+                             "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT 0")
+            except Exception:
+                log.exception('Errore aggiunta colonna promemoria_scadenza_inviato')
 
 def _promuovi_admin_storico(conn):
     row = db_fetchone(conn,
@@ -491,8 +504,18 @@ def test_promemoria_partite():
     )
     return esito
 
-# ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita,
-# chiamata periodicamente da GitHub Actions (vedi .github/workflows).
+# ROTTA DI TEST PER L'ALERT "ULTIMI MINUTI, MANCA IL PRONOSTICO"
+@app.route('/test_promemoria_scadenza')
+def test_promemoria_scadenza():
+    esito = invia_promemoria_generale(
+        "⚠️ Ultimi minuti!",
+        "Questo è un test dell'alert 'manca poco e non hai ancora pronosticato': "
+        "se lo ricevi, il sistema funziona."
+    )
+    return esito
+
+# ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita, a tutti
+# gli iscritti, chiamata periodicamente da GitHub Actions/cron-job.org.
 @app.route('/cron/invia_promemoria_partite', methods=['POST'])
 @csrf.exempt
 def cron_invia_promemoria_partite():
@@ -503,6 +526,22 @@ def cron_invia_promemoria_partite():
     fonte = request.args.get('fonte', 'sconosciuta')
     esito = invia_promemoria_partite()
     log.info(f"[cron promemoria] (fonte: {fonte}) {esito}")
+    return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
+
+# ROTTA CRON: alert "ultimi minuti" solo a chi non ha ancora inserito il
+# pronostico. Rotta separata dal promemoria dei 30' apposta: così può girare
+# su un cron dedicato, con una cadenza più stretta (es. ogni 5-10 minuti),
+# senza toccare né la cadenza né il comportamento di quello già in uso.
+@app.route('/cron/invia_promemoria_scadenza', methods=['POST'])
+@csrf.exempt
+def cron_invia_promemoria_scadenza():
+    secret_atteso = os.environ.get('CRON_SECRET')
+    if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
+        return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
+
+    fonte = request.args.get('fonte', 'sconosciuta')
+    esito = invia_promemoria_scadenza()
+    log.info(f"[cron promemoria scadenza] (fonte: {fonte}) {esito}")
     return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
 
 if __name__ == '__main__':
