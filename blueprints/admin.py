@@ -799,22 +799,46 @@ def admin_gestisci_pronostici(giornata: int):
     with db_conn() as conn:
         if request.method == 'POST':
             action = request.form.get('action')
-            if action == 'modifica':
-                pid = request.form.get('id_pronostico')
-                db_execute(conn,
-                           'UPDATE pronostici_giornata '
-                           'SET esito_pronosticato=?, '
-                           'risultato_casa_pronosticato=?, '
-                           'risultato_ospite_pronosticato=?, '
-                           'marcatore_pronosticato=? '
-                           'WHERE id=?',
-                           (request.form.get('esito'),
-                            _safe_int(request.form.get('risultato_casa'),
-                                      lo=0, hi=20),
-                            _safe_int(request.form.get('risultato_ospite'),
-                                      lo=0, hi=20),
-                            request.form.get('marcatore'), pid))
+            if action == 'salva':
+                # Inserimento/correzione retroattiva: l'admin puo' salvare il
+                # pronostico di un utente per una partita anche se e' gia'
+                # scaduta o se quell'utente non ne aveva mai inserito uno.
+                id_utente = request.form.get('id_utente')
+                id_partita = request.form.get('id_partita')
+                if not id_utente or not id_partita:
+                    flash('Seleziona un utente.', 'warning')
+                    return redirect(url_for('admin.admin_gestisci_pronostici',
+                                            giornata=giornata))
+                esito = request.form.get('esito') or None
+                r_casa = _safe_int(request.form.get('risultato_casa'), lo=0, hi=20)
+                r_osp = _safe_int(request.form.get('risultato_ospite'), lo=0, hi=20)
+                marc = (request.form.get('marcatore') or '').strip() or None
+
+                esistente = db_fetchone(
+                    conn,
+                    'SELECT id FROM pronostici_giornata '
+                    'WHERE id_utente = ? AND id_partita = ?',
+                    (id_utente, id_partita))
+                if esistente:
+                    db_execute(conn,
+                               'UPDATE pronostici_giornata '
+                               'SET esito_pronosticato=?, '
+                               'risultato_casa_pronosticato=?, '
+                               'risultato_ospite_pronosticato=?, '
+                               'marcatore_pronosticato=? '
+                               'WHERE id_utente=? AND id_partita=?',
+                               (esito, r_casa, r_osp, marc, id_utente, id_partita))
+                else:
+                    db_execute(conn,
+                               'INSERT INTO pronostici_giornata '
+                               '(id_utente, id_partita, esito_pronosticato, '
+                               'risultato_casa_pronosticato, '
+                               'risultato_ospite_pronosticato, '
+                               'marcatore_pronosticato) '
+                               'VALUES (?, ?, ?, ?, ?, ?)',
+                               (id_utente, id_partita, esito, r_casa, r_osp, marc))
                 db_commit(conn)
+                flash('Pronostico salvato.', 'success')
                 return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
             elif action == 'cancella':
@@ -823,6 +847,7 @@ def admin_gestisci_pronostici(giornata: int):
                            'DELETE FROM pronostici_giornata WHERE id = ?',
                            (pid,))
                 db_commit(conn)
+                flash('Pronostico eliminato.', 'success')
                 return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
         partite = db_fetchall(
@@ -845,10 +870,38 @@ def admin_gestisci_pronostici(giornata: int):
             for r in rows:
                 pid = row_get(r, 'id_partita')
                 pronostici_per_partita.setdefault(pid, []).append(r)
+
+        # Giocatori per partita, per suggerire il marcatore (stesso pattern
+        # usato nella rotta utente gioco.pronostici_giornata)
+        giocatori_per_partita = {}
+        squadre = set()
+        for partita in partite:
+            squadre.add((row_get(partita, 'squadra_casa') or '').upper())
+            squadre.add((row_get(partita, 'squadra_ospite') or '').upper())
+        per_squadra = {}
+        if squadre:
+            ph = ','.join(['?'] * len(squadre))
+            tutti = db_fetchall(
+                conn,
+                f'SELECT nome_giocatore, squadra FROM giocatori '
+                f'WHERE UPPER(squadra) IN ({ph}) ORDER BY squadra, nome_giocatore',
+                tuple(squadre),
+            )
+            for g in tutti:
+                per_squadra.setdefault((row_get(g, 'squadra') or '').upper(), []).append(g)
+        for partita in partite:
+            pid = row_get(partita, 'id')
+            sc = (row_get(partita, 'squadra_casa') or '').upper()
+            so = (row_get(partita, 'squadra_ospite') or '').upper()
+            giocatori_per_partita[pid] = per_squadra.get(sc, []) + per_squadra.get(so, [])
+
+        utenti = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti ORDER BY nome_utente')
+
     return render_template('admin_gestisci_pronostici.html',
                            giornata=giornata, partite=partite,
                            pronostici_per_partita=pronostici_per_partita,
-                           session=session)
+                           giocatori_per_partita=giocatori_per_partita,
+                           utenti=utenti, session=session)
 
 
 @admin_bp.route('/admin/gestisci-pronostici-iniziali',

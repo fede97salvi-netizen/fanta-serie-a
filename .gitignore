@@ -54,3 +54,7 @@ Thumbs.db
 # --- Logs ---
 *.log
 logs/
+
+# --- Claude Code / file scaricati temporaneamente ---
+.claude/
+downloaded_files/

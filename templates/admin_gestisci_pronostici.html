@@ -2,23 +2,26 @@
 {% block content %}
 <div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a></div>
 <div class="page-header"><span class="page-title">Pronostici giornata {{ giornata }}</span></div>
+<p class="u-muted u-pt-sm" style="margin-bottom:10px;">
+  Da qui puoi inserire o correggere il pronostico di un utente anche dopo l'inizio della partita.
+</p>
 <div class="fsa-section u-pt-sm">
   {% for partita in partite %}
+  {% set giocatori = giocatori_per_partita.get(partita.id, []) %}
   <div class="fsa-section-title">{{ partita.squadra_casa }} vs {{ partita.squadra_ospite }}</div>
-  <div class="fsa-card u-p-0" style="margin-bottom:16px;">
+  <div class="fsa-card u-p-0" style="margin-bottom:10px;">
     <div class="overflow-x">
-      <table class="fsa-table" style="table-layout:fixed;max-width:820px;">
+      <table class="fsa-table" style="table-layout:fixed;max-width:900px;">
         <colgroup>
-          <col style="width:34%">
-          <col style="width:14%">
-          <col style="width:20%">
-          <col style="width:32%">
+          <col style="width:28%"><col style="width:12%"><col style="width:18%">
+          <col style="width:28%"><col style="width:14%">
         </colgroup>
         <thead><tr>
           <th class="u-pl-sm">Utente</th>
           <th style="text-align:center;">Esito</th>
           <th style="text-align:center;">Risultato</th>
           <th>Marcatore</th>
+          <th></th>
         </tr></thead>
         <tbody>
           {% for p in pronostici_per_partita.get(partita.id, []) %}
@@ -27,13 +30,75 @@
             <td style="text-align:center;"><strong class="u-hero-md-az">{{ p.esito_pronosticato or '–' }}</strong></td>
             <td style="text-align:center;font-family:var(--font-d);font-size:15px;">{% if p.risultato_casa_pronosticato is not none %}{{ p.risultato_casa_pronosticato }}–{{ p.risultato_ospite_pronosticato }}{% else %}–{% endif %}</td>
             <td style="font-size:12px;word-break:break-word;">{{ p.marcatore_pronosticato or '–' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="cancella">
+                <input type="hidden" name="id_pronostico" value="{{ p.id }}">
+                <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare il pronostico di {{ p.nome_utente }}?')">Elimina</button>
+              </form>
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="u-muted" style="text-align:center;padding:16px;">Nessun pronostico inserito.</td></tr>
+          <tr><td colspan="5" class="u-muted" style="text-align:center;padding:16px;">Nessun pronostico inserito.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+  </div>
+
+  <div class="fsa-card" style="margin-bottom:20px;">
+    <div class="u-muted" style="font-size:12px;margin-bottom:8px;font-weight:600;">Inserisci o correggi un pronostico</div>
+    <form method="post" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="salva">
+      <input type="hidden" name="id_partita" value="{{ partita.id }}">
+
+      <div>
+        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Utente</label>
+        <select name="id_utente" required style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          <option value="">— scegli —</option>
+          {% for u in utenti %}
+          <option value="{{ u.id }}">{{ u.nome_utente }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Esito</label>
+        <div style="display:flex;gap:6px;">
+          {% for val in ['1', 'X', '2'] %}
+          <label style="display:flex;align-items:center;gap:3px;font-size:13px;">
+            <input type="radio" name="esito" value="{{ val }}"> {{ val }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Risultato</label>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input type="number" name="risultato_casa" min="0" max="20" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          <span>–</span>
+          <input type="number" name="risultato_ospite" min="0" max="20" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:180px;">
+        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Marcatore</label>
+        <input type="text" name="marcatore" list="marcatori-{{ partita.id }}" placeholder="Nessun Marcatore, Autogol o nome giocatore"
+               style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+        <datalist id="marcatori-{{ partita.id }}">
+          <option value="Nessun Marcatore">
+          <option value="Autogol">
+          {% for g in giocatori %}
+          <option value="{{ g.nome_giocatore }}">
+          {% endfor %}
+        </datalist>
+      </div>
+
+      <button type="submit" class="btn-primary u-btn-sm">Salva</button>
+    </form>
   </div>
   {% endfor %}
   <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a>
