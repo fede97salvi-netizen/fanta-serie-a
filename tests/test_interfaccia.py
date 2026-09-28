@@ -185,6 +185,31 @@ def test_pronostici_iniziali_bloccati_200(client, dati):
             db_commit(conn)
 
 
+def test_pronostici_iniziali_bloccati_tabella_e_schede(client, dati):
+    """Scommesse chiuse: stessi dati sia nella tabella (PC) sia nelle schede (telefono)."""
+    _login(client, 'ui_mario')
+    with db_conn() as conn:
+        db_execute(conn, 'INSERT INTO pronostici_iniziali (id_utente, squadra_1, squadra_2, squadra_3, squadra_4, '
+                         'capocannoniere) VALUES (?, "FIORENTINA", "JUVENTUS", "ATALANTA", "BOLOGNA", "Mateo Retegui")',
+                   (dati['uid'],))
+        db_execute(conn, 'UPDATE stato_pronostici_iniziali SET is_locked = 1 WHERE id = 1')
+        db_commit(conn)
+    try:
+        html = client.get('/pronostici-iniziali').data.decode('utf-8')
+        assert 'pi-table' in html and 'pi-cards' in html
+        assert 'table-layout:fixed' not in html
+        tabella = html.split('pi-cards')[0]
+        schede = html.split('class="pi-cards"')[1]
+        for v in ('FIORENTINA', 'JUVENTUS', 'ATALANTA', 'BOLOGNA', 'Mateo Retegui', 'ui_mario'):
+            assert v in tabella and v in schede, v
+        assert 'pi-card is-me' in schede
+    finally:
+        with db_conn() as conn:
+            db_execute(conn, 'UPDATE stato_pronostici_iniziali SET is_locked = 0 WHERE id = 1')
+            db_execute(conn, 'DELETE FROM pronostici_iniziali WHERE id_utente = ?', (dati['uid'],))
+            db_commit(conn)
+
+
 def test_pagine_errore_personalizzate(client):
     r = client.get('/pagina-che-non-esiste')
     assert r.status_code == 404

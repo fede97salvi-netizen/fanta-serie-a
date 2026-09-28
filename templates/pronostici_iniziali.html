@@ -6,24 +6,59 @@
 <div class="fsa-section u-pt-sm">
   {% if is_locked %}
     <div class="alert alert-info"><div>Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div></div>
-    <div class="fsa-card">
-      <div class="overflow-x">
-        <table class="fsa-table" style="table-layout:fixed;max-width:900px;">
-          <thead><tr><th style="width:18%;">Utente</th><th style="width:15%;text-align:center;">1°</th><th style="width:15%;text-align:center;">2°</th><th style="width:15%;text-align:center;">3°</th><th style="width:15%;text-align:center;">4°</th><th style="width:22%;">Capocannoniere</th></tr></thead>
-          <tbody>
-            {% for p in pronostici_tutti %}
-            <tr {% if p.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
-              <td><strong>{{ p.nome_utente }}</strong>{% if p.nome_utente == session.nome_utente %} <span class="me-tag">tu</span>{% endif %}</td>
-              <td style="text-align:center;">{{ p.squadra_1 }}</td><td style="text-align:center;">{{ p.squadra_2 }}</td><td style="text-align:center;">{{ p.squadra_3 }}</td><td style="text-align:center;">{{ p.squadra_4 }}</td>
-              <td>{{ p.capocannoniere }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="6" class="u-card-empty">Nessun pronostico inserito.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    {% if pronostici_tutti %}
+    {# PC e tablet: tabella per confrontare le scelte colonna per colonna #}
+    <div class="fsa-card u-p-0 pi-table-wrap">
+      <table class="fsa-table pi-table">
+        <thead>
+          <tr>
+            <th scope="col" class="pi-user">Utente</th>
+            <th scope="col" class="pi-pos">1°</th>
+            <th scope="col" class="pi-pos">2°</th>
+            <th scope="col" class="pi-pos">3°</th>
+            <th scope="col" class="pi-pos">4°</th>
+            <th scope="col">Capocannoniere</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pronostici_tutti %}
+          <tr {% if p.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
+            <th scope="row" class="pi-user">{{ p.nome_utente }}{% if p.nome_utente == session.nome_utente %} <span class="me-tag">tu</span>{% endif %}</th>
+            <td class="pi-team">{{ p.squadra_1 }}</td>
+            <td class="pi-team">{{ p.squadra_2 }}</td>
+            <td class="pi-team">{{ p.squadra_3 }}</td>
+            <td class="pi-team">{{ p.squadra_4 }}</td>
+            <td class="pi-scorer">{{ p.capocannoniere }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+    {# Telefono: una scheda per utente #}
+    <div class="pi-cards">
+      {% for p in pronostici_tutti %}
+      <div class="pi-card{% if p.nome_utente == session.nome_utente %} is-me{% endif %}">
+        <div class="pi-card-head">
+          <span class="pi-card-name">{{ p.nome_utente }}</span>
+          {% if p.nome_utente == session.nome_utente %}<span class="me-tag">tu</span>{% endif %}
+        </div>
+        <ol class="pi-rank">
+          {% for i in range(1,5) %}
+          <li><span class="pi-rank-n rank-{{ i }}">{{ i }}°</span><span class="pi-rank-team">{{ p['squadra_' ~ i] }}</span></li>
+          {% endfor %}
+        </ol>
+        <div class="pi-card-scorer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5l4 2.9-1.5 4.7h-5L8 10.4z"/></svg>
+          <span class="pi-card-scorer-k">Capocannoniere</span>
+          <span class="pi-card-scorer-v">{{ p.capocannoniere }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="fsa-card u-card-empty">Nessun pronostico inserito.</div>
+    {% endif %}
   {% else %}
     <div class="alert alert-info"><div>Inserisci i tuoi pronostici per la classifica finale. Potrai modificarli finché l'admin non blocca le scommesse.</div></div>
     {% if not squadre or not giocatori %}

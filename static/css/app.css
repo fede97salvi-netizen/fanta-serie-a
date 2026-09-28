@@ -1005,3 +1005,60 @@ main button:not([class*="btn-"]):not(.acc-toggle):hover:active { box-shadow: var
 @media (min-width: 1280px) {
   .match-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ═══════════════ PRONOSTICI INIZIALI (scommesse chiuse) ═══════════════
+   Tabella da tablet/PC, schede su telefono. Nessuna colonna a larghezza
+   fissa: i nomi lunghi non si sovrappongono mai. */
+.pi-table-wrap { display: none; }
+.pi-cards { display: grid; gap: 10px; }
+
+.pi-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: 12px 14px 12px;
+}
+.pi-card.is-me { border-color: var(--azzurro); box-shadow: 0 0 0 1px rgba(0,144,212,0.35), 0 0 18px rgba(0,144,212,0.15); }
+.pi-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.pi-card-name { font-family: var(--font-d); font-weight: 900; font-size: 22px; line-height: 1; text-transform: uppercase; color: #fff; overflow-wrap: anywhere; }
+.pi-card-head .me-tag { margin-left: 2px; vertical-align: 0; }
+.pi-rank {
+  list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 10px;
+}
+.pi-rank li {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 7px 10px; border-radius: var(--radius-s);
+  background: var(--card2); border: 1px solid var(--border);
+}
+.pi-rank-n { font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--muted); flex-shrink: 0; min-width: 22px; }
+.pi-rank-n.rank-1 { color: var(--gold); } .pi-rank-n.rank-2 { color: var(--silver); } .pi-rank-n.rank-3 { color: var(--bronze); } .pi-rank-n.rank-4 { color: var(--muted); }
+.pi-rank-team {
+  font-family: var(--font-d); font-weight: 800; font-size: 16px; line-height: 1.1; text-transform: uppercase; color: #fff;
+  min-width: 0; overflow-wrap: anywhere;
+}
+.pi-card-scorer {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding-top: 9px; border-top: 1px solid var(--border);
+}
+.pi-card-scorer svg { width: 16px; height: 16px; color: var(--azzurro); flex-shrink: 0; }
+.pi-card-scorer-k { font-size: 12.5px; color: var(--muted); font-weight: 600; font-stretch: 90%; }
+.pi-card-scorer-v { font-size: 14.5px; font-weight: 600; color: #fff; margin-left: auto; text-align: right; }
+
+@media (min-width: 720px) {
+  .pi-cards { display: none; }
+  .pi-table-wrap { display: block; }
+  .pi-table { table-layout: auto; min-width: 640px; }
+  .pi-table th, .pi-table td { white-space: nowrap; padding: 11px 12px; }
+  .pi-table thead th { font-size: 12px; }
+  .pi-table .pi-pos { text-align: left; }
+  .pi-table .pi-user { width: 1%; padding-right: 24px; }
+  .pi-table th.pi-user {
+    text-align: left; font-family: var(--font-b); font-size: 14px; font-weight: 700; font-stretch: 100%;
+    color: #fff; position: sticky; left: 0; z-index: 1; background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .pi-table thead th.pi-user { color: var(--muted); font-size: 12px; font-weight: 650; font-stretch: 88%; border-bottom-color: var(--line); }
+  .pi-table tbody tr:nth-child(even) th.pi-user { background: #131f36; }
+  .pi-table tr.highlight-row th.pi-user { background: #0f2946; box-shadow: inset 3px 0 0 var(--azzurro); }
+  .pi-table .pi-team { font-family: var(--font-d); font-weight: 800; font-size: 16px; letter-spacing: 0.01em; text-transform: uppercase; }
+  .pi-table .pi-scorer { font-size: 13.5px; color: #cfd8e6; }
+  .pi-table tr:last-child th { border-bottom: none; }
+}
