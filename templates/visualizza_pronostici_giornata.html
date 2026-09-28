@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% block main_class %}is-narrow{% endblock %}
 {% block content %}
-<div class="page-header"><span class="page-title">I tuoi pronostici</span></div>
+<div class="page-header"><h1 class="page-title">I tuoi pronostici</h1></div>
 <div class="fsa-section u-pt-sm">
   {% for item in pronostici %}
   <div class="fsa-card">
-    <div class="u-mb-sm" style="font-family:var(--font-d);font-size:16px;font-weight:700;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-      <div><span class="u-muted-xs">Esito </span><strong class="u-hero-md-az">{{ item.esito_pronosticato or '–' }}</strong></div>
-      <div><span class="u-muted-xs">Risultato </span><strong class="u-hero-md">{% if item.risultato_casa_pronosticato is not none %}{{ item.risultato_casa_pronosticato }}–{{ item.risultato_ospite_pronosticato }}{% else %}–{% endif %}</strong></div>
-      <div><span class="u-muted-xs">Marcatore </span><strong style="font-size:13px;">{{ item.marcatore_pronosticato or '–' }}</strong></div>
+    <div class="match-caption" style="color:#fff;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>
+    <div class="pick-summary">
+      <div class="pick-cell"><div class="pick-k">Esito</div><div class="pick-v az">{{ item.esito_pronosticato or '–' }}</div></div>
+      <div class="pick-cell"><div class="pick-k">Risultato</div><div class="pick-v">{% if item.risultato_casa_pronosticato is not none %}{{ item.risultato_casa_pronosticato }}–{{ item.risultato_ospite_pronosticato }}{% else %}–{% endif %}</div></div>
+      <div class="pick-cell"><div class="pick-k">Marcatore</div><div class="pick-v sm">{{ item.marcatore_pronosticato or '–' }}</div></div>
     </div>
   </div>
   {% endfor %}

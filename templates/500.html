@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="fsa-section">
-  <div class="fsa-card u-card-center">
-    <div class="u-icon-xl">⚠️</div>
-    <div class="u-hero-md" style="font-weight:700;margin-bottom:6px;">Qualcosa è andato storto</div>
-    <div class="u-muted-md" style="margin-bottom:16px;">
-      Si è verificato un errore imprevisto. Riprova tra poco.</div>
-    <a href="{{ url_for('auth.home') }}" class="btn-secondary">← Torna alla Home</a>
+  <div class="fsa-card empty-state">
+    <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg></div>
+    <div class="empty-title">Qualcosa è andato storto</div>
+    <div class="empty-text">Si è verificato un errore imprevisto. Riprova tra poco.</div>
+    <a href="{{ url_for('auth.home') }}" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Torna alla Home</a>
   </div>
 </div>
 {% endblock %}

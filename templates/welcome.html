@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="background: linear-gradient(160deg, var(--blue) 0%, var(--green-dark) 60%, var(--bg) 100%); padding: 48px 24px 40px; text-align: center; position: relative; overflow: hidden;">
-  <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(0,144,212,0.1);"></div>
-  <div style="position:absolute;bottom:-20px;left:-20px;width:120px;height:120px;border-radius:50%;background:rgba(26,107,46,0.15);"></div>
-  <div style="font-size:48px;margin-bottom:16px;">🏆</div>
-  <h1 style="font-family:var(--font-d);font-size:36px;font-weight:700;color:white;margin-bottom:10px;letter-spacing:1px;">FantaSerieA</h1>
-  <p style="font-size:16px;color:rgba(255,255,255,0.7);max-width:300px;margin:0 auto 32px;">Il gioco di pronostici sul campionato italiano. Sfida i tuoi amici ogni weekend.</p>
-  <div style="display:flex;flex-direction:column;gap:12px;max-width:280px;margin:0 auto;">
-    <a href="{{ url_for('auth.registrazione') }}" class="btn-success" style="font-size:16px;">Registrati e inizia a giocare</a>
-    <a href="{{ url_for('auth.login') }}" class="btn-secondary" style="justify-content:center;">Hai già un account? Accedi</a>
+<section class="welcome">
+  <div class="welcome-mark" aria-hidden="true">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M16 2l12 4v9c0 7.5-5.2 12.6-12 15C9.2 27.6 4 22.5 4 15V6z" fill="#003f8a" stroke="#0090d4" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 9.5l5 3.6-1.9 5.9h-6.2L11 13.1z" fill="#fff"/><path d="M16 9.5V6.2M21 13.1l3-1M19.1 19l1.9 2.6M12.9 19L11 21.6M11 13.1l-3-1" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/></svg>
   </div>
-</div>
+  <h1 class="welcome-title">FantaSerieA</h1>
+  <p class="welcome-lead">Il gioco di pronostici sul campionato italiano. Sfida i tuoi amici ogni weekend.</p>
+  <div class="welcome-actions">
+    <a href="{{ url_for('auth.registrazione') }}" class="btn-success">Registrati e inizia a giocare</a>
+    <a href="{{ url_for('auth.login') }}" class="btn-secondary">Hai già un account? Accedi</a>
+  </div>
+</section>
 {% endblock %}

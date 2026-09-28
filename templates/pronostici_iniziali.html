@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% block main_class %}is-narrow{% endblock %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-secondary u-btn-sm">← Home</a></div>
-<div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="back-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
+<div class="page-header"><h1 class="page-title">Pronostici iniziali</h1></div>
 <div class="fsa-section u-pt-sm">
   {% if is_locked %}
-    <div class="alert alert-info">🔒 Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div>
+    <div class="alert alert-info"><div>Le scommesse sono chiuse. Ecco le scelte di tutti i partecipanti!</div></div>
     <div class="fsa-card">
       <div class="overflow-x">
         <table class="fsa-table" style="table-layout:fixed;max-width:900px;">
@@ -12,7 +13,7 @@
           <tbody>
             {% for p in pronostici_tutti %}
             <tr {% if p.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
-              <td><strong>{{ p.nome_utente }}</strong>{% if p.nome_utente == session.nome_utente %} <span style="font-size:11px;color:var(--azzurro);">✦</span>{% endif %}</td>
+              <td><strong>{{ p.nome_utente }}</strong>{% if p.nome_utente == session.nome_utente %} <span class="me-tag">tu</span>{% endif %}</td>
               <td style="text-align:center;">{{ p.squadra_1 }}</td><td style="text-align:center;">{{ p.squadra_2 }}</td><td style="text-align:center;">{{ p.squadra_3 }}</td><td style="text-align:center;">{{ p.squadra_4 }}</td>
               <td>{{ p.capocannoniere }}</td>
             </tr>
@@ -24,9 +25,9 @@
       </div>
     </div>
   {% else %}
-    <div class="alert alert-info">Inserisci i tuoi pronostici per la classifica finale. Potrai modificarli finché l'admin non blocca le scommesse.</div>
+    <div class="alert alert-info"><div>Inserisci i tuoi pronostici per la classifica finale. Potrai modificarli finché l'admin non blocca le scommesse.</div></div>
     {% if not squadre or not giocatori %}
-    <div class="alert alert-warning">Le squadre e/o le rose non sono ancora disponibili. L'amministratore deve prima importare le partite e le rose dei giocatori.</div>
+    <div class="alert alert-warning"><div>Le squadre e/o le rose non sono ancora disponibili. L'amministratore deve prima importare le partite e le rose dei giocatori.</div></div>
     {% endif %}
     <div class="fsa-card">
       <form action="{{ url_for('gioco.pronostici_iniziali') }}" method="post">
@@ -60,5 +61,5 @@
     </div>
   {% endif %}
 </div>
-  <div class="u-mt-md"><a href="{{ url_for('auth.home') }}" class="btn-secondary">← Home</a></div>
+<div class="page-foot"><a href="{{ url_for('auth.home') }}" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
 {% endblock %}

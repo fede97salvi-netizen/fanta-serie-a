@@ -1,29 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-card-form">
-  <div class="fsa-card">
-    <div class="u-center-mb">
-      <div class="u-icon-xxl">⚽</div>
-      <h1 class="u-hero-xl">Registrati</h1>
-    </div>
+<div class="auth-wrap">
+  <div class="auth-head">
+    <div class="auth-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5l4 2.9-1.5 4.7h-5L8 10.4zM12 7.5V3M16 10.4l4.3-1.4M14.5 15.1l2.6 3.7M9.5 15.1l-2.6 3.7M8 10.4L3.7 9"/></svg></div>
+    <h1 class="auth-title">Registrati</h1>
+  </div>
+  <div class="fsa-card auth-card">
     {% if errore %}
-      <div class="alert alert-danger">{{ errore }}</div>
+      <div class="alert alert-danger"><div>{{ errore }}</div></div>
     {% endif %}
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
-        <label class="form-label">Nome Utente</label>
-        <input type="text" name="nome_utente" class="form-control" autocomplete="username" required autofocus>
+        <label class="form-label" for="f-user">Nome Utente</label>
+        <input type="text" id="f-user" name="nome_utente" class="form-control" autocomplete="username" autocapitalize="none" required autofocus>
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" autocomplete="new-password" required>
+        <label class="form-label" for="f-pass">Password</label>
+        <input type="password" id="f-pass" name="password" class="form-control" autocomplete="new-password" required>
       </div>
       <button type="submit" class="btn-success">Crea account</button>
     </form>
-    <p class="u-muted-md u-mt-lg" style="text-align:center;">
-      Hai già un account? <a href="{{ url_for('auth.login') }}" style="color:var(--azzurro);text-decoration:none;">Accedi qui</a>
-    </p>
   </div>
+  <p class="auth-foot">Hai già un account? <a href="{{ url_for('auth.login') }}">Accedi qui</a></p>
 </div>
 {% endblock %}

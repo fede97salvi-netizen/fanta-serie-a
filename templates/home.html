@@ -1,69 +1,82 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="background:linear-gradient(160deg,var(--blue) 0%,var(--green-dark) 60%,var(--bg) 100%);padding:24px 16px 20px;position:relative;overflow:hidden;">
-  <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:rgba(0,144,212,0.1);"></div>
-  <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--azzurro);margin-bottom:4px;">
-    {% if giornata_attiva %}Giornata {{ giornata_attiva }} · In corso{% else %}Nessuna giornata attiva{% endif %}
-  </div>
-  
-  <!-- INIZIO ZONA FLEXBOX: Titolo e Bottone sulla stessa riga -->
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-    <h1 class="u-hero-xxl" style="color:white; margin: 0;">Bentornato, {{ session.nome_utente }}!</h1>
-    
-    <button onclick="attivaNotifiche()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
-      🔔 Notifiche
+<section class="hero">
+ <div class="hero-inner">
+  <div class="hero-main">
+  <div class="hero-top">
+    {% if giornata_attiva %}
+    <span class="live-pill"><span class="live-dot" aria-hidden="true"></span><b>Giornata {{ giornata_attiva }}</b> In corso</span>
+    {% else %}
+    <span class="live-pill is-idle"><span class="live-dot" aria-hidden="true"></span>Nessuna giornata attiva</span>
+    {% endif %}
+
+    <button type="button" onclick="attivaNotifiche()" class="btn-ghost">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1112 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 004 0"/></svg>
+      Notifiche
     </button>
   </div>
-  <!-- FINE ZONA FLEXBOX -->
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-    <div style="background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-      <div class="u-muted-xs" style="margin-bottom:4px;">Punteggio totale</div>
-      <div class="u-hero-xxl" style="color:white;line-height:1;">{{ punteggio_utente }}<span style="font-size:13px;color:var(--azzurro);font-weight:500;margin-left:2px;">pt</span></div>
+  <h1 class="hero-title">Bentornato, {{ session.nome_utente }}!</h1>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-cell">
+      <div class="score-label">Punteggio totale</div>
+      <div class="score-value">{{ punteggio_utente }}<span class="score-unit">pt</span></div>
     </div>
-    <div style="background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-      <div class="u-muted-xs" style="margin-bottom:4px;">Posizione</div>
-      <div class="u-hero-xxl" style="color:white;line-height:1;">{{ posizione_utente }}°</div>
+    <div class="score-cell">
+      <div class="score-label">Posizione</div>
+      <div class="score-value">{{ posizione_utente }}°</div>
     </div>
   </div>
-</div>
+ </div>
+</section>
 
 <div class="fsa-section">
   <div class="fsa-section-title">Azione rapida</div>
+  <div class="home-grid">
+  <div class="home-main">
   {% if giornata_attiva %}
-  <a href="{{ url_for('gioco.pronostici_giornata', giornata=giornata_attiva) }}" class="u-mb-md" style="display:block;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:16px;padding:18px 20px;text-decoration:none;position:relative;overflow:hidden;">
-    <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
-    <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:6px;">⚡ Giornata {{ giornata_attiva }} aperta</div>
-    <div style="font-family:var(--font-d);font-size:22px;font-weight:700;color:white;margin-bottom:4px;">Inserisci i pronostici</div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:14px;">Scegli le tue 3 partite prima della scadenza</div>
-    <div style="display:inline-flex;align-items:center;background:white;color:var(--blue-mid);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;">Vai ai pronostici →</div>
+  <a href="{{ url_for('gioco.pronostici_giornata', giornata=giornata_attiva) }}" class="cta-card" data-g="{{ giornata_attiva }}">
+    <div class="cta-kicker">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg>
+      Giornata {{ giornata_attiva }} aperta
+    </div>
+    <div class="cta-title">Inserisci i pronostici</div>
+    <div class="cta-sub">Scegli le tue 3 partite prima della scadenza</div>
+    <span class="cta-btn">Vai ai pronostici
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </span>
   </a>
   {% else %}
-  <div class="fsa-card u-card-center">
-    <div class="u-icon-xl">⏳</div>
-    <div class="u-hero-md" style="font-weight:700;margin-bottom:4px;">Nessuna giornata attiva</div>
-    <div class="u-muted-md">Attendi che l'amministratore apra la prossima giornata.</div>
+  <div class="fsa-card empty-state">
+    <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3v3.5L12 12l-4 5.5V21M16 3v3.5L12 12l4 5.5V21"/></svg></div>
+    <div class="empty-title">Nessuna giornata attiva</div>
+    <div class="empty-text">Attendi che l'amministratore apra la prossima giornata.</div>
   </div>
   {% endif %}
-
-  <a href="{{ url_for('gioco.pronostici_iniziali') }}" class="u-mb-md" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;">
-    <div style="font-size:24px;">📋</div>
-    <div>
-      <div class="u-hero">Pronostici Iniziali</div>
-      <div class="u-muted-sm">Top 4 e Capocannoniere stagionale</div>
-    </div>
-    <div class="u-muted" style="margin-left:auto;">›</div>
+  </div>
+  <div class="home-side">
+  <a href="{{ url_for('gioco.pronostici_iniziali') }}" class="list-link">
+    <span class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H6.5A1.5 1.5 0 005 5.5v14A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5v-14A1.5 1.5 0 0017.5 4H16"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg></span>
+    <span class="list-body">
+      <span class="list-title">Pronostici Iniziali</span>
+      <span class="list-sub">Top 4 e Capocannoniere stagionale</span>
+    </span>
+    <span class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
   </a>
 
   {% if is_admin %}
-  <a href="{{ url_for('admin.admin_home') }}" style="display:flex;align-items:center;gap:12px;background:rgba(198,40,40,0.12);border:1px solid rgba(239,83,80,0.25);border-radius:12px;padding:14px 16px;text-decoration:none;">
-    <div style="font-size:24px;">⚡</div>
-    <div>
-      <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#ef9a9a;">Area Admin</div>
-      <div class="u-muted-sm">Gestisci partite, risultati e utenti</div>
-    </div>
-    <div class="u-muted" style="margin-left:auto;">›</div>
+  <a href="{{ url_for('admin.admin_home') }}" class="list-link is-admin">
+    <span class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.5-3 7.8-7 9.5-4-1.7-7-5-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+    <span class="list-body">
+      <span class="list-title">Area Admin</span>
+      <span class="list-sub">Gestisci partite, risultati e utenti</span>
+    </span>
+    <span class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
   </a>
   {% endif %}
+  </div>
+  </div>
 </div>
 {% endblock %}

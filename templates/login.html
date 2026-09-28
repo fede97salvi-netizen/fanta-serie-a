@@ -1,36 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-card-form">
-  <div class="fsa-card">
-    <div class="u-center-mb">
-      <div class="u-icon-xxl">🔐</div>
-      <h1 class="u-hero-xl">Accedi</h1>
-    </div>
+<div class="auth-wrap">
+  <div class="auth-head">
+    <div class="auth-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 018 0v3M12 14.5v2.5"/></svg></div>
+    <h1 class="auth-title">Accedi</h1>
+  </div>
+  <div class="fsa-card auth-card">
     {% if errore %}
-      <div class="alert alert-danger">{{ errore }}</div>
+      <div class="alert alert-danger"><div>{{ errore }}</div></div>
     {% endif %}
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
-        <label class="form-label">Nome Utente</label>
-        <input type="text" name="nome_utente" class="form-control" autocomplete="username" required autofocus>
+        <label class="form-label" for="f-user">Nome Utente</label>
+        <input type="text" id="f-user" name="nome_utente" class="form-control" autocomplete="username" autocapitalize="none" required autofocus>
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" autocomplete="current-password" required>
+        <label class="form-label" for="f-pass">Password</label>
+        <input type="password" id="f-pass" name="password" class="form-control" autocomplete="current-password" required>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
-        <input type="checkbox" name="remember" id="remember" style="width:18px;height:18px;accent-color:var(--azzurro);">
-        <label for="remember" class="u-muted-md">Resta collegato</label>
-      </div>
+      <label class="check-row" for="remember">
+        <input type="checkbox" name="remember" id="remember">
+        <span>Resta collegato</span>
+      </label>
       <button type="submit" class="btn-success">Accedi</button>
     </form>
-    <p class="u-muted-md u-mt-md" style="text-align:center;">
-      <a href="{{ url_for('auth.recupera_password') }}" style="color:var(--azzurro);text-decoration:none;">Password dimenticata?</a>
-    </p>
-    <p class="u-muted-md u-mt-sm" style="text-align:center;">
-      Non hai un account? <a href="{{ url_for('auth.registrazione') }}" style="color:var(--azzurro);text-decoration:none;">Registrati qui</a>
-    </p>
   </div>
+  <p class="auth-foot"><a href="{{ url_for('auth.recupera_password') }}">Password dimenticata?</a></p>
+  <p class="auth-foot">Non hai un account? <a href="{{ url_for('auth.registrazione') }}">Registrati qui</a></p>
 </div>
 {% endblock %}

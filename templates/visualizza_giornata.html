@@ -1,53 +1,50 @@
 {% extends "base.html" %}
+{% block main_class %}is-narrow{% endblock %}
 {% block content %}
 <div class="u-section-hd">
-  <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary u-btn-sm">← Archivio</a>
+  <a href="{{ url_for('gioco.archivio_giornate') }}" class="back-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Archivio</a>
 </div>
-<div class="page-header"><span class="page-title">Giornata {{ giornata }}</span></div>
+<div class="page-header"><h1 class="page-title">Giornata {{ giornata }}</h1></div>
 <div class="fsa-section u-pt-sm">
 
   <div class="fsa-section-title">Risultati reali</div>
   {% for partita in partite %}
   {% set is_pron = partita['pronosticabile'] %}
-  <div class="fsa-card u-mb-sm" style="padding:12px 16px;{% if is_pron %}border-left:3px solid var(--azzurro);{% else %}opacity:0.65;{% endif %};">
-    {% if is_pron %}
-    <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--azzurro);margin-bottom:4px;">⭐ Pronosticabile</div>
-    {% endif %}
-    <div style="display:flex;align-items:center;">
-      <div class="u-flex-1" style="font-family:var(--font-d);font-size:15px;font-weight:700;text-align:left;">{{ partita['squadra_casa'] }}</div>
-      <div class="u-hero-xl" style="color:white;padding:0 16px;white-space:nowrap;text-align:center;min-width:90px;">
-        {% if partita['risultato_casa_reale'] is not none %}{{ partita['risultato_casa_reale'] }} – {{ partita['risultato_ospite_reale'] }}{% else %}– – –{% endif %}
-      </div>
-      <div class="u-flex-1" style="font-family:var(--font-d);font-size:15px;font-weight:700;text-align:right;">{{ partita['squadra_ospite'] }}</div>
+  <div class="result-row {% if is_pron %}is-pron{% else %}is-minor{% endif %}">
+    <div class="result-team home">{{ partita['squadra_casa'] }}</div>
+    <div class="result-score">
+      {% if partita['risultato_casa_reale'] is not none %}{{ partita['risultato_casa_reale'] }} – {{ partita['risultato_ospite_reale'] }}{% else %}– – –{% endif %}
     </div>
-    {% if is_pron and partita['marcatore_reale'] %}
-    <div class="u-muted-sm" style="text-align:center;margin-top:6px;">⚽ {{ partita['marcatore_reale'] }}</div>
+    <div class="result-team away">{{ partita['squadra_ospite'] }}</div>
+    {% if is_pron %}
+    <div class="result-meta">
+      <span class="star"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>Pronosticabile</span>
+      {% if partita['marcatore_reale'] %}<span>Marcatore: {{ partita['marcatore_reale'] }}</span>{% endif %}
+    </div>
     {% endif %}
   </div>
   {% endfor %}
 
-  <button onclick="toggleSezione('classifica')" class="u-mb-sm" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:var(--font-b);">
-    <div class="u-flex-row">
-      <span class="u-icon-md">📊</span>
-      <div style="text-align:left;">
-        <div class="u-hero">Classifica di giornata</div>
-        <div class="u-muted-xs">Basata sulle 3 partite pronosticabili</div>
-      </div>
-    </div>
-    <span id="arrow-classifica" class="u-muted" style="font-size:18px;transition:transform 0.2s;">›</span>
+  <div class="u-mt-lg"></div>
+  <button type="button" onclick="toggleSezione('classifica')" class="acc-toggle">
+    <span class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20v-6h6v6M9 20V9h6v11M15 20v-8h6v8M2 20h20"/></svg></span>
+    <span class="list-body">
+      <span class="list-title">Classifica di giornata</span>
+      <span class="list-sub">Basata sulle 3 partite pronosticabili</span>
+    </span>
+    <span id="arrow-classifica" class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
   </button>
-  <div id="sezione-classifica" class="u-mb-md" style="display:none;">
-  <p class="u-muted-sm u-mb-sm">Basata sulle 3 partite pronosticabili ⭐</p>
+  <div id="sezione-classifica" class="acc-panel" style="display:none;">
   <div class="fsa-card u-p-0">
     <div class="overflow-x">
       <table class="fsa-table">
         <thead>
           <tr>
-            <th style="padding-left:10px;width:28px;font-size:10px;">Pos.</th>
-            <th style="width:28%;font-size:10px;">Utente</th>
-            <th style="text-align:center;width:36px;font-size:10px;">Tot</th>
+            <th style="padding-left:12px;width:34px;">Pos.</th>
+            <th style="width:28%;">Utente</th>
+            <th style="text-align:center;width:40px;">Tot</th>
             {% for partita in partite_pron %}
-            <th style="text-align:center;font-size:9px;line-height:1.2;padding:6px 3px;">
+            <th style="text-align:center;font-size:10.5px;line-height:1.2;padding:6px 3px;">
               {{ partita['squadra_casa'][:4] }}<br>{{ partita['squadra_ospite'][:4] }}
             </th>
             {% endfor %}
@@ -57,19 +54,15 @@
           {% for utente in classifica %}
           <tr {% if utente.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
             <td class="u-pl-sm">
-              <span style="font-family:var(--font-d);font-size:17px;font-weight:700;
-                {% if loop.index==1 %}color:var(--gold);{% elif loop.index==2 %}color:#b0bec5;{% elif loop.index==3 %}color:#a1887f;{% else %}color:var(--muted);{% endif %}">
-                {{ loop.index }}
-              </span>
+              <span class="table-pos {% if loop.index==1 %}rank-1{% elif loop.index==2 %}rank-2{% elif loop.index==3 %}rank-3{% else %}u-muted{% endif %}">{{ loop.index }}</span>
             </td>
-            <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};">
+            <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}700{% else %}400{% endif %};">
               {{ utente.nome_utente }}
             </td>
-            <td style="text-align:center;"><strong class="u-hero-md">{{ utente.punti_totali }}</strong></td>
+            <td class="num" style="color:#fff;">{{ utente.punti_totali }}</td>
             {% for partita in partite_pron %}
               {% set d = utente.punti_per_partita[partita['id']] %}
-              <td style="text-align:center;font-family:var(--font-d);font-size:16px;font-weight:700;
-                {% if d.totale > 0 %}color:var(--azzurro);{% else %}color:var(--muted);{% endif %}"
+              <td class="num {% if d.totale > 0 %}pts-hot{% else %}miss{% endif %}"
                 title="Esito:+{{ d.esito }} Risultato:+{{ d.risultato }} Marcatore:+{{ d.marcatore }} Bonus:+{{ d.bonus }}">
                 {{ d.totale }}
               </td>
@@ -83,32 +76,29 @@
 
   </div><!-- fine sezione classifica -->
 
-  <button onclick="toggleSezione('pronostici')" class="u-mb-sm" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:var(--font-b);">
-    <div class="u-flex-row">
-      <span class="u-icon-md">📋</span>
-      <div style="text-align:left;">
-        <div class="u-hero">Pronostici inseriti</div>
-        <div class="u-muted-xs">Solo le 3 partite pronosticabili</div>
-      </div>
-    </div>
-    <span id="arrow-pronostici" class="u-muted" style="font-size:18px;transition:transform 0.2s;">›</span>
+  <button type="button" onclick="toggleSezione('pronostici')" class="acc-toggle">
+    <span class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H6.5A1.5 1.5 0 005 5.5v14A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5v-14A1.5 1.5 0 0017.5 4H16"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg></span>
+    <span class="list-body">
+      <span class="list-title">Pronostici inseriti</span>
+      <span class="list-sub">Solo le 3 partite pronosticabili</span>
+    </span>
+    <span id="arrow-pronostici" class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
   </button>
-  <div id="sezione-pronostici" class="u-mb-md" style="display:none;">
-  <p class="u-muted-sm u-mb-sm">Solo le 3 partite pronosticabili ⭐</p>
+  <div id="sezione-pronostici" class="acc-panel" style="display:none;">
   {% for partita in partite_pron %}
   <div class="fsa-card u-mb-md">
-    <div style="font-family:var(--font-d);font-size:16px;font-weight:700;color:var(--azzurro);margin-bottom:10px;">
+    <div class="match-caption">
       {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
     </div>
     <div class="overflow-x">
       <table class="fsa-table" style="table-layout:fixed;width:100%;">
         <thead>
           <tr>
-            <th style="width:22%;font-size:10px;padding:6px 6px;">Utente</th>
-            <th style="width:10%;text-align:center;font-size:10px;padding:6px 2px;">Esito</th>
-            <th style="width:14%;text-align:center;font-size:10px;padding:6px 2px;">Ris.</th>
-            <th style="width:36%;font-size:10px;padding:6px 4px;">Marcatore</th>
-            <th style="width:18%;text-align:center;font-size:10px;padding:6px 2px;">Pt</th>
+            <th style="width:22%;padding:6px 6px;">Utente</th>
+            <th style="width:11%;text-align:center;padding:6px 2px;">Esito</th>
+            <th style="width:14%;text-align:center;padding:6px 2px;">Ris.</th>
+            <th style="width:35%;padding:6px 4px;">Marcatore</th>
+            <th style="width:18%;text-align:center;padding:6px 2px;">Pt</th>
           </tr>
         </thead>
         <tbody>
@@ -117,24 +107,23 @@
           {% set p = utente.punti_per_partita[pid] %}
           {% set pron = pronostici_per_partita.get(pid, {}).get(utente.nome_utente) %}
           <tr {% if utente.nome_utente == session.nome_utente %}class="highlight-row"{% endif %}>
-            <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}600{% else %}400{% endif %};">{{ utente.nome_utente }}</td>
+            <td style="font-weight:{% if utente.nome_utente == session.nome_utente %}700{% else %}400{% endif %};">{{ utente.nome_utente }}</td>
             <td style="text-align:center;padding:8px 2px;">
               {% if pron %}
-              <strong style="font-family:var(--font-d);font-size:14px;{% if p.esito > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.esito or '–' }}</strong>
+              <strong class="table-pos {% if p.esito > 0 %}hit{% else %}miss{% endif %}" style="font-size:16px;">{{ pron.esito or '–' }}</strong>
               {% else %}<span class="u-muted">–</span>{% endif %}
             </td>
-            <td style="text-align:center;font-family:var(--font-d);font-size:12px;padding:8px 2px;">
+            <td style="text-align:center;font-family:var(--font-d);font-weight:800;font-size:15px;padding:8px 2px;">
               {% if pron and pron.r_casa is not none %}
-              <span style="{% if p.risultato > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.r_casa }}–{{ pron.r_osp }}</span>
+              <span class="{% if p.risultato > 0 %}hit{% else %}miss{% endif %}">{{ pron.r_casa }}–{{ pron.r_osp }}</span>
               {% else %}<span class="u-muted">–</span>{% endif %}
             </td>
-            <td style="font-size:11px;padding:8px 4px;overflow-wrap:break-word;word-break:break-word;">
+            <td style="font-size:12px;padding:8px 4px;overflow-wrap:break-word;word-break:break-word;">
               {% if pron and pron.marcatore %}
-              <span style="{% if p.marcatore > 0 %}color:#4caf50;font-weight:700;{% else %}color:var(--muted);{% endif %}">{{ pron.marcatore }}</span>
+              <span class="{% if p.marcatore > 0 %}hit{% else %}miss{% endif %}">{{ pron.marcatore }}</span>
               {% else %}<span class="u-muted">–</span>{% endif %}
             </td>
-            <td style="text-align:center;font-family:var(--font-d);font-size:16px;font-weight:700;
-              {% if p.totale > 0 %}color:var(--azzurro);{% else %}color:var(--muted);{% endif %}">
+            <td class="num {% if p.totale > 0 %}pts-hot{% else %}miss{% endif %}">
               {{ p.totale }}
             </td>
           </tr>
@@ -147,20 +136,17 @@
 
   </div><!-- fine sezione pronostici -->
 
-  <a href="{{ url_for('gioco.classifica_cumulativa_giornata', giornata=giornata) }}"
-    class="u-mb-sm" style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-decoration:none;">
-    <div class="u-flex-row">
-      <span class="u-icon-md">🏆</span>
-      <div>
-        <div class="u-hero">Classifica generale alla giornata {{ giornata }}</div>
-        <div class="u-muted-xs">Punteggi cumulativi dalla G1 alla G{{ giornata }}</div>
-      </div>
-    </div>
-    <span class="u-muted" style="font-size:18px;">›</span>
+  <a href="{{ url_for('gioco.classifica_cumulativa_giornata', giornata=giornata) }}" class="list-link">
+    <span class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 01-8 0zM8 6H5.5a2.5 2.5 0 002.8 3.9M16 6h2.5a2.5 2.5 0 01-2.8 3.9M12 13v4M8.5 20.5h7M10 17h4v3.5h-4z"/></svg></span>
+    <span class="list-body">
+      <span class="list-title">Classifica generale alla giornata {{ giornata }}</span>
+      <span class="list-sub">Punteggi cumulativi dalla G1 alla G{{ giornata }}</span>
+    </span>
+    <span class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
   </a>
 
   <div class="u-mt-md">
-    <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary">← Torna all'archivio</a>
+    <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Torna all'archivio</a>
   </div>
 </div>
 

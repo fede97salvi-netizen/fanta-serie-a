@@ -1,22 +1,23 @@
 {% extends "base.html" %}
+{% block main_class %}is-narrow{% endblock %}
 {% block content %}
-<div class="page-header"><span class="page-title">Pronostici iniziali</span></div>
+<div class="page-header"><h1 class="page-title">Pronostici iniziali</h1></div>
 <div class="fsa-section u-pt-sm">
   {% if pronostico %}
   <div class="fsa-card">
     {% for i in range(1,5) %}
-    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-      <span class="u-muted" style="font-size:13px;">{{ i }}° Classificato</span>
-      <strong>{{ pronostico['squadra_' ~ i] }}</strong>
+    <div class="kv-row">
+      <span class="kv-k">{{ i }}° Classificato</span>
+      <strong class="kv-v">{{ pronostico['squadra_' ~ i] }}</strong>
     </div>
     {% endfor %}
-    <div style="display:flex;justify-content:space-between;padding:10px 0;">
-      <span class="u-muted" style="font-size:13px;">Capocannoniere</span>
-      <strong>{{ pronostico.capocannoniere }}</strong>
+    <div class="kv-row">
+      <span class="kv-k">Capocannoniere</span>
+      <strong class="kv-v">{{ pronostico.capocannoniere }}</strong>
     </div>
   </div>
   {% else %}
-  <div class="alert alert-info">Nessun pronostico iniziale inserito.</div>
+  <div class="alert alert-info"><div>Nessun pronostico iniziale inserito.</div></div>
   {% endif %}
 </div>
 {% endblock %}
