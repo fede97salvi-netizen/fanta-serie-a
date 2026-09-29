@@ -124,6 +124,26 @@ def admin_utenti():
                            link_invito=link_invito, session=session)
 
 
+@admin_bp.route('/admin/prova-notifiche', methods=['POST'],
+                endpoint='admin_prova_notifiche')
+@admin_required
+def admin_prova_notifiche():
+    """Notifica di prova solo sui dispositivi dell'admin collegato."""
+    from invia_notifiche import invia_notifica_a_utente
+    inviate, errori = invia_notifica_a_utente(
+        session['nome_utente'],
+        'FantaSerieA: prova notifiche',
+        'Se leggi questo messaggio, le notifiche su questo dispositivo funzionano.',
+    )
+    dettaglio = (' Note: ' + '; '.join(errori) + '.') if errori else ''
+    if inviate:
+        flash(f'Notifica di prova inviata a {inviate} tuo/i dispositivo/i.{dettaglio}', 'success')
+    else:
+        flash('Nessun tuo dispositivo ha ricevuto la prova. Attiva le notifiche con il '
+              f'bottone "Notifiche" in Home, su telefono o PC, e riprova.{dettaglio}', 'warning')
+    return redirect(url_for('admin.admin_home'))
+
+
 @admin_bp.route('/admin/rigenera-invito', methods=['POST'],
                 endpoint='admin_rigenera_invito')
 @admin_required

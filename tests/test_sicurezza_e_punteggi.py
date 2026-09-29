@@ -134,6 +134,40 @@ def test_iscrizione_scaduta_rimuove_solo_quel_dispositivo(app, monkeypatch):
     _pulisci_push(vivo['endpoint'])
 
 
+def test_prova_notifiche_solo_sui_dispositivi_dell_admin(client, monkeypatch):
+    from invia_notifiche import salva_subscription_push
+    monkeypatch.setenv('VAPID_PRIVATE_KEY', 'chiave-finta')
+    inviate = []
+    monkeypatch.setattr('invia_notifiche.webpush',
+                        lambda **kw: inviate.append(kw['subscription_info']['endpoint']))
+    _crea_utente('sic_admin_prova', is_admin=True)
+    _crea_utente('sic_altro_prova')
+    miei = ['https://push.test/prova-tel', 'https://push.test/prova-pc']
+    altro = 'https://push.test/prova-altro'
+    for e in miei:
+        salva_subscription_push('sic_admin_prova', {'endpoint': e, 'keys': {}})
+    salva_subscription_push('sic_altro_prova', {'endpoint': altro, 'keys': {}})
+
+    _login(client, 'sic_admin_prova', admin=True)
+    assert 'Prova notifiche' in client.get('/admin').data.decode('utf-8')
+    html = client.post('/admin/prova-notifiche', follow_redirects=True).data.decode('utf-8')
+    assert sorted(inviate) == sorted(miei)          # l'altro utente non riceve nulla
+    assert 'inviata a 2' in html
+    _pulisci_push(*miei, altro)
+
+
+def test_prova_notifiche_senza_dispositivi_e_non_admin(client, monkeypatch):
+    monkeypatch.setenv('VAPID_PRIVATE_KEY', 'chiave-finta')
+    monkeypatch.setattr('invia_notifiche.webpush', lambda **kw: None)
+    _crea_utente('sic_admin_senza', is_admin=True)
+    _login(client, 'sic_admin_senza', admin=True)
+    html = client.post('/admin/prova-notifiche', follow_redirects=True).data.decode('utf-8')
+    assert 'Nessun tuo dispositivo' in html
+    _crea_utente('sic_normale_prova')
+    _login(client, 'sic_normale_prova')
+    assert client.post('/admin/prova-notifiche').status_code == 403
+
+
 # ─── Registrazione su invito ─────────────────────────────────────────────────
 
 def test_registrazione_senza_invito_non_mostra_il_form(client):

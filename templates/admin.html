@@ -150,6 +150,15 @@
       </button>
     </form>
 
+    <form method="post" action="{{ url_for('admin.admin_prova_notifiche') }}" class="u-contents">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="fsa-card" style="text-align:left;padding:18px 14px;cursor:pointer;border:1px solid var(--border);background:var(--card);width:100%;font-family:var(--font-b);">
+        <div class="u-icon-xl">🔔</div>
+        <div class="u-hero">Prova notifiche</div>
+        <div class="u-muted-xs-mt3">Solo sui tuoi dispositivi</div>
+      </button>
+    </form>
+
   </div>
 </div>
 {% endblock %}

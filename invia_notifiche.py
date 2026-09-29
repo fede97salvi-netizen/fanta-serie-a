@@ -118,6 +118,50 @@ def invia_promemoria_generale(titolo, messaggio):
     return esito
 
 
+def invia_notifica_a_utente(nome_utente, titolo, messaggio):
+    """Invia una notifica solo ai dispositivi di un utente (es. la prova
+    dell'admin, per non disturbare gli altri partecipanti).
+
+    Ritorna (inviate, errori): numero di dispositivi raggiunti e lista
+    di messaggi d'errore. Le iscrizioni scadute (404/410) vengono rimosse.
+    """
+    chiave_privata = os.environ.get('VAPID_PRIVATE_KEY')
+    email = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:admin@fantaseriea.com')
+    if not chiave_privata:
+        return 0, ['VAPID_PRIVATE_KEY mancante nelle variabili di ambiente Render']
+
+    inviate = 0
+    errori = []
+    with db_conn() as conn:
+        dispositivi = db_fetchall(
+            conn,
+            "SELECT ps.id, ps.subscription_info FROM push_subscriptions ps "
+            "JOIN utenti u ON u.id = ps.id_utente WHERE u.nome_utente = ?",
+            (nome_utente,))
+        for disp in dispositivi:
+            sub_info = row_get(disp, 'subscription_info')
+            if isinstance(sub_info, str):
+                sub_info = json.loads(sub_info)
+            try:
+                webpush(
+                    subscription_info=sub_info,
+                    data=json.dumps({"title": titolo, "body": messaggio}),
+                    vapid_private_key=chiave_privata,
+                    vapid_claims={"sub": email},
+                )
+                inviate += 1
+            except WebPushException as ex:
+                status = ex.response.status_code if ex.response is not None else None
+                if status in (404, 410):
+                    db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                               (row_get(disp, 'id'),))
+                    errori.append('un dispositivo non era più iscritto ed è stato rimosso')
+                else:
+                    errori.append(f'invio fallito (status={status})')
+        db_commit(conn)
+    return inviate, errori
+
+
 def _formatta_orario_italia(data_ora_utc_str):
     orario_naive = parse_flexible_datetime(data_ora_utc_str)
     if not orario_naive:
