@@ -10,6 +10,9 @@ compatibilità (vedi db_utils.py). I modelli qui definiti non vengono
 interrogati direttamente ma devono restare sincronizzati con lo schema.
 """
 
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
+
 from extensions import db
 
 
@@ -22,6 +25,9 @@ class Utente(db.Model):
     is_temp_password = db.Column(db.Boolean, nullable=False, default=False)
     is_admin         = db.Column(db.Boolean, nullable=False, default=False)
     email            = db.Column(db.Text, nullable=True)
+    tentativi_falliti = db.Column(db.Integer, nullable=False, default=0,
+                                  server_default='0')
+    bloccato_fino    = db.Column(db.Text, nullable=True)
 
     punteggio        = db.relationship('Punteggio',
                                        back_populates='utente', uselist=False)
@@ -44,6 +50,10 @@ class Partita(db.Model):
     marcatore_reale         = db.Column(db.Text, nullable=True)
     pronosticabile          = db.Column(db.Boolean, nullable=False, default=False)
     data_ora_partita        = db.Column(db.Text, nullable=True)
+    promemoria_inviato      = db.Column(db.Boolean, nullable=False, default=False,
+                                        server_default=sa.false())
+    promemoria_scadenza_inviato = db.Column(db.Boolean, nullable=False, default=False,
+                                            server_default=sa.false())
 
     pronostici = db.relationship('PronosticoGiornata', back_populates='partita')
 
@@ -79,6 +89,8 @@ class Punteggio(db.Model):
     id_utente        = db.Column(db.Integer, db.ForeignKey('utenti.id'),
                                  nullable=False, unique=True)
     punteggio_totale = db.Column(db.Integer, nullable=False, default=0)
+    bonus_finale     = db.Column(db.Integer, nullable=False, default=0,
+                                 server_default='0')
 
     utente = db.relationship('Utente', back_populates='punteggio')
 
@@ -145,3 +157,47 @@ class Giocatore(db.Model):
     id             = db.Column(db.Integer, primary_key=True)
     nome_giocatore = db.Column(db.Text, nullable=False)
     squadra        = db.Column(db.Text, nullable=False, index=True)
+
+
+class PushSubscription(db.Model):
+    """Un dispositivo iscritto alle notifiche push (piu' righe per utente)."""
+    __tablename__ = 'push_subscriptions'
+
+    id                = db.Column(db.Integer, primary_key=True)
+    id_utente         = db.Column(db.Integer,
+                                  db.ForeignKey('utenti.id', ondelete='CASCADE'),
+                                  nullable=True)
+    subscription_info = db.Column(sa.JSON().with_variant(
+                                      JSONB(), 'postgresql'),
+                                  nullable=False)
+    nome_utente       = db.Column(db.Text, nullable=True)
+    created_at        = db.Column(db.DateTime(timezone=True), nullable=True,
+                                  server_default=db.func.current_timestamp())
+    endpoint          = db.Column(db.Text, nullable=True)
+
+    __table_args__ = (
+        db.Index('ux_push_subscriptions_endpoint', 'endpoint', unique=True),
+        db.Index('ix_push_subscriptions_utente', 'id_utente'),
+    )
+
+
+class Pagamento(db.Model):
+    __tablename__ = 'pagamenti'
+
+    id             = db.Column(db.Integer, primary_key=True)
+    id_utente      = db.Column(db.Integer,
+                               db.ForeignKey('utenti.id', ondelete='CASCADE'),
+                               nullable=False, unique=True)
+    ha_pagato      = db.Column(db.Boolean, nullable=False, default=False,
+                               server_default=sa.false())
+    importo        = db.Column(db.Float, nullable=True)
+    data_pagamento = db.Column(db.Text, nullable=True)
+    note           = db.Column(db.Text, nullable=True)
+
+
+class Impostazione(db.Model):
+    """Impostazioni chiave/valore (es. codice d'invito per la registrazione)."""
+    __tablename__ = 'impostazioni'
+
+    chiave = db.Column(db.Text, primary_key=True)
+    valore = db.Column(db.Text, nullable=True)

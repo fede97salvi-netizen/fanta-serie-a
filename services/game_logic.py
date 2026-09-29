@@ -153,14 +153,20 @@ def _upsert_punteggio_giornata(conn, id_utente: int, giornata: int, punti: int):
 
 
 def _refresh_totale_utente(conn, id_utente: int):
-    """Ricalcola punteggi.punteggio_totale dalla somma di punteggi_giornata."""
+    """Ricalcola punteggi.punteggio_totale = somma di punteggi_giornata +
+    bonus_finale. Il bonus di fine stagione vive nella sua colonna, cosi'
+    nessun ricalcolo delle giornate lo cancella."""
     row = db_fetchone(
         conn,
         'SELECT COALESCE(SUM(punti), 0) AS tot FROM punteggi_giornata '
         'WHERE id_utente = ?',
         (id_utente,),
     )
-    totale = row_get(row, 'tot') or 0
+    bonus_row = db_fetchone(
+        conn, 'SELECT bonus_finale FROM punteggi WHERE id_utente = ?',
+        (id_utente,),
+    )
+    totale = (row_get(row, 'tot') or 0) + (row_get(bonus_row, 'bonus_finale') or 0)
     if USE_POSTGRES:
         db_execute(
             conn,
@@ -231,21 +237,33 @@ def calcola_e_aggiorna_punti_giornata(giornata: int) -> str:
 
 
 def ricalcola_punteggi_totali() -> str:
-    """Ricalcola tutti i punteggi da zero. Idempotente."""
+    """Ricalcola tutti i punteggi da zero. Idempotente.
+
+    Stessa regola del calcolo di giornata: contano tutte le giornate con
+    almeno una partita pronosticabile con risultato, archiviate o no.
+    Il bonus di fine stagione (punteggi.bonus_finale) resta com'e'.
+    """
     with db_conn() as conn:
         db_execute(conn, 'DELETE FROM punteggi_giornata')
-        db_execute(conn, 'DELETE FROM punteggi')
-        for utente in db_fetchall(conn, 'SELECT id FROM utenti'):
-            db_execute(
-                conn,
-                'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?, 0)',
-                (row_get(utente, 'id'),),
-            )
+        utenti = db_fetchall(conn, 'SELECT id FROM utenti')
+        con_riga = {row_get(r, 'id_utente')
+                    for r in db_fetchall(conn, 'SELECT id_utente FROM punteggi')}
+        for utente in utenti:
+            if row_get(utente, 'id') not in con_riga:
+                db_execute(
+                    conn,
+                    'INSERT INTO punteggi (id_utente, punteggio_totale) VALUES (?, 0)',
+                    (row_get(utente, 'id'),),
+                )
         for g in db_fetchall(
             conn,
-            'SELECT giornata FROM stato_giornata WHERE is_in_archivio = TRUE',
+            'SELECT DISTINCT giornata FROM partite WHERE pronosticabile = TRUE '
+            'AND risultato_casa_reale IS NOT NULL ORDER BY giornata',
         ):
             _calcola_punti_giornata_conn(row_get(g, 'giornata'), conn)
+        # Anche chi non ha punti di giornata torna al solo bonus (o a zero).
+        for utente in utenti:
+            _refresh_totale_utente(conn, row_get(utente, 'id'))
         db_commit(conn)
     return 'Classifica generale ricalcolata con successo.'
 
@@ -281,11 +299,14 @@ def ricalcola_punteggi_finali() -> str:
                 (uid,),
             )
             
-            # Se l'utente non ha salvato i pronostici a inizio anno, lo saltiamo
-            if not pron:
-                continue
-            
             punti_bonus = 0
+
+            # Chi non ha salvato i pronostici a inizio anno ha bonus zero
+            if not pron:
+                db_execute(conn, 'UPDATE punteggi SET bonus_finale = 0 WHERE id_utente = ?',
+                           (uid,))
+                _refresh_totale_utente(conn, uid)
+                continue
             
             # --- A. LOGICA SQUADRE (Prime 4 Classificate) ---
             for i in range(1, 5):
@@ -315,12 +336,14 @@ def ricalcola_punteggi_finali() -> str:
                 punti_bonus += 15
                 
             # --- C. AGGIORNAMENTO DEL DATABASE ---
-            if punti_bonus > 0:
-                db_execute(
-                    conn,
-                    'UPDATE punteggi SET punteggio_totale = punteggio_totale + ? WHERE id_utente = ?',
-                    (punti_bonus, uid),
-                )
+            # Il bonus si salva nella sua colonna (sovrascritto, non sommato:
+            # ripetere il calcolo non lo raddoppia) e il totale lo include.
+            db_execute(
+                conn,
+                'UPDATE punteggi SET bonus_finale = ? WHERE id_utente = ?',
+                (punti_bonus, uid),
+            )
+            _refresh_totale_utente(conn, uid)
                 
         db_commit(conn)
         

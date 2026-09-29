@@ -15,6 +15,7 @@ import logging
 import random
 import re
 import string
+from datetime import datetime, timedelta, timezone
 
 from flask import (
     Blueprint, render_template, request, redirect,
@@ -26,12 +27,19 @@ from hashlib import sha256
 from db_utils import db_conn, db_execute, db_fetchone, db_commit, row_get
 from extensions import limiter
 from services.game_logic import EMAIL_RE, pulisci_username
+from services.inviti import codice_invito_valido
 
 log = logging.getLogger('fanta')
 
 auth_bp = Blueprint('auth', __name__)
 
 MIN_PASSWORD_LEN = 6
+
+# Blocco dell'account dopo troppi tentativi di login sbagliati di fila.
+# Si somma al limite per indirizzo IP (5 al minuto, 30 all'ora): protegge
+# anche da tentativi distribuiti su piu' indirizzi.
+MAX_TENTATIVI_LOGIN = 10
+MINUTI_BLOCCO_LOGIN = 15
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,26 +114,30 @@ def home():
 @auth_bp.route('/registrazione', methods=['GET', 'POST'], endpoint='registrazione')
 @limiter.limit('10 per hour', methods=['POST'])
 def registrazione():
+    # La registrazione richiede il link d'invito dell'admin (?invito=<codice>).
+    codice = (request.form.get('codice_invito') if request.method == 'POST'
+              else request.args.get('invito')) or ''
+    if not codice_invito_valido(codice):
+        return render_template('registrazione.html', session=session,
+                               invito_mancante=True)
+
+    def _errore(msg):
+        return render_template('registrazione.html', session=session,
+                               codice_invito=codice, errore=msg)
+
     if request.method == 'POST':
         nome_utente = pulisci_username(request.form.get('nome_utente'))
         password    = request.form.get('password') or ''
         if len(nome_utente) < 2:
-            return render_template('registrazione.html', session=session,
-                                   errore='Nome utente troppo corto.')
+            return _errore('Nome utente troppo corto.')
         if len(password) < MIN_PASSWORD_LEN:
-            return render_template(
-                'registrazione.html', session=session,
-                errore=f'La password deve avere almeno {MIN_PASSWORD_LEN} caratteri.',
-            )
+            return _errore(f'La password deve avere almeno {MIN_PASSWORD_LEN} caratteri.')
         try:
             with db_conn() as conn:
                 if db_fetchone(conn,
                                'SELECT id FROM utenti WHERE nome_utente = ?',
                                (nome_utente,)):
-                    return render_template(
-                        'registrazione.html', session=session,
-                        errore='Nome utente già esistente. Scegli un altro nome.',
-                    )
+                    return _errore('Nome utente già esistente. Scegli un altro nome.')
                 db_execute(
                     conn,
                     'INSERT INTO utenti (nome_utente, password) VALUES (?, ?)',
@@ -137,9 +149,43 @@ def registrazione():
             return redirect(url_for('auth.home'))
         except Exception:
             log.exception('Errore registrazione')
-            return render_template('registrazione.html', session=session,
-                                   errore='Errore durante la registrazione. Riprova.')
-    return render_template('registrazione.html', session=session)
+            return _errore('Errore durante la registrazione. Riprova.')
+    return render_template('registrazione.html', session=session,
+                           codice_invito=codice)
+
+
+def _adesso_utc() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _minuti_blocco_residui(user) -> int:
+    """Minuti di blocco rimasti per l'account (0 = non bloccato)."""
+    fino = row_get(user, 'bloccato_fino')
+    if not fino:
+        return 0
+    try:
+        scadenza = datetime.fromisoformat(str(fino))
+    except ValueError:
+        return 0
+    residui = (scadenza - _adesso_utc()).total_seconds()
+    return max(0, int(residui // 60) + 1) if residui > 0 else 0
+
+
+def _registra_tentativo_fallito(conn, user) -> bool:
+    """Conta un login sbagliato; True se l'account e' appena stato bloccato."""
+    tentativi = (row_get(user, 'tentativi_falliti') or 0) + 1
+    if tentativi >= MAX_TENTATIVI_LOGIN:
+        fino = (_adesso_utc() + timedelta(minutes=MINUTI_BLOCCO_LOGIN)).isoformat(timespec='seconds')
+        db_execute(conn, 'UPDATE utenti SET tentativi_falliti = 0, bloccato_fino = ? '
+                         'WHERE id = ?', (fino, row_get(user, 'id')))
+        db_commit(conn)
+        log.warning(f"Account {row_get(user, 'nome_utente')} bloccato per "
+                    f"{MINUTI_BLOCCO_LOGIN} minuti dopo {MAX_TENTATIVI_LOGIN} tentativi falliti.")
+        return True
+    db_execute(conn, 'UPDATE utenti SET tentativi_falliti = ? WHERE id = ?',
+               (tentativi, row_get(user, 'id')))
+    db_commit(conn)
+    return False
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'], endpoint='login')
@@ -153,10 +199,22 @@ def login():
                 conn, 'SELECT * FROM utenti WHERE nome_utente = ?',
                 (nome_utente,),
             )
+            msg_blocco = (f'Troppi tentativi sbagliati: account bloccato per '
+                          f'{MINUTI_BLOCCO_LOGIN} minuti. Riprova più tardi.')
+            if user and _minuti_blocco_residui(user):
+                return render_template('login.html', session=session,
+                                       errore=msg_blocco)
             if not user or not verifica_password(password,
                                                   row_get(user, 'password')):
+                if user and _registra_tentativo_fallito(conn, user):
+                    return render_template('login.html', session=session,
+                                           errore=msg_blocco)
                 return render_template('login.html', session=session,
                                        errore='Credenziali non valide. Riprova.')
+            if row_get(user, 'tentativi_falliti') or row_get(user, 'bloccato_fino'):
+                db_execute(conn, 'UPDATE utenti SET tentativi_falliti = 0, '
+                                 'bloccato_fino = NULL WHERE id = ?', (row_get(user, 'id'),))
+                db_commit(conn)
             # Migrazione trasparente SHA-256 -> PBKDF2
             if _is_legacy_sha256(row_get(user, 'password')):
                 try:

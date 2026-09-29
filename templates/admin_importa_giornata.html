@@ -73,6 +73,15 @@
     </div>
     {% endfor %}
 
+    <div class="fsa-card u-mt-lg" style="display:flex;align-items:center;gap:12px;">
+      <input type="checkbox" name="invia_email" id="invia_email"
+        style="width:20px;height:20px;accent-color:var(--azzurro);cursor:pointer;">
+      <label for="invia_email" class="u-flex-1" style="cursor:pointer;">
+        <div style="font-weight:700;">Invia anche l'email ai partecipanti</div>
+        <div class="u-muted-xs">Promemoria di riserva: le notifiche push partono comunque. Arriva solo a chi ha l'email nel profilo.</div>
+      </label>
+    </div>
+
     <div class="u-mt-lg">
       <button type="submit" class="btn-success" id="btn-salva">IMPORTA PARTITE SELEZIONATE</button>
       <div class="u-muted-sm u-mt-sm" style="text-align:center;">

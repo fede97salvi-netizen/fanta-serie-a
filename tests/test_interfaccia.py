@@ -301,6 +301,9 @@ def test_partita_scaduta_mostra_riepilogo_senza_campi(client, dati):
 def test_campi_form(client, dati, url, attesi, loggato):
     if loggato:
         _login(client, 'ui_mario')
+    if url == '/registrazione':
+        from services.inviti import leggi_codice_invito
+        url += '?invito=' + leggi_codice_invito()
     p = _parse(client.get(url).data.decode('utf-8'))
     form = [f for f in p.forms if f['method'] == 'post'][0]
     nomi = {f['name'] for f in form['fields'] if f.get('name')}

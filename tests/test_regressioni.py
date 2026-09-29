@@ -108,8 +108,10 @@ def test_recupera_password_utente_inesistente(client):
 
 def test_registrazione_rimuove_spazi_username(client):
     from db_utils import db_conn, db_fetchone
+    from services.inviti import leggi_codice_invito
     client.post('/registrazione',
-                data={'nome_utente': '  gio vanni ', 'password': 'pass123'},
+                data={'nome_utente': '  gio vanni ', 'password': 'pass123',
+                      'codice_invito': leggi_codice_invito()},
                 follow_redirects=True)
     with db_conn() as conn:
         r = db_fetchone(conn,

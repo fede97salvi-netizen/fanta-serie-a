@@ -6,11 +6,18 @@
     <h1 class="auth-title">Registrati</h1>
   </div>
   <div class="fsa-card auth-card">
+    {% if invito_mancante %}
+      <div class="alert alert-warning"><div>
+        La registrazione è possibile solo con il link d'invito.
+        Chiedi il link all'organizzatore del gruppo e aprilo da questo dispositivo.
+      </div></div>
+    {% else %}
     {% if errore %}
       <div class="alert alert-danger"><div>{{ errore }}</div></div>
     {% endif %}
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="codice_invito" value="{{ codice_invito }}">
       <div class="form-group">
         <label class="form-label" for="f-user">Nome Utente</label>
         <input type="text" id="f-user" name="nome_utente" class="form-control" autocomplete="username" autocapitalize="none" required autofocus>
@@ -21,6 +28,7 @@
       </div>
       <button type="submit" class="btn-success">Crea account</button>
     </form>
+    {% endif %}
   </div>
   <p class="auth-foot">Hai già un account? <a href="{{ url_for('auth.login') }}">Accedi qui</a></p>
 </div>

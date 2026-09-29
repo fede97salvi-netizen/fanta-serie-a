@@ -1,3 +1,13 @@
+// Una nuova versione del service worker entra in funzione subito, senza
+// aspettare che l'utente chiuda tutte le schede dell'app.
+self.addEventListener('install', function () {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+    event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function (event) {
     let data = {};
     try {
@@ -9,8 +19,8 @@ self.addEventListener('push', function (event) {
     const title = data.title || "FantaSerieA";
     const options = {
         body: data.body || "Hai una nuova notifica!",
-        icon: data.icon || "/static/icon.png",
-        badge: "/static/badge.png",
+        icon: data.icon || "/static/icons/icon-192.png",
+        badge: "/static/icons/badge-96.png",
         tag: data.tag || "fantaseriea-notification",
         renotify: true,
         vibrate: [200, 100, 200],

@@ -143,10 +143,10 @@
 
     <form method="post" action="{{ url_for('admin.admin_aggiorna_risultati_massivo') }}" class="u-contents">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="fsa-card" style="text-align:left;padding:18px 14px;cursor:pointer;border:1px solid var(--border);background:var(--card);width:100%;font-family:var(--font-b);" onclick="return confirm('Aggiornare i risultati di tutte le giornate archiviate dalla API? Può richiedere qualche minuto.')">
+      <button type="submit" class="fsa-card" style="text-align:left;padding:18px 14px;cursor:pointer;border:1px solid var(--border);background:var(--card);width:100%;font-family:var(--font-b);" onclick="return confirm('Scaricare dalla API i risultati mancanti delle giornate archiviate? Può richiedere qualche minuto.')">
         <div class="u-icon-xl">📥</div>
         <div class="u-hero">Aggiorna storico</div>
-        <div class="u-muted-xs-mt3">Risultati da API tutte le giornate</div>
+        <div class="u-muted-xs-mt3">Risultati mancanti delle giornate archiviate</div>
       </button>
     </form>
 

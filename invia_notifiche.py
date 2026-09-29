@@ -24,49 +24,54 @@ FINESTRA_FINALE_MIN_MINUTI = 0
 FINESTRA_FINALE_MAX_MINUTI = 10
 
 
-def salva_subscription_push(nome_utente, subscription):
-    """Salva/aggiorna la push subscription di un utente.
+# Dispositivi iscritti per utente oltre i quali si scartano i piu' vecchi
+# (telefono, tablet, PC di casa e dell'ufficio stanno ampiamente sotto).
+MAX_DISPOSITIVI_PER_UTENTE = 10
 
-    Deduplica eventuali righe "orfane" della stessa subscription (stesso
-    endpoint) salvate con un id_utente diverso — es. un'iscrizione fatta
-    prima del login: il browser riusa la subscription esistente quando ci
-    si iscrive di nuovo con la stessa chiave pubblica, quindi senza questa
-    pulizia lo stesso dispositivo finirebbe per ricevere ogni notifica due
-    volte (una per riga).
+
+def salva_subscription_push(nome_utente, subscription):
+    """Salva/aggiorna la push subscription di un dispositivo.
+
+    Una riga per dispositivo (chiave: l'endpoint del browser), quindi un
+    utente puo' ricevere le notifiche su piu' dispositivi. Se lo stesso
+    dispositivo viene usato da un altro utente, la riga passa al nuovo
+    utente: un dispositivo non riceve mai la stessa notifica due volte.
+
+    Ritorna False se l'utente non esiste (nessun salvataggio).
     """
+    endpoint = (subscription or {}).get('endpoint')
+    if not nome_utente or not endpoint:
+        return False
     subscription_json = json.dumps(subscription)
-    endpoint_nuovo = (subscription or {}).get('endpoint')
 
     with db_conn() as conn:
-        id_utente = None
-        if nome_utente:
-            row = db_fetchone(conn, "SELECT id FROM utenti WHERE nome_utente = ?", (nome_utente,))
-            id_utente = row_get(row, 'id') if row else None
-
-        if endpoint_nuovo:
-            esistenti = db_fetchall(
-                conn, "SELECT id, id_utente, subscription_info FROM push_subscriptions")
-            for r in esistenti:
-                info = row_get(r, 'subscription_info')
-                if isinstance(info, str):
-                    info = json.loads(info)
-                stesso_endpoint = (info or {}).get('endpoint') == endpoint_nuovo
-                if stesso_endpoint and row_get(r, 'id_utente') != id_utente:
-                    db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
-                               (row_get(r, 'id'),))
+        row = db_fetchone(conn, "SELECT id FROM utenti WHERE nome_utente = ?", (nome_utente,))
+        if not row:
+            return False
+        id_utente = row_get(row, 'id')
 
         db_execute(
             conn,
             """
-            INSERT INTO push_subscriptions (id_utente, subscription_info, nome_utente)
-            VALUES (?, ?, ?)
-            ON CONFLICT (id_utente) DO UPDATE
-                SET subscription_info = excluded.subscription_info,
+            INSERT INTO push_subscriptions (id_utente, subscription_info, nome_utente, endpoint)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (endpoint) DO UPDATE
+                SET id_utente = excluded.id_utente,
+                    subscription_info = excluded.subscription_info,
                     nome_utente = excluded.nome_utente
             """,
-            (id_utente, subscription_json, nome_utente or 'ospite')
+            (id_utente, subscription_json, nome_utente, endpoint)
         )
+
+        dispositivi = db_fetchall(
+            conn,
+            "SELECT id FROM push_subscriptions WHERE id_utente = ? ORDER BY id DESC",
+            (id_utente,))
+        for vecchio in dispositivi[MAX_DISPOSITIVI_PER_UTENTE:]:
+            db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                       (row_get(vecchio, 'id'),))
         db_commit(conn)
+    return True
 
 def invia_promemoria_generale(titolo, messaggio):
     chiave_privata = os.environ.get('VAPID_PRIVATE_KEY')
@@ -77,31 +82,35 @@ def invia_promemoria_generale(titolo, messaggio):
         return "Errore: VAPID_PRIVATE_KEY mancante nelle variabili di ambiente Render"
 
     with db_conn() as conn:
-        utenti_iscritti = db_fetchall(conn, "SELECT subscription_info FROM push_subscriptions")
-        
-    print(f"Trovati {len(utenti_iscritti)} dispositivi iscritti. Inizio invio...")
+        utenti_iscritti = db_fetchall(conn, "SELECT id, subscription_info FROM push_subscriptions")
 
-    inviati = 0
-    errori = []
-    for utente in utenti_iscritti:
-        sub_info = utente[0] if isinstance(utente, tuple) else utente['subscription_info']
-        if isinstance(sub_info, str):
-            sub_info = json.loads(sub_info)
+        print(f"Trovati {len(utenti_iscritti)} dispositivi iscritti. Inizio invio...")
 
-        try:
-            webpush(
-                subscription_info=sub_info,
-                data=json.dumps({"title": titolo, "body": messaggio}),
-                vapid_private_key=chiave_privata,
-                vapid_claims={"sub": email}
-            )
-            inviati += 1
-        except WebPushException as ex:
-            dettaglio = str(ex)
-            if ex.response is not None:
-                dettaglio += f" | status={ex.response.status_code} body={ex.response.text}"
-            print("Invio fallito:", dettaglio)
-            errori.append(dettaglio)
+        inviati = 0
+        errori = []
+        for utente in utenti_iscritti:
+            sub_info = row_get(utente, 'subscription_info')
+            if isinstance(sub_info, str):
+                sub_info = json.loads(sub_info)
+
+            try:
+                webpush(
+                    subscription_info=sub_info,
+                    data=json.dumps({"title": titolo, "body": messaggio}),
+                    vapid_private_key=chiave_privata,
+                    vapid_claims={"sub": email}
+                )
+                inviati += 1
+            except WebPushException as ex:
+                dettaglio = str(ex)
+                if ex.response is not None:
+                    dettaglio += f" | status={ex.response.status_code} body={ex.response.text}"
+                    if ex.response.status_code in (404, 410):
+                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                                   (row_get(utente, 'id'),))
+                print("Invio fallito:", dettaglio)
+                errori.append(dettaglio)
+        db_commit(conn)
 
     esito = f"Notifiche inviate a {inviati} dispositivi!"
     if errori:
@@ -160,7 +169,7 @@ def invia_promemoria_partite():
             orario_locale = _formatta_orario_italia(row_get(partita, 'data_ora_partita'))
 
             destinatari = db_fetchall(
-                conn, "SELECT id_utente, subscription_info FROM push_subscriptions")
+                conn, "SELECT id, id_utente, subscription_info FROM push_subscriptions")
 
             titolo = "⏰ Manca mezz'ora!"
             messaggio = f"{casa} - {ospite} inizia alle {orario_locale}!"
@@ -185,8 +194,8 @@ def invia_promemoria_partite():
                     if status in (404, 410):
                         # Subscription non più valida lato browser: la rimuoviamo
                         # per non ritentare inutilmente ad ogni prossimo giro.
-                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id_utente = ?",
-                                   (id_utente,))
+                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                                   (row_get(dest, 'id'),))
 
             db_execute(conn, "UPDATE partite SET promemoria_inviato = TRUE WHERE id = ?", (pid,))
 
@@ -243,7 +252,7 @@ def invia_promemoria_scadenza():
 
             destinatari = db_fetchall(
                 conn,
-                "SELECT id_utente, subscription_info FROM push_subscriptions "
+                "SELECT id, id_utente, subscription_info FROM push_subscriptions "
                 "WHERE id_utente IS NOT NULL AND id_utente NOT IN "
                 "(SELECT id_utente FROM pronostici_giornata WHERE id_partita = ?)",
                 (pid,),
@@ -272,8 +281,8 @@ def invia_promemoria_scadenza():
                     if status in (404, 410):
                         # Subscription non più valida lato browser: la rimuoviamo
                         # per non ritentare inutilmente ad ogni prossimo giro.
-                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id_utente = ?",
-                                   (id_utente,))
+                        db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
+                                   (row_get(dest, 'id'),))
 
             db_execute(conn, "UPDATE partite SET promemoria_scadenza_inviato = TRUE WHERE id = ?", (pid,))
 

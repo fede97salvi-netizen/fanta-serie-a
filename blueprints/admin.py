@@ -31,6 +31,7 @@ from services.game_logic import (
     pulisci_username,
 )
 from services.email_service import invia_email_async, build_email_giornata
+from services.inviti import leggi_codice_invito, rigenera_codice_invito
 from blueprints.auth import hash_password
 from auth_utils import admin_required
 
@@ -115,7 +116,21 @@ def admin_utenti():
             'GROUP BY u.id, u.nome_utente, u.is_temp_password, u.is_admin '
             'ORDER BY (COUNT(pg.id) = 0) DESC, u.nome_utente',
         )
-    return render_template('admin_utenti.html', utenti=utenti, session=session)
+    from flask import current_app
+    codice = leggi_codice_invito() or rigenera_codice_invito()
+    link_invito = (f"{current_app.config['APP_URL'].rstrip('/')}"
+                   f"{url_for('auth.registrazione', invito=codice)}")
+    return render_template('admin_utenti.html', utenti=utenti,
+                           link_invito=link_invito, session=session)
+
+
+@admin_bp.route('/admin/rigenera-invito', methods=['POST'],
+                endpoint='admin_rigenera_invito')
+@admin_required
+def admin_rigenera_invito():
+    rigenera_codice_invito()
+    flash('Nuovo link d\'invito generato: quello vecchio non funziona più.', 'success')
+    return redirect(url_for('admin.admin_utenti'))
 
 
 @admin_bp.route('/admin/resetta-password/<int:id_utente>',
@@ -165,6 +180,10 @@ def admin_rinomina_utente(id_utente: int):
         db_execute(conn, 'UPDATE push_subscriptions SET nome_utente = ? WHERE id_utente = ?',
                    (nuovo_nome, id_utente))
         db_commit(conn)
+
+    # L'admin che rinomina se stesso resta collegato con il nuovo nome.
+    if session.get('nome_utente') == vecchio_nome:
+        session['nome_utente'] = nuovo_nome
 
     flash(f'Utente "{vecchio_nome}" rinominato in "{nuovo_nome}". '
           f'Se ha una sessione aperta dovrà rientrare con il nuovo nome.', 'success')
@@ -516,14 +535,23 @@ def admin_aggiorna_risultati_massivo():
             log.info('[MASSIVO] Avvio aggiornamento storico risultati...')
             try:
                 serie_a = app.config.get('SERIE_A_CODE', 'SA')
+                # Solo le giornate archiviate con almeno un risultato mancante:
+                # ogni giornata viene salvata appena scaricata, quindi se il
+                # servizio si riavvia a meta' basta rilanciare e il job
+                # riprende da dove si era fermato.
                 with db_conn() as conn:
                     giornate = [
                         row_get(g, 'giornata') for g in db_fetchall(
                             conn,
-                            'SELECT giornata FROM stato_giornata '
-                            'WHERE is_in_archivio = TRUE ORDER BY giornata',
+                            'SELECT DISTINCT sg.giornata FROM stato_giornata sg '
+                            'JOIN partite p ON p.giornata = sg.giornata '
+                            'WHERE sg.is_in_archivio = TRUE '
+                            'AND (p.risultato_casa_reale IS NULL '
+                            '     OR p.risultato_ospite_reale IS NULL) '
+                            'ORDER BY sg.giornata',
                         )
                     ]
+                log.info(f'[MASSIVO] Giornate da completare: {giornate or "nessuna"}')
                 for i, g in enumerate(giornate):
                     if i > 0 and i % 9 == 0:
                         log.info('[MASSIVO] Pausa rate limit...')
@@ -573,8 +601,10 @@ def admin_aggiorna_risultati_massivo():
                 log.exception('[MASSIVO] Errore generale')
 
     threading.Thread(target=_esegui, daemon=True).start()
-    flash('Aggiornamento storico avviato in background (~4 min). '
-          'Controlla i log per il progresso.', 'info')
+    flash('Aggiornamento storico avviato in background: scarica solo le giornate '
+          'archiviate con risultati mancanti (circa 7 secondi a giornata). '
+          'Se il server si riavvia a metà, rilancialo: riprende da dove si era fermato.',
+          'info')
     return redirect(url_for('admin.admin_gestisci_partite'))
 
 

@@ -1,10 +1,16 @@
 <!doctype html>
 <html lang="it">
 <head>
-<link rel="manifest" href="/static/manifest.json">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a1628">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FantaSerieA">
   <title>FantaSerieA</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 4v9c0 7.5-5.2 12.6-12 15C9.2 27.6 4 22.5 4 15V6z' fill='%23003f8a' stroke='%230090d4' stroke-width='2'/%3E%3Cpath d='M16 9.5l5 3.6-1.9 5.9h-6.2L11 13.1z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="preload" href="{{ url_for('static', filename='fonts/bigshoulders-900.woff2') }}" as="font" type="font/woff2" crossorigin>
@@ -145,6 +151,32 @@
       return outputArray;
   }
 
+  const PUBLIC_VAPID_KEY = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
+
+  // Salva sul server l'iscrizione di QUESTO dispositivo (una riga per
+  // dispositivo: telefono e PC dello stesso utente ricevono entrambi).
+  // Il token CSRF viaggia nell'header, come richiesto dal server.
+  async function inviaIscrizionePush(subscription) {
+      const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const response = await fetch('/salva_iscrizione_push', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: JSON.stringify(subscription),
+          headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': tokenMeta ? tokenMeta.content : ''
+          }
+      });
+      let resData = {};
+      try { resData = await response.json(); } catch (e) { /* risposta non JSON */ }
+      if (!response.ok && !resData.error) {
+          resData.error = response.status === 400
+              ? 'Sessione scaduta: ricarica la pagina e riprova.'
+              : 'Errore ' + response.status;
+      }
+      return resData;
+  }
+
   async function attivaNotifiche() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
           try {
@@ -155,23 +187,14 @@
                   return;
               }
 
-              const publicVapidKey = 'BE3YXWsRDcfo6Xg-ydQZRxJOPcrtN_mfJDWcJoWspfiezO5jNIDoU4KYyXmK3jsz7r7Oye432VoZnPB6_jl0Liw';
-              const convertedVapidKey = urlBase64ToUint8Array(publicVapidKey);
-
               const subscription = await register.pushManager.subscribe({
                   userVisibleOnly: true,
-                  applicationServerKey: convertedVapidKey
+                  applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
               });
 
-              const response = await fetch('/salva_iscrizione_push', {
-                  method: 'POST',
-                  body: JSON.stringify(subscription),
-                  headers: { 'Content-Type': 'application/json' }
-              });
-
-              const resData = await response.json();
+              const resData = await inviaIscrizionePush(subscription);
               if (resData.status === 'success') {
-                  alert('Notifiche attivate con successo! 🚀');
+                  alert('Notifiche attivate su questo dispositivo! 🚀');
               } else {
                   alert('Errore dal server: ' + (resData.error || 'Generico'));
               }
@@ -179,10 +202,39 @@
               alert('Errore tecnico: ' + error.message);
               console.error('Errore durante l\'attivazione:', error);
           }
+      } else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+          alert('Su iPhone le notifiche funzionano solo dall\'app installata: tocca Condividi, poi "Aggiungi alla schermata Home", apri FantaSerieA da lì e riprova.');
       } else {
           alert('Il tuo browser o telefono non supporta le notifiche push.');
       }
   }
+
+  {% if session.get('nome_utente') %}
+  // Riallineamento silenzioso: se su questo dispositivo le notifiche sono
+  // già permesse, ripresenta l'iscrizione al server una volta per sessione.
+  // Così il dispositivo resta legato all'utente giusto anche se il browser
+  // rinnova l'iscrizione o se sul dispositivo si cambia account.
+  (async function riallineaIscrizionePush() {
+      try {
+          if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+          if (Notification.permission !== 'granted') return;
+          const chiave = 'push-sync-' + {{ session.get('nome_utente') | tojson }};
+          if (sessionStorage.getItem(chiave)) return;
+          const register = await navigator.serviceWorker.register('/sw.js');
+          let subscription = await register.pushManager.getSubscription();
+          if (!subscription) {
+              subscription = await register.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+              });
+          }
+          const resData = await inviaIscrizionePush(subscription);
+          if (resData.status === 'success') sessionStorage.setItem(chiave, '1');
+      } catch (e) {
+          console.warn('Riallineamento notifiche non riuscito:', e);
+      }
+  })();
+  {% endif %}
   </script>
 </body>
 </html>

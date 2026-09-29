@@ -7,6 +7,7 @@ CSRF è disabilitato nella configurazione di test.
 
 import pytest
 from tests.conftest import _crea_utente
+from services.inviti import leggi_codice_invito
 
 
 # ─── Route pubbliche ─────────────────────────────────────────────────────────
@@ -31,14 +32,16 @@ def test_registrazione_page_get(client):
 
 def test_registrazione_nuovo_utente(client):
     r = client.post('/registrazione',
-                    data={'nome_utente': 'testuser1', 'password': 'pass123'},
+                    data={'nome_utente': 'testuser1', 'password': 'pass123',
+                          'codice_invito': leggi_codice_invito()},
                     follow_redirects=True)
     assert r.status_code == 200
 
 
 def test_registrazione_password_troppo_corta(client):
     r = client.post('/registrazione',
-                    data={'nome_utente': 'userx', 'password': 'abc'},
+                    data={'nome_utente': 'userx', 'password': 'abc',
+                          'codice_invito': leggi_codice_invito()},
                     follow_redirects=True)
     assert r.status_code == 200
     assert 'almeno' in r.data.decode('utf-8')
@@ -47,7 +50,8 @@ def test_registrazione_password_troppo_corta(client):
 def test_registrazione_nome_duplicato(client):
     _crea_utente('duplicato')
     r = client.post('/registrazione',
-                    data={'nome_utente': 'duplicato', 'password': 'pass123'},
+                    data={'nome_utente': 'duplicato', 'password': 'pass123',
+                          'codice_invito': leggi_codice_invito()},
                     follow_redirects=True)
     assert 'già esistente' in r.data.decode('utf-8')
 

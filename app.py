@@ -15,6 +15,7 @@ from flask_wtf.csrf import generate_csrf
 from flask_talisman import Talisman
 
 from config import get_config
+from auth_utils import admin_required
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
@@ -60,7 +61,9 @@ def _create_tables_postgres(conn):
         password TEXT NOT NULL,
         is_temp_password BOOLEAN NOT NULL DEFAULT FALSE,
         is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-        email TEXT)""")
+        email TEXT,
+        tentativi_falliti INTEGER NOT NULL DEFAULT 0,
+        bloccato_fino TEXT)""")
     db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_iniziali (
         id SERIAL PRIMARY KEY,
         id_utente INTEGER NOT NULL REFERENCES utenti(id),
@@ -87,7 +90,8 @@ def _create_tables_postgres(conn):
     db_execute(conn, """CREATE TABLE IF NOT EXISTS punteggi (
         id SERIAL PRIMARY KEY,
         id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id),
-        punteggio_totale INTEGER NOT NULL DEFAULT 0)""")
+        punteggio_totale INTEGER NOT NULL DEFAULT 0,
+        bonus_finale INTEGER NOT NULL DEFAULT 0)""")
     db_execute(conn, """CREATE TABLE IF NOT EXISTS stato_giornata (
         id SERIAL PRIMARY KEY,
         giornata INTEGER NOT NULL UNIQUE,
@@ -116,7 +120,7 @@ def _create_tables_postgres(conn):
         subscription_info JSONB NOT NULL,
         nome_utente TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (id_utente))""")
+        endpoint TEXT)""")
     db_execute(conn, """CREATE TABLE IF NOT EXISTS pagamenti (
         id SERIAL PRIMARY KEY,
         id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
@@ -124,6 +128,9 @@ def _create_tables_postgres(conn):
         importo REAL,
         data_pagamento TEXT,
         note TEXT)""")
+    db_execute(conn, """CREATE TABLE IF NOT EXISTS impostazioni (
+        chiave TEXT PRIMARY KEY,
+        valore TEXT)""")
     db_execute(conn,
                "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
                "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
@@ -136,7 +143,9 @@ def _create_tables_sqlite(conn):
         password TEXT NOT NULL,
         is_temp_password BOOLEAN NOT NULL DEFAULT 0,
         is_admin BOOLEAN NOT NULL DEFAULT 0,
-        email TEXT)""")
+        email TEXT,
+        tentativi_falliti INTEGER NOT NULL DEFAULT 0,
+        bloccato_fino TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_iniziali (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_utente INTEGER NOT NULL,
@@ -167,6 +176,7 @@ def _create_tables_sqlite(conn):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_utente INTEGER NOT NULL UNIQUE,
         punteggio_totale INTEGER NOT NULL DEFAULT 0,
+        bonus_finale INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
     conn.execute("""CREATE TABLE IF NOT EXISTS stato_giornata (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +209,7 @@ def _create_tables_sqlite(conn):
         subscription_info TEXT NOT NULL,
         nome_utente TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (id_utente))""")
+        endpoint TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS pagamenti (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
@@ -207,6 +217,9 @@ def _create_tables_sqlite(conn):
         importo REAL,
         data_pagamento TEXT,
         note TEXT)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS impostazioni (
+        chiave TEXT PRIMARY KEY,
+        valore TEXT)""")
 
 def _migrate_schema(conn):
     if USE_POSTGRES:
@@ -218,6 +231,12 @@ def _migrate_schema(conn):
                              "promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE")
             db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
                              "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT FALSE")
+            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
+                             "tentativi_falliti INTEGER NOT NULL DEFAULT 0")
+            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
+                             "bloccato_fino TEXT")
+            db_execute(conn, "ALTER TABLE punteggi ADD COLUMN IF NOT EXISTS "
+                             "bonus_finale INTEGER NOT NULL DEFAULT 0")
         except Exception:
             log.exception('Errore migrazione schema (postgres)')
     else:
@@ -248,6 +267,96 @@ def _migrate_schema(conn):
                              "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT 0")
             except Exception:
                 log.exception('Errore aggiunta colonna promemoria_scadenza_inviato')
+        nuove_colonne = (
+            ('utenti', 'tentativi_falliti', 'INTEGER NOT NULL DEFAULT 0'),
+            ('utenti', 'bloccato_fino', 'TEXT'),
+            ('punteggi', 'bonus_finale', 'INTEGER NOT NULL DEFAULT 0'),
+        )
+        for tabella, colonna, tipo in nuove_colonne:
+            cur = conn.execute(f"PRAGMA table_info({tabella})")
+            if colonna not in {r[1] for r in cur.fetchall()}:
+                try:
+                    conn.execute(f"ALTER TABLE {tabella} ADD COLUMN {colonna} {tipo}")
+                except Exception:
+                    log.exception(f'Errore aggiunta colonna {tabella}.{colonna}')
+
+
+def _migra_push_multi_dispositivo():
+    """Porta push_subscriptions da "un dispositivo per utente" a "una riga per
+    dispositivo": colonna endpoint unica al posto del vincolo su id_utente.
+
+    Idempotente. Gira in una transazione dedicata: se qualcosa va storto la
+    tabella resta com'era e le notifiche continuano a funzionare.
+    """
+    try:
+        with db_conn() as conn:
+            if USE_POSTGRES:
+                db_execute(conn, "ALTER TABLE push_subscriptions "
+                                 "ADD COLUMN IF NOT EXISTS endpoint TEXT")
+                db_execute(conn, "UPDATE push_subscriptions "
+                                 "SET endpoint = subscription_info->>'endpoint' "
+                                 "WHERE endpoint IS NULL")
+                # Toglie il vecchio vincolo "un dispositivo per utente",
+                # qualunque nome abbia (cercato per colonna, non per nome).
+                db_execute(conn, """
+                    DO $$
+                    DECLARE r record;
+                    BEGIN
+                        FOR r IN
+                            SELECT c.conname FROM pg_constraint c
+                            JOIN pg_attribute a ON a.attrelid = c.conrelid
+                                               AND a.attnum = ANY (c.conkey)
+                            WHERE c.conrelid = 'push_subscriptions'::regclass
+                              AND c.contype = 'u'
+                              AND array_length(c.conkey, 1) = 1
+                              AND a.attname = 'id_utente'
+                        LOOP
+                            EXECUTE 'ALTER TABLE push_subscriptions DROP CONSTRAINT '
+                                    || quote_ident(r.conname);
+                        END LOOP;
+                    END $$;
+                """)
+            else:
+                cols = {r[1] for r in conn.execute(
+                    "PRAGMA table_info(push_subscriptions)").fetchall()}
+                if 'endpoint' not in cols:
+                    conn.execute("ALTER TABLE push_subscriptions ADD COLUMN endpoint TEXT")
+                conn.execute("UPDATE push_subscriptions "
+                             "SET endpoint = json_extract(subscription_info, '$.endpoint') "
+                             "WHERE endpoint IS NULL")
+                sql = conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' "
+                                   "AND name = 'push_subscriptions'").fetchone()[0] or ''
+                if 'UNIQUE (id_utente)' in sql:
+                    # SQLite non permette di togliere un vincolo: si ricrea la tabella.
+                    conn.execute("""CREATE TABLE push_subscriptions_nuova (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
+                        subscription_info TEXT NOT NULL,
+                        nome_utente TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        endpoint TEXT)""")
+                    conn.execute("INSERT INTO push_subscriptions_nuova "
+                                 "(id, id_utente, subscription_info, nome_utente, created_at, endpoint) "
+                                 "SELECT id, id_utente, subscription_info, nome_utente, created_at, endpoint "
+                                 "FROM push_subscriptions")
+                    conn.execute("DROP TABLE push_subscriptions")
+                    conn.execute("ALTER TABLE push_subscriptions_nuova RENAME TO push_subscriptions")
+            # Stesso dispositivo salvato piu' volte: resta la riga piu' recente,
+            # preferendo quella legata a un utente rispetto a una "ospite".
+            db_execute(conn, "DELETE FROM push_subscriptions WHERE endpoint IS NOT NULL "
+                             "AND id NOT IN (SELECT MAX(p.id) FROM push_subscriptions p "
+                             "WHERE p.endpoint IS NOT NULL AND (p.id_utente IS NOT NULL "
+                             "OR NOT EXISTS (SELECT 1 FROM push_subscriptions q "
+                             "WHERE q.endpoint = p.endpoint AND q.id_utente IS NOT NULL)) "
+                             "GROUP BY p.endpoint)")
+            db_execute(conn, "CREATE UNIQUE INDEX IF NOT EXISTS ux_push_subscriptions_endpoint "
+                             "ON push_subscriptions (endpoint)")
+            db_execute(conn, "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_utente "
+                             "ON push_subscriptions (id_utente)")
+            db_commit(conn)
+        log.info('Migrazione push_subscriptions (multi-dispositivo): ok.')
+    except Exception:
+        log.exception('Errore migrazione push_subscriptions (multi-dispositivo)')
 
 def _promuovi_admin_storico(conn):
     row = db_fetchone(conn,
@@ -317,6 +426,9 @@ def create_tables():
         _pulisci_username_spazi(conn)
         _create_indexes(conn)
         db_commit(conn)
+    _migra_push_multi_dispositivo()
+    from services.inviti import assicura_codice_invito
+    assicura_codice_invito()
 
 # ─── Filtri Jinja ─────────────────────────────────────────────────────────────
 
@@ -455,6 +567,7 @@ def create_app(config=None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(gioco_bp)
     app.register_blueprint(admin_bp)
+    _register_notifiche_routes(app)
 
     with app.app_context():
         try:
@@ -464,85 +577,100 @@ def create_app(config=None) -> Flask:
 
     return app
 
+# ─── Rotte notifiche push e cron ─────────────────────────────────────────────
+# Registrate dentro la factory: cosi' esistono in ogni istanza dell'app,
+# compresa quella dei test.
+
+def _register_notifiche_routes(app: Flask):
+    # ROTTA PER SERVIRE IL SERVICE WORKER
+    @app.route('/sw.js')
+    def serve_sw():
+        return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
+
+    # ROTTA PER SALVARE LE ISCRIZIONI PUSH
+    # Protetta da CSRF: la pagina manda il token nell'header X-CSRFToken.
+    # Solo per utenti loggati: ogni dispositivo viene legato al suo utente.
+    @app.route('/salva_iscrizione_push', methods=['POST'])
+    def salva_iscrizione_push():
+        if 'nome_utente' not in session:
+            return jsonify({'status': 'error', 'error': 'Accedi per attivare le notifiche'}), 401
+        subscription = request.get_json(silent=True)
+        if not isinstance(subscription, dict) or not subscription.get('endpoint'):
+            return jsonify({'status': 'error', 'error': 'Iscrizione non valida'}), 400
+        try:
+            if not salva_subscription_push(session['nome_utente'], subscription):
+                return jsonify({'status': 'error', 'error': 'Utente non trovato'}), 401
+        except Exception:
+            log.exception('Errore salvataggio iscrizione push')
+            return jsonify({'status': 'error', 'error': 'Errore salvataggio sul server'}), 500
+
+        return jsonify({'status': 'success'})
+
+    # ROTTE DI TEST DELLE NOTIFICHE: solo per l'admin, perché inviano a tutti.
+    @app.route('/test_spara_notifica')
+    @admin_required
+    def test_spara_notifica():
+        esito = invia_promemoria_generale(
+            "FantaSerieA: Sveglia! ⏰",
+            "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
+        )
+        return esito
+
+    # ROTTA DI TEST PER IL MESSAGGIO DI PROMEMORIA 30' PRIMA
+    # Manda solo la notifica di prova, senza creare o toccare nessuna partita.
+    @app.route('/test_promemoria_partite')
+    @admin_required
+    def test_promemoria_partite():
+        esito = invia_promemoria_generale(
+            "⏰ Manca mezz'ora!",
+            "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
+        )
+        return esito
+
+    # ROTTA DI TEST PER L'ALERT "ULTIMI MINUTI, MANCA IL PRONOSTICO"
+    @app.route('/test_promemoria_scadenza')
+    @admin_required
+    def test_promemoria_scadenza():
+        esito = invia_promemoria_generale(
+            "⚠️ Ultimi minuti!",
+            "Questo è un test dell'alert 'manca poco e non hai ancora pronosticato': "
+            "se lo ricevi, il sistema funziona."
+        )
+        return esito
+
+    # ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita, a tutti
+    # gli iscritti, chiamata periodicamente da GitHub Actions/cron-job.org.
+    @app.route('/cron/invia_promemoria_partite', methods=['POST'])
+    @csrf.exempt
+    def cron_invia_promemoria_partite():
+        secret_atteso = os.environ.get('CRON_SECRET')
+        if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
+            return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
+
+        fonte = request.args.get('fonte', 'sconosciuta')
+        esito = invia_promemoria_partite()
+        log.info(f"[cron promemoria] (fonte: {fonte}) {esito}")
+        return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
+
+    # ROTTA CRON: alert "ultimi minuti" solo a chi non ha ancora inserito il
+    # pronostico. Rotta separata dal promemoria dei 30' apposta: così può girare
+    # su un cron dedicato, con una cadenza più stretta (es. ogni 5-10 minuti),
+    # senza toccare né la cadenza né il comportamento di quello già in uso.
+    @app.route('/cron/invia_promemoria_scadenza', methods=['POST'])
+    @csrf.exempt
+    def cron_invia_promemoria_scadenza():
+        secret_atteso = os.environ.get('CRON_SECRET')
+        if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
+            return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
+
+        fonte = request.args.get('fonte', 'sconosciuta')
+        esito = invia_promemoria_scadenza()
+        log.info(f"[cron promemoria scadenza] (fonte: {fonte}) {esito}")
+        return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
+
 # ─── Entry point (locale / gunicorn) ─────────────────────────────────────────
 
 app = create_app()
-
-# ROTTA PER SERVIRE IL SERVICE WORKER
-@app.route('/sw.js')
-def serve_sw():
-    return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
-
-# ROTTA PER SALVARE LE ISCRIZIONI PUSH (CON SEGNAPOSTO ?)
-@app.route('/salva_iscrizione_push', methods=['POST'])
-@csrf.exempt
-def salva_iscrizione_push():
-    try:
-        salva_subscription_push(session.get('nome_utente'), request.json)
-    except Exception:
-        log.exception('Errore salvataggio iscrizione push')
-        return jsonify({'status': 'error', 'error': 'Errore salvataggio sul server'}), 500
-
-    return jsonify({'status': 'success'})
-
-# ROTTA DI TEST PER INVIARE LA NOTIFICA
-@app.route('/test_spara_notifica')
-def test_spara_notifica():
-    esito = invia_promemoria_generale(
-        "FantaSerieA: Sveglia! ⏰",
-        "Se leggi questo messaggio, il test via GitHub è andato a buon fine!"
-    )
-    return esito
-
-# ROTTA DI TEST PER IL MESSAGGIO DI PROMEMORIA 30' PRIMA
-# Manda solo la notifica di prova, senza creare o toccare nessuna partita.
-@app.route('/test_promemoria_partite')
-def test_promemoria_partite():
-    esito = invia_promemoria_generale(
-        "⏰ Manca mezz'ora!",
-        "Questo è un test del promemoria pre-partita: se lo ricevi, il sistema funziona."
-    )
-    return esito
-
-# ROTTA DI TEST PER L'ALERT "ULTIMI MINUTI, MANCA IL PRONOSTICO"
-@app.route('/test_promemoria_scadenza')
-def test_promemoria_scadenza():
-    esito = invia_promemoria_generale(
-        "⚠️ Ultimi minuti!",
-        "Questo è un test dell'alert 'manca poco e non hai ancora pronosticato': "
-        "se lo ricevi, il sistema funziona."
-    )
-    return esito
-
-# ROTTA CRON: promemoria automatico 30 minuti prima di ogni partita, a tutti
-# gli iscritti, chiamata periodicamente da GitHub Actions/cron-job.org.
-@app.route('/cron/invia_promemoria_partite', methods=['POST'])
-@csrf.exempt
-def cron_invia_promemoria_partite():
-    secret_atteso = os.environ.get('CRON_SECRET')
-    if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
-        return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
-
-    fonte = request.args.get('fonte', 'sconosciuta')
-    esito = invia_promemoria_partite()
-    log.info(f"[cron promemoria] (fonte: {fonte}) {esito}")
-    return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
-
-# ROTTA CRON: alert "ultimi minuti" solo a chi non ha ancora inserito il
-# pronostico. Rotta separata dal promemoria dei 30' apposta: così può girare
-# su un cron dedicato, con una cadenza più stretta (es. ogni 5-10 minuti),
-# senza toccare né la cadenza né il comportamento di quello già in uso.
-@app.route('/cron/invia_promemoria_scadenza', methods=['POST'])
-@csrf.exempt
-def cron_invia_promemoria_scadenza():
-    secret_atteso = os.environ.get('CRON_SECRET')
-    if not secret_atteso or request.headers.get('X-Cron-Secret') != secret_atteso:
-        return jsonify({'status': 'error', 'error': 'non autorizzato'}), 403
-
-    fonte = request.args.get('fonte', 'sconosciuta')
-    esito = invia_promemoria_scadenza()
-    log.info(f"[cron promemoria scadenza] (fonte: {fonte}) {esito}")
-    return jsonify({'status': 'ok', 'fonte': fonte, 'esito': esito})
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
