@@ -335,6 +335,121 @@ def test_ricalcolo_conta_anche_la_giornata_non_archiviata(app):
         _pulisci_giornate(G_NON_ARCHIVIATA)
 
 
+# ─── Modifica giornata archiviata: piu' marcatori ────────────────────────────
+
+G_ARCH_MOD = 95
+
+
+@pytest.fixture
+def giornata_archiviata():
+    """Giornata archiviata con una partita 2-1 e due marcatori, la rosa delle
+    due squadre e un utente che ha indovinato tutto con uno dei due marcatori."""
+    uid = _crea_utente('sic_arch_utente')
+    with db_conn() as conn:
+        for nome, squadra in (('Lautaro Martinez', 'SIC INTER'), ('Marcus Thuram', 'SIC INTER'),
+                              ('Rafael Leao', 'SIC MILAN')):
+            db_execute(conn, 'INSERT INTO giocatori (nome_giocatore, squadra) VALUES (?, ?)',
+                       (nome, squadra))
+        db_execute(conn, 'INSERT INTO partite (giornata, squadra_casa, squadra_ospite, '
+                         'risultato_casa_reale, risultato_ospite_reale, marcatore_reale, pronosticabile) '
+                         'VALUES (?, ?, ?, 2, 1, ?, 1)',
+                   (G_ARCH_MOD, 'SIC INTER', 'SIC MILAN', 'Lautaro Martinez, Marcus Thuram'))
+        pid = row_get(db_fetchone(conn, 'SELECT id FROM partite ORDER BY id DESC LIMIT 1'), 'id')
+        db_execute(conn, 'INSERT INTO stato_giornata (giornata, is_attiva, is_in_archivio) '
+                         'VALUES (?, 0, 1)', (G_ARCH_MOD,))
+        db_execute(conn, 'INSERT INTO pronostici_giornata (id_utente, id_partita, esito_pronosticato, '
+                         'risultato_casa_pronosticato, risultato_ospite_pronosticato, '
+                         'marcatore_pronosticato) VALUES (?, ?, ?, 2, 1, ?)',
+                   (uid, pid, '1', 'Lautaro Martinez'))
+        db_commit(conn)
+    yield {'uid': uid, 'pid': pid}
+    with db_conn() as conn:
+        db_execute(conn, "DELETE FROM giocatori WHERE squadra IN ('SIC INTER', 'SIC MILAN')")
+        db_execute(conn, 'DELETE FROM stato_giornata WHERE giornata = ?', (G_ARCH_MOD,))
+        db_commit(conn)
+    _pulisci_giornate(G_ARCH_MOD)
+
+
+def _marcatore_salvato(pid):
+    with db_conn() as conn:
+        return row_get(db_fetchone(conn, 'SELECT marcatore_reale FROM partite WHERE id = ?', (pid,)),
+                       'marcatore_reale')
+
+
+def _punti_giornata(uid, giornata):
+    with db_conn() as conn:
+        return row_get(db_fetchone(conn, 'SELECT punti FROM punteggi_giornata '
+                                         'WHERE id_utente = ? AND giornata = ?', (uid, giornata)), 'punti')
+
+
+def test_modifica_archiviata_mostra_tutti_i_marcatori(client, giornata_archiviata):
+    _crea_utente('sic_admin_arch', is_admin=True)
+    _login(client, 'sic_admin_arch', admin=True)
+    html = client.get(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}').data.decode('utf-8')
+    pid = giornata_archiviata['pid']
+    assert html.count(f'name="marcatore_{pid}[]"') == 3        # 2 righe + modello per aggiungerne
+    assert '<option value="Lautaro Martinez" selected>' in html
+    assert '<option value="Marcus Thuram" selected>' in html
+    assert 'value="Autogol"' in html and '+ Aggiungi marcatore' in html
+
+
+def test_modifica_archiviata_salva_piu_marcatori_e_ricalcola(client, giornata_archiviata):
+    """Scenario del bug: si corregge la giornata senza toccare i marcatori.
+    Prima restava un solo marcatore e chi aveva indovinato l'altro perdeva punti."""
+    _crea_utente('sic_admin_arch2', is_admin=True)
+    _login(client, 'sic_admin_arch2', admin=True)
+    pid, uid = giornata_archiviata['pid'], giornata_archiviata['uid']
+    client.post(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}', data={
+        f'risultato_casa_{pid}': '2', f'risultato_ospite_{pid}': '1',
+        f'marcatore_{pid}[]': ['Lautaro Martinez', 'Marcus Thuram'],
+    })
+    assert _marcatore_salvato(pid) == 'Lautaro Martinez, Marcus Thuram'
+    # Ricalcolo automatico: esito 1 + esatto 3 + marcatore 2 + bonus 1
+    assert _punti_giornata(uid, G_ARCH_MOD) == 7
+
+    # Doppioni e righe "Nessun marcatore" vengono ignorati se ci sono giocatori
+    client.post(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}', data={
+        f'risultato_casa_{pid}': '2', f'risultato_ospite_{pid}': '1',
+        f'marcatore_{pid}[]': ['Marcus Thuram', 'Nessun marcatore', 'Marcus Thuram'],
+    })
+    assert _marcatore_salvato(pid) == 'Marcus Thuram'
+    assert _punti_giornata(uid, G_ARCH_MOD) == 4                # marcatore e bonus persi, giustamente
+
+
+def test_modifica_archiviata_conserva_marcatore_fuori_rosa(client, giornata_archiviata):
+    pid = giornata_archiviata['pid']
+    with db_conn() as conn:
+        db_execute(conn, 'UPDATE partite SET marcatore_reale = ? WHERE id = ?',
+                   ('Lautaro Martinez, Vecchio Nome', pid))
+        db_commit(conn)
+    _crea_utente('sic_admin_arch3', is_admin=True)
+    _login(client, 'sic_admin_arch3', admin=True)
+    html = client.get(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}').data.decode('utf-8')
+    assert 'Già salvati (non in rosa)' in html
+    assert '<option value="Vecchio Nome" selected>' in html
+
+
+def test_modifica_archiviata_senza_rosa_testo_libero(client):
+    uid = _crea_utente('sic_admin_arch4', is_admin=True)
+    with db_conn() as conn:
+        db_execute(conn, 'INSERT INTO partite (giornata, squadra_casa, squadra_ospite, '
+                         'risultato_casa_reale, risultato_ospite_reale, pronosticabile) '
+                         'VALUES (?, ?, ?, 1, 1, 1)', (G_ARCH_MOD, 'SENZA ROSA A', 'SENZA ROSA B'))
+        pid = row_get(db_fetchone(conn, 'SELECT id FROM partite ORDER BY id DESC LIMIT 1'), 'id')
+        db_commit(conn)
+    try:
+        _login(client, 'sic_admin_arch4', admin=True)
+        html = client.get(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}').data.decode('utf-8')
+        assert f'name="marcatore_{pid}"' in html and f'name="marcatore_{pid}[]"' not in html
+        client.post(f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}', data={
+            f'risultato_casa_{pid}': '1', f'risultato_ospite_{pid}': '1',
+            f'marcatore_{pid}': 'Giocatore Uno ,  Giocatore Due',
+        })
+        assert _marcatore_salvato(pid) == 'Giocatore Uno, Giocatore Due'
+    finally:
+        _pulisci_giornate(G_ARCH_MOD)
+
+
 # ─── Email di nuova giornata ─────────────────────────────────────────────────
 
 def test_form_import_ha_la_casella_email():

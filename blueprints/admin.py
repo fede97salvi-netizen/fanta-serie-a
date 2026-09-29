@@ -79,6 +79,28 @@ def _safe_int(value, lo=None, hi=None):
     return v
 
 
+def _marcatori_da_form(pid) -> str | None:
+    """Legge i marcatori di una partita dal form e li restituisce come
+    stringa da salvare in partite.marcatore_reale.
+
+    Righe multiple (`marcatore_<pid>[]`): i giocatori vengono uniti con
+    ", "; se non c'e' nessun giocatore resta "Nessun marcatore" o "Autogol".
+    Campo singolo (`marcatore_<pid>`, usato quando la rosa non e' caricata):
+    testo libero, anche con piu' nomi separati da virgola.
+    """
+    marc_lista = request.form.getlist(f'marcatore_{pid}[]')
+    if not marc_lista:
+        testo = (request.form.get(f'marcatore_{pid}', '') or '').strip()
+        return ', '.join(m.strip() for m in testo.split(',') if m.strip()) or None
+    validi = [m.strip() for m in marc_lista
+              if m.strip() not in ('', 'Nessun marcatore', 'Autogol')]
+    if validi:
+        return ', '.join(dict.fromkeys(validi))   # senza doppioni, in ordine
+    speciali = [m.strip() for m in marc_lista
+                if m.strip() in ('Nessun marcatore', 'Autogol')]
+    return speciali[0] if speciali else None
+
+
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin', endpoint='admin_home')
@@ -427,15 +449,7 @@ def admin_risultati_giornata(giornata: int):
                                lo=0, hi=20)
             r_osp  = _safe_int(request.form.get(f'risultato_ospite_{pid}', '').strip(),
                                lo=0, hi=20)
-            marc_lista  = request.form.getlist(f'marcatore_{pid}[]')
-            validi      = [m.strip() for m in marc_lista
-                           if m.strip() not in ('', 'Nessun marcatore', 'Autogol')]
-            if not validi:
-                speciali = [m.strip() for m in marc_lista
-                            if m.strip() in ('Nessun marcatore', 'Autogol')]
-                marc_finale = speciali[0] if speciali else None
-            else:
-                marc_finale = ', '.join(validi)
+            marc_finale = _marcatori_da_form(pid)
             db_execute(conn,
                        'UPDATE partite SET risultato_casa_reale=?, '
                        'risultato_ospite_reale=?, marcatore_reale=? WHERE id=?',
@@ -1062,14 +1076,17 @@ def admin_modifica_giornata_archiviata(giornata: int):
                 r_osp  = _safe_int(
                     request.form.get(f'risultato_ospite_{pid}', '').strip(),
                     lo=0, hi=20)
-                marc   = (request.form.get(f'marcatore_{pid}', '') or '').strip() or None
+                marc   = _marcatori_da_form(pid)
                 db_execute(conn,
                            'UPDATE partite SET risultato_casa_reale=?, '
                            'risultato_ospite_reale=?, marcatore_reale=? '
                            'WHERE id=?',
                            (r_casa, r_osp, marc, pid))
             db_commit(conn)
-            flash(f'Risultati giornata {giornata} aggiornati.', 'success')
+            # La giornata e' gia' in classifica: i punti si ricalcolano subito,
+            # cosi' la correzione non resta "a meta'" in attesa di un ricalcolo.
+            calcola_e_aggiorna_punti_giornata(giornata)
+            flash(f'Risultati giornata {giornata} aggiornati e punti ricalcolati.', 'success')
             return redirect(url_for('admin.admin_modifica_giornata_archiviata',
                                     giornata=giornata))
         partite = db_fetchall(

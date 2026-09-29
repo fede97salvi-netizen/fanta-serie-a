@@ -1,11 +1,36 @@
 {% extends "base.html" %}
+
+{# Opzioni della tendina marcatore. "extra" = marcatori gia' salvati che non
+   sono (piu') nella rosa: restano selezionabili, cosi' salvando non si perdono. #}
+{% macro opzioni_marcatore(partita, giocatori, extra, scelto) %}
+  <option value="Nessun marcatore" {% if scelto in ('', 'Nessun marcatore') %}selected{% endif %}>— Nessun marcatore (0-0) —</option>
+  <option value="Autogol" {% if scelto == 'Autogol' %}selected{% endif %}>— Autogol —</option>
+  <optgroup label="{{ partita['squadra_casa'] }}">
+    {% for g in giocatori %}{% if g['squadra']|upper == partita['squadra_casa']|upper %}
+    <option value="{{ g['nome_giocatore'] }}" {% if scelto == g['nome_giocatore'] %}selected{% endif %}>{{ g['nome_giocatore'] }}</option>
+    {% endif %}{% endfor %}
+  </optgroup>
+  <optgroup label="{{ partita['squadra_ospite'] }}">
+    {% for g in giocatori %}{% if g['squadra']|upper == partita['squadra_ospite']|upper %}
+    <option value="{{ g['nome_giocatore'] }}" {% if scelto == g['nome_giocatore'] %}selected{% endif %}>{{ g['nome_giocatore'] }}</option>
+    {% endif %}{% endfor %}
+  </optgroup>
+  {% if extra %}
+  <optgroup label="Già salvati (non in rosa)">
+    {% for nome in extra %}
+    <option value="{{ nome }}" {% if scelto == nome %}selected{% endif %}>{{ nome }}</option>
+    {% endfor %}
+  </optgroup>
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="u-section-hd"><a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary u-btn-sm">← Archivio</a></div>
 <div class="page-header">
   <span class="page-title">Modifica Giornata {{ giornata }}</span>
 </div>
 <div class="fsa-section u-pt-sm">
-  <div class="alert alert-warning">⚠️ Stai modificando una giornata già archiviata. Dopo aver salvato usa "Ricalcola tutto" per aggiornare la classifica.</div>
+  <div class="alert alert-warning">⚠️ Stai modificando una giornata già archiviata. Al salvataggio i punti della giornata e la classifica si aggiornano da soli. Per una partita con più marcatori usa "+ Aggiungi marcatore": una riga per ogni giocatore che ha segnato.</div>
   <div class="fsa-card">
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -33,24 +58,38 @@
           </div>
         </div>
         <div>
-          <div class="form-label">Marcatore</div>
+          <div class="form-label">Marcatori</div>
           {% if giocatori %}
-          <select name="marcatore_{{ pid }}" class="form-select">
-            <option value="">-- Nessun marcatore --</option>
-            <optgroup label="{{ partita['squadra_casa'] }}">
-              {% for g in giocatori %}{% if g['squadra']|upper == partita['squadra_casa']|upper %}
-              <option value="{{ g['nome_giocatore'] }}" {% if partita['marcatore_reale'] and g['nome_giocatore'] in partita['marcatore_reale'] %}selected{% endif %}>{{ g['nome_giocatore'] }}</option>
-              {% endif %}{% endfor %}
-            </optgroup>
-            <optgroup label="{{ partita['squadra_ospite'] }}">
-              {% for g in giocatori %}{% if g['squadra']|upper == partita['squadra_ospite']|upper %}
-              <option value="{{ g['nome_giocatore'] }}" {% if partita['marcatore_reale'] and g['nome_giocatore'] in partita['marcatore_reale'] %}selected{% endif %}>{{ g['nome_giocatore'] }}</option>
-              {% endif %}{% endfor %}
-            </optgroup>
-          </select>
+          {% set salvati = partita['marcatore_reale'].split(',') | map('trim') | reject('equalto', '') | list if partita['marcatore_reale'] else [] %}
+          {% set in_rosa = giocatori | map(attribute='nome_giocatore') | list %}
+          {% set extra = salvati | reject('in', in_rosa + ['Nessun marcatore', 'Autogol']) | list %}
+          <div id="marcatori_{{ pid }}" class="u-mb-sm" style="display:flex;flex-direction:column;gap:8px;">
+            {% for marc in (salvati if salvati else ['']) %}
+            <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
+              <select name="marcatore_{{ pid }}[]" class="form-select u-flex-1">
+                {{ opzioni_marcatore(partita, giocatori, extra, marc) }}
+              </select>
+              <button type="button" onclick="rimuoviMarcatore(this)" aria-label="Rimuovi marcatore"
+                class="u-icon-md" style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;flex-shrink:0;font-family:var(--font-b);">×</button>
+            </div>
+            {% endfor %}
+          </div>
+          <template id="tpl_{{ pid }}">
+            <div style="display:flex;gap:8px;align-items:center;" class="marcatore-row">
+              <select name="marcatore_{{ pid }}[]" class="form-select u-flex-1">
+                {{ opzioni_marcatore(partita, giocatori, extra, '') }}
+              </select>
+              <button type="button" onclick="rimuoviMarcatore(this)" aria-label="Rimuovi marcatore"
+                class="u-icon-md" style="width:36px;height:46px;background:rgba(198,40,40,0.2);border:1px solid rgba(239,83,80,0.4);border-radius:8px;color:#ef5350;cursor:pointer;flex-shrink:0;font-family:var(--font-b);">×</button>
+            </div>
+          </template>
+          <button type="button" onclick="aggiungiMarcatore('{{ pid }}')"
+            style="display:flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--azzurro);border-radius:8px;padding:7px 14px;color:var(--azzurro);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-b);margin-top:4px;">
+            + Aggiungi marcatore
+          </button>
           {% else %}
           <input type="text" name="marcatore_{{ pid }}" class="form-control u-h40"
-            value="{{ partita['marcatore_reale'] or '' }}" placeholder="Scrivi manualmente">
+            value="{{ partita['marcatore_reale'] or '' }}" placeholder="Più marcatori separati da virgola">
           {% endif %}
         </div>
       </div>
@@ -76,4 +115,17 @@
     <a href="{{ url_for('gioco.archivio_giornate') }}" class="btn-secondary">← Archivio</a>
   </div>
 </div>
+<script>
+function aggiungiMarcatore(pid) {
+  const container = document.getElementById('marcatori_' + pid);
+  const tpl = document.getElementById('tpl_' + pid);
+  container.appendChild(tpl.content.cloneNode(true));
+}
+function rimuoviMarcatore(btn) {
+  const row = btn.closest('.marcatore-row');
+  if (row.parentElement.querySelectorAll('.marcatore-row').length > 1) {
+    row.remove();
+  }
+}
+</script>
 {% endblock %}
