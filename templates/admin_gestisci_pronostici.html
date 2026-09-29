@@ -31,12 +31,16 @@
             <td style="text-align:center;font-family:var(--font-d);font-size:15px;">{% if p.risultato_casa_pronosticato is not none %}{{ p.risultato_casa_pronosticato }}–{{ p.risultato_ospite_pronosticato }}{% else %}–{% endif %}</td>
             <td style="font-size:12px;word-break:break-word;">{{ p.marcatore_pronosticato or '–' }}</td>
             <td>
-              <form method="post" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="action" value="cancella">
-                <input type="hidden" name="id_pronostico" value="{{ p.id }}">
-                <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare il pronostico di {{ p.nome_utente }}?')">Elimina</button>
-              </form>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <button type="button" class="btn-secondary u-btn-xs"
+                  onclick="modificaPronostico({{ partita.id }}, {{ p.id_utente }})">Modifica</button>
+                <form method="post" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="action" value="cancella">
+                  <input type="hidden" name="id_pronostico" value="{{ p.id }}">
+                  <button type="submit" class="btn-danger u-btn-xs" onclick="return confirm('Eliminare il pronostico di {{ p.nome_utente }}?')">Elimina</button>
+                </form>
+              </div>
             </td>
           </tr>
           {% else %}
@@ -48,18 +52,22 @@
   </div>
 
   <div class="fsa-card" style="margin-bottom:20px;">
-    <div class="u-muted" style="font-size:12px;margin-bottom:8px;font-weight:600;">Inserisci o correggi un pronostico</div>
-    <form method="post" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+    <div class="u-muted" style="font-size:12px;margin-bottom:4px;font-weight:600;">Inserisci o correggi un pronostico</div>
+    <div class="u-muted" style="font-size:11px;margin-bottom:8px;">
+      Scegli l'utente: se ha già un pronostico, il form si riempie con quello, così cambi solo ciò che serve.
+    </div>
+    <form method="post" id="form-pron-{{ partita.id }}" action="{{ url_for('admin.admin_gestisci_pronostici', giornata=giornata) }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="salva">
       <input type="hidden" name="id_partita" value="{{ partita.id }}">
 
       <div>
-        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Utente</label>
-        <select name="id_utente" required style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+        <label class="u-muted" for="utente-{{ partita.id }}" style="font-size:11px;display:block;margin-bottom:3px;">Utente</label>
+        <select name="id_utente" id="utente-{{ partita.id }}" required onchange="compilaPronostico({{ partita.id }})"
+          style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
           <option value="">— scegli —</option>
           {% for u in utenti %}
-          <option value="{{ u.id }}">{{ u.nome_utente }}</option>
+          <option value="{{ u.id }}">{{ u.nome_utente }}{% if pronostici_json[partita.id][u.id|string] %} ✓{% endif %}</option>
           {% endfor %}
         </select>
       </div>
@@ -78,29 +86,70 @@
       <div>
         <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Risultato</label>
         <div style="display:flex;gap:4px;align-items:center;">
-          <input type="number" name="risultato_casa" min="0" max="20" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          <input type="number" name="risultato_casa" min="0" max="20" aria-label="Gol {{ partita.squadra_casa }}" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
           <span>–</span>
-          <input type="number" name="risultato_ospite" min="0" max="20" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
+          <input type="number" name="risultato_ospite" min="0" max="20" aria-label="Gol {{ partita.squadra_ospite }}" style="width:50px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
         </div>
       </div>
 
       <div style="flex:1;min-width:180px;">
-        <label class="u-muted" style="font-size:11px;display:block;margin-bottom:3px;">Marcatore</label>
-        <input type="text" name="marcatore" list="marcatori-{{ partita.id }}" placeholder="Nessun Marcatore, Autogol o nome giocatore"
-               style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;">
-        <datalist id="marcatori-{{ partita.id }}">
-          <option value="Nessun Marcatore">
-          <option value="Autogol">
-          {% for g in giocatori %}
-          <option value="{{ g.nome_giocatore }}">
-          {% endfor %}
-        </datalist>
+        <label class="u-muted" for="marcatore-{{ partita.id }}" style="font-size:11px;display:block;margin-bottom:3px;">Marcatore</label>
+        <select name="marcatore" id="marcatore-{{ partita.id }}" class="form-select" style="width:100%;">
+          <option value="">— nessuna scelta —</option>
+          <option value="Nessun Marcatore">— Nessun marcatore (0-0) —</option>
+          <option value="Autogol">— Autogol —</option>
+          <optgroup label="{{ partita.squadra_casa }}">
+            {% for g in giocatori %}{% if g.squadra|upper == partita.squadra_casa|upper %}
+            <option value="{{ g.nome_giocatore }}">{{ g.nome_giocatore }}</option>
+            {% endif %}{% endfor %}
+          </optgroup>
+          <optgroup label="{{ partita.squadra_ospite }}">
+            {% for g in giocatori %}{% if g.squadra|upper == partita.squadra_ospite|upper %}
+            <option value="{{ g.nome_giocatore }}">{{ g.nome_giocatore }}</option>
+            {% endif %}{% endfor %}
+          </optgroup>
+          {% if marcatori_extra[partita.id] %}
+          <optgroup label="Già salvati (non in rosa)">
+            {% for nome in marcatori_extra[partita.id] %}
+            <option value="{{ nome }}">{{ nome }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
       </div>
 
       <button type="submit" class="btn-primary u-btn-sm">Salva</button>
     </form>
+    <script type="application/json" id="pronostici-{{ partita.id }}">{{ pronostici_json[partita.id] | tojson }}</script>
   </div>
   {% endfor %}
   <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a>
 </div>
+<script>
+// Riempie il form con il pronostico gia' salvato dell'utente scelto (o lo
+// svuota se non ne ha): cosi' correggere un campo non azzera gli altri.
+function compilaPronostico(pid) {
+  const form = document.getElementById('form-pron-' + pid);
+  const uid = document.getElementById('utente-' + pid).value;
+  let dati = {};
+  try { dati = JSON.parse(document.getElementById('pronostici-' + pid).textContent)[uid] || {}; }
+  catch (e) { dati = {}; }
+  form.querySelectorAll('input[name="esito"]').forEach(function (r) { r.checked = (r.value === dati.esito); });
+  form.querySelector('input[name="risultato_casa"]').value = (dati.casa ?? '');
+  form.querySelector('input[name="risultato_ospite"]').value = (dati.ospite ?? '');
+  const marc = document.getElementById('marcatore-' + pid);
+  const valore = dati.marcatore || '';
+  // "Nessun marcatore" salvato con la m minuscola: stessa voce della tendina
+  const opzione = Array.from(marc.options).find(function (o) {
+    return o.value.toLowerCase() === valore.toLowerCase();
+  });
+  marc.value = opzione ? opzione.value : '';
+}
+// Bottone "Modifica" nella tabella: sceglie l'utente e porta al form
+function modificaPronostico(pid, uid) {
+  document.getElementById('utente-' + pid).value = String(uid);
+  compilaPronostico(pid);
+  document.getElementById('form-pron-' + pid).scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
 {% endblock %}

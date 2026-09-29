@@ -873,10 +873,27 @@ def admin_gestisci_pronostici(giornata: int):
                     flash('Seleziona un utente.', 'warning')
                     return redirect(url_for('admin.admin_gestisci_pronostici',
                                             giornata=giornata))
+                partita = db_fetchone(
+                    conn, 'SELECT * FROM partite WHERE id = ? AND giornata = ?',
+                    (id_partita, giornata))
+                if not partita:
+                    flash('Partita non trovata in questa giornata.', 'warning')
+                    return redirect(url_for('admin.admin_gestisci_pronostici',
+                                            giornata=giornata))
                 esito = request.form.get('esito') or None
+                if esito not in (None, '1', 'X', '2'):
+                    esito = None
                 r_casa = _safe_int(request.form.get('risultato_casa'), lo=0, hi=20)
                 r_osp = _safe_int(request.form.get('risultato_ospite'), lo=0, hi=20)
                 marc = (request.form.get('marcatore') or '').strip() or None
+                # Il marcatore arriva dalla tendina: si accettano solo i
+                # giocatori delle due squadre, le voci speciali e i nomi gia'
+                # salvati per questa partita (cosi' un nome scritto male non
+                # finisce nel database e non fa perdere punti).
+                if marc and marc not in _marcatori_ammessi(conn, partita):
+                    flash(f'Marcatore "{marc}" non valido: sceglilo dalla tendina.', 'warning')
+                    return redirect(url_for('admin.admin_gestisci_pronostici',
+                                            giornata=giornata))
 
                 esistente = db_fetchone(
                     conn,
@@ -902,7 +919,8 @@ def admin_gestisci_pronostici(giornata: int):
                                'VALUES (?, ?, ?, ?, ?, ?)',
                                (id_utente, id_partita, esito, r_casa, r_osp, marc))
                 db_commit(conn)
-                flash('Pronostico salvato.', 'success')
+                flash('Pronostico salvato.' + _ricalcola_se_ha_risultati(giornata),
+                      'success')
                 return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
             elif action == 'cancella':
@@ -911,7 +929,8 @@ def admin_gestisci_pronostici(giornata: int):
                            'DELETE FROM pronostici_giornata WHERE id = ?',
                            (pid,))
                 db_commit(conn)
-                flash('Pronostico eliminato.', 'success')
+                flash('Pronostico eliminato.' + _ricalcola_se_ha_risultati(giornata),
+                      'success')
                 return redirect(url_for('admin.admin_gestisci_pronostici',
                                         giornata=giornata))
         partite = db_fetchall(
@@ -961,11 +980,66 @@ def admin_gestisci_pronostici(giornata: int):
 
         utenti = db_fetchall(conn, 'SELECT id, nome_utente FROM utenti ORDER BY nome_utente')
 
+        # Per ogni partita: pronostici esistenti per utente (servono a
+        # precompilare il form, cosi' correggere un campo non azzera gli
+        # altri) e marcatori gia' salvati che non sono in rosa (restano
+        # selezionabili nella tendina).
+        pronostici_json = {}
+        marcatori_extra = {}
+        for partita in partite:
+            pid = row_get(partita, 'id')
+            in_rosa = {row_get(g, 'nome_giocatore')
+                       for g in giocatori_per_partita.get(pid, [])}
+            pronostici_json[pid] = {}
+            extra = []
+            for p in pronostici_per_partita.get(pid, []):
+                marc = row_get(p, 'marcatore_pronosticato') or ''
+                pronostici_json[pid][str(row_get(p, 'id_utente'))] = {
+                    'esito': row_get(p, 'esito_pronosticato') or '',
+                    'casa': row_get(p, 'risultato_casa_pronosticato'),
+                    'ospite': row_get(p, 'risultato_ospite_pronosticato'),
+                    'marcatore': marc,
+                }
+                if (marc and marc not in in_rosa and marc not in extra
+                        and marc.lower() not in ('nessun marcatore', 'autogol')):
+                    extra.append(marc)
+            marcatori_extra[pid] = extra
+
     return render_template('admin_gestisci_pronostici.html',
                            giornata=giornata, partite=partite,
                            pronostici_per_partita=pronostici_per_partita,
                            giocatori_per_partita=giocatori_per_partita,
+                           pronostici_json=pronostici_json,
+                           marcatori_extra=marcatori_extra,
                            utenti=utenti, session=session)
+
+
+def _marcatori_ammessi(conn, partita) -> set:
+    """Valori ammessi come marcatore pronosticato per una partita."""
+    squadre = ((row_get(partita, 'squadra_casa') or '').upper(),
+               (row_get(partita, 'squadra_ospite') or '').upper())
+    ammessi = {'Nessun Marcatore', 'Nessun marcatore', 'Autogol'}
+    ammessi |= {row_get(g, 'nome_giocatore') for g in db_fetchall(
+        conn, 'SELECT nome_giocatore FROM giocatori WHERE UPPER(squadra) IN (?, ?)',
+        squadre)}
+    ammessi |= {row_get(p, 'marcatore_pronosticato') for p in db_fetchall(
+        conn, 'SELECT marcatore_pronosticato FROM pronostici_giornata '
+              'WHERE id_partita = ? AND marcatore_pronosticato IS NOT NULL',
+        (row_get(partita, 'id'),))}
+    return ammessi
+
+
+def _ricalcola_se_ha_risultati(giornata: int) -> str:
+    """Dopo una correzione: se la giornata ha gia' risultati, ricalcola i
+    punti (idempotente) e restituisce la frase da aggiungere al messaggio."""
+    with db_conn() as conn:
+        con_risultati = db_fetchone(
+            conn, 'SELECT id FROM partite WHERE giornata = ? AND pronosticabile = TRUE '
+                  'AND risultato_casa_reale IS NOT NULL', (giornata,))
+    if not con_risultati:
+        return ''
+    calcola_e_aggiorna_punti_giornata(giornata)
+    return ' Punti della giornata e classifica aggiornati.'
 
 
 @admin_bp.route('/admin/gestisci-pronostici-iniziali',

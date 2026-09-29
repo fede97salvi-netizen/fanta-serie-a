@@ -5,6 +5,7 @@ sessione di un utente rinominato."""
 
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -498,6 +499,82 @@ def test_modifica_archiviata_senza_rosa_testo_libero(client):
         assert _marcatore_salvato(pid) == 'Giocatore Uno, Giocatore Due'
     finally:
         _pulisci_giornate(G_ARCH_MOD)
+
+
+# ─── Correzione pronostici da admin ──────────────────────────────────────────
+# Riusa la giornata archiviata del fixture sopra: partita 2-1 con marcatori
+# Lautaro Martinez e Marcus Thuram, utente con pronostico 1 / 2-1 / Lautaro.
+
+def _pronostico(uid, pid):
+    with db_conn() as conn:
+        return db_fetchone(conn, 'SELECT * FROM pronostici_giornata WHERE id_utente = ? AND id_partita = ?',
+                           (uid, pid))
+
+
+def test_correzione_pronostici_form_precompilato_e_tendina(client, giornata_archiviata):
+    pid, uid = giornata_archiviata['pid'], giornata_archiviata['uid']
+    _crea_utente('sic_admin_corr', is_admin=True)
+    _login(client, 'sic_admin_corr', admin=True)
+    html = client.get(f'/admin/gestisci-pronostici/{G_ARCH_MOD}').data.decode('utf-8')
+    # Tendina, non piu' campo di testo libero
+    assert f'<select name="marcatore" id="marcatore-{pid}"' in html
+    assert 'list="marcatori-' not in html
+    assert '<option value="Lautaro Martinez">' in html and '<option value="Autogol">' in html
+    # Dati per precompilare il form: il pronostico esistente dell'utente
+    dati = re.search(rf'<script type="application/json" id="pronostici-{pid}">(.*?)</script>', html, re.S)
+    salvato = json.loads(dati.group(1))[str(uid)]
+    assert salvato == {'esito': '1', 'casa': 2, 'ospite': 1, 'marcatore': 'Lautaro Martinez'}
+    assert 'sic_arch_utente ✓' in html                          # chi ha gia' pronosticato
+    assert f'modificaPronostico({pid}, {uid})' in html           # bottone Modifica sulla riga
+
+
+def test_correzione_marcatore_scritto_male_rifiutata(client, giornata_archiviata):
+    pid, uid = giornata_archiviata['pid'], giornata_archiviata['uid']
+    _crea_utente('sic_admin_corr2', is_admin=True)
+    _login(client, 'sic_admin_corr2', admin=True)
+    html = client.post(f'/admin/gestisci-pronostici/{G_ARCH_MOD}', data={
+        'action': 'salva', 'id_partita': str(pid), 'id_utente': str(uid),
+        'esito': '1', 'risultato_casa': '2', 'risultato_ospite': '1',
+        'marcatore': 'Lautaro Martines',
+    }, follow_redirects=True).data.decode('utf-8')
+    assert 'non valido' in html
+    assert row_get(_pronostico(uid, pid), 'marcatore_pronosticato') == 'Lautaro Martinez'
+
+
+def test_correzione_ricalcola_i_punti_da_sola(client, giornata_archiviata):
+    """Si corregge solo il marcatore (il form precompilato rimanda gli altri
+    campi): esito e risultato restano, i punti si aggiornano senza ricalcolo."""
+    pid, uid = giornata_archiviata['pid'], giornata_archiviata['uid']
+    _crea_utente('sic_admin_corr3', is_admin=True)
+    _login(client, 'sic_admin_corr3', admin=True)
+    html = client.post(f'/admin/gestisci-pronostici/{G_ARCH_MOD}', data={
+        'action': 'salva', 'id_partita': str(pid), 'id_utente': str(uid),
+        'esito': '1', 'risultato_casa': '2', 'risultato_ospite': '1',
+        'marcatore': 'Rafael Leao',
+    }, follow_redirects=True).data.decode('utf-8')
+    assert 'classifica aggiornati' in html
+    p = _pronostico(uid, pid)
+    assert (row_get(p, 'esito_pronosticato'), row_get(p, 'risultato_casa_pronosticato'),
+            row_get(p, 'risultato_ospite_pronosticato'), row_get(p, 'marcatore_pronosticato')) \
+        == ('1', 2, 1, 'Rafael Leao')
+    assert _punti_giornata(uid, G_ARCH_MOD) == 4                 # esito + esatto, marcatore sbagliato
+
+    id_pron = row_get(p, 'id')
+    client.post(f'/admin/gestisci-pronostici/{G_ARCH_MOD}',
+                data={'action': 'cancella', 'id_pronostico': str(id_pron)})
+    assert _punti_giornata(uid, G_ARCH_MOD) == 0                 # anche l'eliminazione ricalcola
+
+
+def test_correzione_partita_di_altra_giornata_rifiutata(client, giornata_archiviata):
+    pid, uid = giornata_archiviata['pid'], giornata_archiviata['uid']
+    _crea_utente('sic_admin_corr4', is_admin=True)
+    _login(client, 'sic_admin_corr4', admin=True)
+    html = client.post('/admin/gestisci-pronostici/1', data={
+        'action': 'salva', 'id_partita': str(pid), 'id_utente': str(uid),
+        'esito': '2', 'risultato_casa': '0', 'risultato_ospite': '1', 'marcatore': '',
+    }, follow_redirects=True).data.decode('utf-8')
+    assert 'Partita non trovata' in html
+    assert row_get(_pronostico(uid, pid), 'esito_pronosticato') == '1'
 
 
 # ─── Email di nuova giornata ─────────────────────────────────────────────────
