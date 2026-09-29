@@ -168,6 +168,56 @@ def test_prova_notifiche_senza_dispositivi_e_non_admin(client, monkeypatch):
     assert client.post('/admin/prova-notifiche').status_code == 403
 
 
+# ─── Etichetta (tag) delle notifiche ─────────────────────────────────────────
+
+G_TAG = 96
+
+
+def test_notifiche_di_partite_diverse_non_si_sovrascrivono(app, monkeypatch):
+    """Due partite alla stessa ora: tag diversi, cosi' sul telefono restano
+    visibili entrambi i promemoria. Stessa partita: stesso tag per il
+    "manca mezz'ora" e per l'alert "ultimi minuti"."""
+    from invia_notifiche import (salva_subscription_push, invia_promemoria_partite,
+                                 invia_promemoria_scadenza)
+    monkeypatch.setenv('VAPID_PRIVATE_KEY', 'chiave-finta')
+    payload = []
+    monkeypatch.setattr('invia_notifiche.webpush',
+                        lambda **kw: payload.append(json.loads(kw['data'])))
+    _crea_utente('sic_tag')
+    salva_subscription_push('sic_tag', {'endpoint': 'https://push.test/tag', 'keys': {}})
+
+    def _partita(minuti):
+        orario = (datetime.now(timezone.utc) + timedelta(minutes=minuti)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        with db_conn() as conn:
+            db_execute(conn, 'INSERT INTO partite (giornata, squadra_casa, squadra_ospite, '
+                             'pronosticabile, data_ora_partita) VALUES (?, ?, ?, 1, ?)',
+                       (G_TAG, 'TAG CASA', 'TAG OSPITE', orario))
+            db_commit(conn)
+            return row_get(db_fetchone(conn, 'SELECT id FROM partite ORDER BY id DESC LIMIT 1'), 'id')
+
+    try:
+        pid_a, pid_b = _partita(25), _partita(25)
+        invia_promemoria_partite()
+        mezzora = {p['tag']: p for p in payload if p['tag'] in (f'partita-{pid_a}', f'partita-{pid_b}')}
+        assert set(mezzora) == {f'partita-{pid_a}', f'partita-{pid_b}'}
+        assert mezzora[f'partita-{pid_a}']['url'] == f'/pronostici-giornata/{G_TAG}'
+
+        payload.clear()
+        pid_c = _partita(5)
+        invia_promemoria_scadenza()
+        assert f'partita-{pid_c}' in {p['tag'] for p in payload}
+    finally:
+        _pulisci_push('https://push.test/tag')
+        _pulisci_giornate(G_TAG)
+
+
+def test_service_worker_senza_tag_fisso(client):
+    sw = client.get('/sw.js').data.decode('utf-8')
+    assert 'fantaseriea-notification' not in sw          # niente piu' tag unico per tutte
+    assert 'if (data.tag)' in sw and 'renotify = true' in sw
+    assert 'new URL(' in sw                              # confronto tra indirizzi completi
+
+
 # ─── Registrazione su invito ─────────────────────────────────────────────────
 
 def test_registrazione_senza_invito_non_mostra_il_form(client):

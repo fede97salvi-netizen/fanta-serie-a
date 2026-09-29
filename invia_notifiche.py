@@ -96,7 +96,8 @@ def invia_promemoria_generale(titolo, messaggio):
             try:
                 webpush(
                     subscription_info=sub_info,
-                    data=json.dumps({"title": titolo, "body": messaggio}),
+                    data=json.dumps({"title": titolo, "body": messaggio,
+                                     "tag": "fantaseriea-prova"}),
                     vapid_private_key=chiave_privata,
                     vapid_claims={"sub": email}
                 )
@@ -145,7 +146,8 @@ def invia_notifica_a_utente(nome_utente, titolo, messaggio):
             try:
                 webpush(
                     subscription_info=sub_info,
-                    data=json.dumps({"title": titolo, "body": messaggio}),
+                    data=json.dumps({"title": titolo, "body": messaggio,
+                                     "tag": "fantaseriea-prova"}),
                     vapid_private_key=chiave_privata,
                     vapid_claims={"sub": email},
                 )
@@ -160,6 +162,22 @@ def invia_notifica_a_utente(nome_utente, titolo, messaggio):
                     errori.append(f'invio fallito (status={status})')
         db_commit(conn)
     return inviate, errori
+
+
+def _payload_partita(partita, titolo, messaggio):
+    """Contenuto della notifica di una partita.
+
+    tag: uno per partita. Sul dispositivo le notifiche con tag diversi
+    restano tutte visibili (due partite alla stessa ora = due avvisi), mentre
+    per la stessa partita l'alert "ultimi minuti" sostituisce il "manca
+    mezz'ora", ormai superato. url: al tocco si apre la pagina dei pronostici.
+    """
+    return json.dumps({
+        "title": titolo,
+        "body": messaggio,
+        "tag": f"partita-{row_get(partita, 'id')}",
+        "url": f"/pronostici-giornata/{row_get(partita, 'giornata')}",
+    })
 
 
 def _formatta_orario_italia(data_ora_utc_str):
@@ -217,6 +235,7 @@ def invia_promemoria_partite():
 
             titolo = "⏰ Manca mezz'ora!"
             messaggio = f"{casa} - {ospite} inizia alle {orario_locale}!"
+            payload = _payload_partita(partita, titolo, messaggio)
 
             for dest in destinatari:
                 id_utente = row_get(dest, 'id_utente')
@@ -226,7 +245,7 @@ def invia_promemoria_partite():
                 try:
                     webpush(
                         subscription_info=sub_info,
-                        data=json.dumps({"title": titolo, "body": messaggio}),
+                        data=payload,
                         vapid_private_key=chiave_privata,
                         vapid_claims={"sub": email},
                     )
@@ -304,6 +323,7 @@ def invia_promemoria_scadenza():
 
             titolo = "⚠️ Ultimi minuti!"
             messaggio = f"{casa} - {ospite} sta per iniziare e non hai ancora inserito il pronostico!"
+            payload = _payload_partita(partita, titolo, messaggio)
 
             for dest in destinatari:
                 id_utente = row_get(dest, 'id_utente')
@@ -313,7 +333,7 @@ def invia_promemoria_scadenza():
                 try:
                     webpush(
                         subscription_info=sub_info,
-                        data=json.dumps({"title": titolo, "body": messaggio}),
+                        data=payload,
                         vapid_private_key=chiave_privata,
                         vapid_claims={"sub": email},
                     )
