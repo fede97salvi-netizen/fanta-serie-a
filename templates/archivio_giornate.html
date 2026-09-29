@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="back-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
 <div class="page-header"><h1 class="page-title">Archivio giornate</h1></div>
 <div class="fsa-section u-pt-sm day-grid">
   {% for giornata in giornate %}
@@ -13,7 +13,7 @@
       </span>
       <span class="list-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
     </a>
-    {% if session.nome_utente == 'mirko' %}
+    {% if is_admin %}
     <div class="list-group-foot">
       <a href="{{ url_for('admin.admin_modifica_giornata_archiviata', giornata=giornata.giornata) }}" class="btn-warning">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
@@ -30,5 +30,5 @@
   </div>
   {% endfor %}
 </div>
-<div class="page-foot"><a href="{{ url_for('auth.home') }}" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
+<div class="page-foot"><a href="{{ url_for('auth.home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
 {% endblock %}

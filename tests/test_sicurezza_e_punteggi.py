@@ -577,6 +577,52 @@ def test_correzione_partita_di_altra_giornata_rifiutata(client, giornata_archivi
     assert row_get(_pronostico(uid, pid), 'esito_pronosticato') == '1'
 
 
+# ─── Archivio: "Modifica risultati" a ogni admin, non solo a mirko ───────────
+
+def test_archivio_modifica_risultati_per_ogni_admin(client, giornata_archiviata):
+    link = f'/admin/modifica-giornata-archiviata/{G_ARCH_MOD}'
+    _crea_utente('sic_nuovo_admin', is_admin=True)
+    _login(client, 'sic_nuovo_admin', admin=True)
+    assert link in client.get('/giornate').data.decode('utf-8')
+    _crea_utente('sic_non_admin')
+    _login(client, 'sic_non_admin')
+    assert link not in client.get('/giornate').data.decode('utf-8')
+
+
+def test_nessun_controllo_admin_sul_nome_utente():
+    cartella = os.path.join(BASE_DIR, 'templates')
+    for nome in os.listdir(cartella):
+        testo = open(os.path.join(cartella, nome), encoding='utf-8').read()
+        assert "== 'mirko'" not in testo, nome
+
+
+# ─── Pulsanti "torna indietro" uguali ovunque e luce dei link admin ─────────
+
+def test_pulsanti_indietro_uguali_in_tutte_le_pagine():
+    cartella = os.path.join(BASE_DIR, 'templates')
+    for nome in os.listdir(cartella):
+        testo = open(os.path.join(cartella, nome), encoding='utf-8').read()
+        assert 'back-link' not in testo, nome            # vecchio stile in cima alle pagine
+        assert '← ' not in testo, nome                   # freccia scritta come testo (admin)
+        for a in re.findall(r'<a [^>]*class="btn-back"[^>]*>.*?</a>', testo, re.S):
+            assert 'd="M15 6l-6 6 6 6"' in a, (nome, a)  # stessa icona ovunque
+    # Nelle pagine con due pulsanti "indietro", in cima e in fondo sono identici
+    for nome in ('archivio_giornate.html', 'admin_utenti.html', 'admin_gestisci_partite.html',
+                 'visualizza_giornata.html', 'classifica_cumulativa.html'):
+        testo = open(os.path.join(cartella, nome), encoding='utf-8').read()
+        bottoni = re.findall(r'<a [^>]*class="btn-back"[^>]*>.*?</a>', testo, re.S)
+        assert len(bottoni) == 2 and bottoni[0] == bottoni[1], nome
+
+
+def test_css_luce_pulsante_indietro_e_link_admin():
+    css = open(os.path.join(BASE_DIR, 'static', 'css', 'app.css'), encoding='utf-8').read()
+    for cls in ('btn-back', 'u-glow'):
+        assert re.search(rf'\.{cls}:hover\s*{{[^}}]*box-shadow', css), cls
+        assert re.search(rf'\.{cls}:active\s*{{[^}}]*box-shadow', css), cls
+    admin = open(os.path.join(BASE_DIR, 'templates', 'admin.html'), encoding='utf-8').read()
+    assert re.search(r'admin_gestisci_partite\'\) }}" class="u-glow"', admin)
+
+
 # ─── Email di nuova giornata ─────────────────────────────────────────────────
 
 def test_form_import_ha_la_casella_email():

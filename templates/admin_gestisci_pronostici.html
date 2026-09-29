@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Dashboard</a></div>
 <div class="page-header"><span class="page-title">Pronostici giornata {{ giornata }}</span></div>
 <p class="u-muted u-pt-sm" style="margin-bottom:10px;">
   Da qui puoi inserire o correggere il pronostico di un utente anche dopo l'inizio della partita.
@@ -123,7 +123,7 @@
     <script type="application/json" id="pronostici-{{ partita.id }}">{{ pronostici_json[partita.id] | tojson }}</script>
   </div>
   {% endfor %}
-  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Dashboard</a>
 </div>
 <script>
 // Riempie il form con il pronostico gia' salvato dell'utente scelto (o lo

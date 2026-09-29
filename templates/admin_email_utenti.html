@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary u-btn-sm">← Utenti</a></div>
+<div class="u-section-hd"><a href="{{ url_for('admin.admin_utenti') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Utenti</a></div>
 <div class="page-header"><span class="page-title">Gestione email utenti</span></div>
 <div class="fsa-section u-pt-sm">
   <div class="alert alert-info">Inserisci le email degli utenti esistenti. Lascia vuoto per non modificare.</div>
@@ -31,6 +31,6 @@
       </div>
     </form>
   </div>
-  <a href="{{ url_for('admin.admin_utenti') }}" class="btn-secondary u-mt-sm">← Torna a utenti</a>
+  <a href="{{ url_for('admin.admin_utenti') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Utenti</a>
 </div>
 {% endblock %}

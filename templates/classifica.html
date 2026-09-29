@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block main_class %}is-narrow{% endblock %}
 {% block content %}
-<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="back-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
+<div class="u-section-hd"><a href="{{ url_for('auth.home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
 <div class="page-header">
   <h1 class="page-title">Classifica generale</h1>
 </div>
@@ -20,5 +20,5 @@
   {% endfor %}
   </div>
 </div>
-<div class="page-foot"><a href="{{ url_for('auth.home') }}" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
+<div class="page-foot"><a href="{{ url_for('auth.home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Home</a></div>
 {% endblock %}

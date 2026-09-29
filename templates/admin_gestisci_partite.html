@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="u-section-hd">
-  <a href="{{ url_for('admin.admin_home') }}" class="btn-secondary u-btn-sm">← Dashboard</a>
+  <a href="{{ url_for('admin.admin_home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Dashboard</a>
 </div>
 <div class="page-header">
   <span class="page-title">Gestione partite</span>
@@ -13,7 +13,7 @@
   {% if not giornata_attiva %}
   <div class="fsa-section-title">Importazione</div>
   <div style="margin-bottom:16px;">
-    <a href="{{ url_for('admin.admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
+    <a href="{{ url_for('admin.admin_importa_giornata') }}" class="u-glow" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
       <div style="font-size:24px;margin-bottom:4px;">📅</div>
       <div class="u-hero-xs">Importa partite da API</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
@@ -27,7 +27,7 @@
 
   <div class="fsa-section-title">Importazione — Giornata {{ g }}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-    <a href="{{ url_for('admin.admin_importa_giornata') }}" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
+    <a href="{{ url_for('admin.admin_importa_giornata') }}" class="u-glow" style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,var(--blue-mid) 0%,var(--azzurro) 100%);border-radius:12px;padding:14px 12px;text-decoration:none;text-align:center;">
       <div style="font-size:24px;margin-bottom:4px;">📅</div>
       <div class="u-hero-xs">Importa partite</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;">Partite + rose giocatori</div>
@@ -198,7 +198,7 @@
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;">
     {% for gn in giornate_disponibili %}
     <a href="{{ url_for('admin.admin_gestisci_partite', giornata=gn) }}"
-      class="u-muted-sm" style="padding:6px 4px;border-radius:8px;font-weight:600;text-decoration:none;text-align:center;{% if giornata_selezionata == gn %}background:var(--azzurro);color:white;{% else %}background:var(--card2);border:1px solid var(--border);{% endif %};">
+      class="u-muted-sm u-glow" style="padding:6px 4px;border-radius:8px;font-weight:600;text-decoration:none;text-align:center;{% if giornata_selezionata == gn %}background:var(--azzurro);color:white;{% else %}background:var(--card2);border:1px solid var(--border);{% endif %};">
       G{{ gn }}
     </a>
     {% endfor %}
@@ -273,5 +273,5 @@
   {% endif %}
 
 </div>
-<div style="padding:0 16px 16px;"><a href="{{ url_for('admin.admin_home') }}" class="btn-secondary">← Dashboard</a></div>
+<div style="padding:0 16px 16px;"><a href="{{ url_for('admin.admin_home') }}" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg> Dashboard</a></div>
 {% endblock %}
