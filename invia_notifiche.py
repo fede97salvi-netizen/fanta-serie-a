@@ -188,6 +188,20 @@ def _formatta_orario_italia(data_ora_utc_str):
     return pytz.utc.localize(orario_naive).astimezone(roma_tz).strftime('%H:%M')
 
 
+def _prenota_partita(conn, pid, flag):
+    """Segna la partita come avvisata PRIMA di inviare, in modo atomico.
+
+    Ritorna True solo alla chiamata che ha davvero cambiato il flag: se due
+    scheduler (es. cron-job.org e GitHub Actions) girano in contemporanea,
+    la seconda trova la riga gia' segnata e non manda doppioni. Il commit
+    immediato rende la prenotazione visibile subito alle altre connessioni.
+    """
+    cur = db_execute(conn, f"UPDATE partite SET {flag} = TRUE "
+                           f"WHERE id = ? AND {flag} = FALSE", (pid,))
+    db_commit(conn)
+    return cur.rowcount == 1
+
+
 def invia_promemoria_partite():
     """Avvisa tutti gli utenti iscritti che una partita inizia tra
     FINESTRA_MIN_MINUTI e FINESTRA_MAX_MINUTI minuti.
@@ -224,8 +238,12 @@ def invia_promemoria_partite():
             if FINESTRA_MIN_MINUTI <= minuti_a_inizio <= FINESTRA_MAX_MINUTI:
                 partite_da_avvisare.append(partita)
 
+        processate = 0
         for partita in partite_da_avvisare:
             pid = row_get(partita, 'id')
+            if not _prenota_partita(conn, pid, 'promemoria_inviato'):
+                continue
+            processate += 1
             casa = row_get(partita, 'squadra_casa')
             ospite = row_get(partita, 'squadra_ospite')
             orario_locale = _formatta_orario_italia(row_get(partita, 'data_ora_partita'))
@@ -260,11 +278,9 @@ def invia_promemoria_partite():
                         db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
                                    (row_get(dest, 'id'),))
 
-            db_execute(conn, "UPDATE partite SET promemoria_inviato = TRUE WHERE id = ?", (pid,))
-
         db_commit(conn)
 
-    esito = (f"Partite processate: {len(partite_da_avvisare)}. "
+    esito = (f"Partite processate: {processate}. "
              f"Notifiche inviate: {totale_inviate}. Errori: {totale_errori}.")
     if dettagli:
         esito += " | " + " || ".join(dettagli)
@@ -308,8 +324,12 @@ def invia_promemoria_scadenza():
             if FINESTRA_FINALE_MIN_MINUTI <= minuti_a_inizio <= FINESTRA_FINALE_MAX_MINUTI:
                 partite_da_avvisare.append(partita)
 
+        processate = 0
         for partita in partite_da_avvisare:
             pid = row_get(partita, 'id')
+            if not _prenota_partita(conn, pid, 'promemoria_scadenza_inviato'):
+                continue
+            processate += 1
             casa = row_get(partita, 'squadra_casa')
             ospite = row_get(partita, 'squadra_ospite')
 
@@ -348,11 +368,9 @@ def invia_promemoria_scadenza():
                         db_execute(conn, "DELETE FROM push_subscriptions WHERE id = ?",
                                    (row_get(dest, 'id'),))
 
-            db_execute(conn, "UPDATE partite SET promemoria_scadenza_inviato = TRUE WHERE id = ?", (pid,))
-
         db_commit(conn)
 
-    esito = (f"Partite processate: {len(partite_da_avvisare)}. "
+    esito = (f"Partite processate: {processate}. "
              f"Notifiche inviate: {totale_inviate}. Errori: {totale_errori}.")
     if dettagli:
         esito += " | " + " || ".join(dettagli)

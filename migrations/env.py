@@ -30,6 +30,9 @@ import models  # noqa: F401 — registra i modelli su db.metadata
 
 config = context.config
 
+# Da riga di comando (alembic ...) si usa il logging di alembic.ini; quando
+# le migrazioni partono dall'app (db_schema.py) il logging resta quello
+# dell'app, altrimenti fileConfig spegnerebbe i logger gia' configurati.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -64,22 +67,36 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _configura_e_migra(connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        render_as_batch=True,   # necessario per SQLite ALTER TABLE
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
-    """Applica migrazioni live sul DB (engine costruito dall'URL, senza app)."""
+    """Applica migrazioni live sul DB.
+
+    Se l'app passa gia' una connessione (config.attributes['connection'],
+    vedi db_schema.py) si usa quella; altrimenti si costruisce l'engine
+    dall'URL, come quando si lancia `alembic` da riga di comando.
+    """
+    connessione_app = config.attributes.get('connection')
+    if connessione_app is not None:
+        _configura_e_migra(connessione_app)
+        return
+
     connectable = engine_from_config(
         {'sqlalchemy.url': get_url()},
         prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            render_as_batch=True,   # necessario per SQLite ALTER TABLE
-        )
-        with context.begin_transaction():
-            context.run_migrations()
+        _configura_e_migra(connection)
 
 
 if context.is_offline_mode():

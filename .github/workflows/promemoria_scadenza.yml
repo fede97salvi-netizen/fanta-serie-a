@@ -1,8 +1,8 @@
 name: Promemoria Scadenza
 
+# Il trigger automatico e' cron-job.org: qui resta solo l'avvio manuale,
+# perche' due scheduler in parallelo rischiavano notifiche doppie.
 on:
-  schedule:
-    - cron: '*/5 * * * *'   # ogni 5 minuti
   workflow_dispatch:          # permette l'avvio manuale dal tab Actions
 
 jobs:

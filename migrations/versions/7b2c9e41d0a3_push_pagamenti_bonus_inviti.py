@@ -6,8 +6,8 @@ Allinea Alembic a quanto create_tables() gestisce a runtime:
   - punteggi: bonus_finale
   - tabelle push_subscriptions (una riga per dispositivo), pagamenti, impostazioni
 
-Sul DB di produzione, gia' allineato da create_tables(), NON va eseguita:
-lanciare una sola volta `alembic stamp head`.
+Sul DB di produzione, gia' allineato dal vecchio create_tables(), NON va
+eseguita: db_schema.aggiorna_schema() lo marca direttamente a questa revisione.
 
 Revision ID: 7b2c9e41d0a3
 Revises: 46f66cf35f6a

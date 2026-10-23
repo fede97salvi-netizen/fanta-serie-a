@@ -20,6 +20,7 @@ from auth_utils import admin_required
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
 from services.game_logic import parse_flexible_datetime, pulisci_username
+from db_schema import aggiorna_schema
 from invia_notifiche import (
     invia_promemoria_generale, invia_promemoria_partite,
     invia_promemoria_scadenza, salva_subscription_push,
@@ -55,309 +56,15 @@ CSP = {
 
 # ─── Schema DB ────────────────────────────────────────────────────────────────
 
-def _create_tables_postgres(conn):
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS utenti (
-        id SERIAL PRIMARY KEY,
-        nome_utente TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        is_temp_password BOOLEAN NOT NULL DEFAULT FALSE,
-        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-        email TEXT,
-        tentativi_falliti INTEGER NOT NULL DEFAULT 0,
-        bloccato_fino TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_iniziali (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS partite (
-        id SERIAL PRIMARY KEY,
-        giornata INTEGER NOT NULL,
-        squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL,
-        risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
-        marcatore_reale TEXT,
-        pronosticabile BOOLEAN NOT NULL DEFAULT FALSE,
-        data_ora_partita TEXT,
-        promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE,
-        promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT FALSE)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS pronostici_giornata (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        id_partita INTEGER NOT NULL REFERENCES partite(id),
-        esito_pronosticato TEXT,
-        risultato_casa_pronosticato INTEGER,
-        risultato_ospite_pronosticato INTEGER,
-        marcatore_pronosticato TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS punteggi (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id),
-        punteggio_totale INTEGER NOT NULL DEFAULT 0,
-        bonus_finale INTEGER NOT NULL DEFAULT 0)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS stato_giornata (
-        id SERIAL PRIMARY KEY,
-        giornata INTEGER NOT NULL UNIQUE,
-        is_attiva BOOLEAN NOT NULL DEFAULT FALSE,
-        is_in_archivio BOOLEAN NOT NULL DEFAULT FALSE)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS stato_pronostici_iniziali (
-        id INTEGER PRIMARY KEY,
-        is_locked BOOLEAN NOT NULL DEFAULT FALSE)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS risultati_finali (
-        id INTEGER PRIMARY KEY,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS giocatori (
-        id SERIAL PRIMARY KEY,
-        nome_giocatore TEXT NOT NULL,
-        squadra TEXT NOT NULL)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS punteggi_giornata (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL REFERENCES utenti(id),
-        giornata INTEGER NOT NULL,
-        punti INTEGER NOT NULL DEFAULT 0,
-        UNIQUE (id_utente, giornata))""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
-        subscription_info JSONB NOT NULL,
-        nome_utente TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        endpoint TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS pagamenti (
-        id SERIAL PRIMARY KEY,
-        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
-        ha_pagato BOOLEAN NOT NULL DEFAULT FALSE,
-        importo REAL,
-        data_pagamento TEXT,
-        note TEXT)""")
-    db_execute(conn, """CREATE TABLE IF NOT EXISTS impostazioni (
-        chiave TEXT PRIMARY KEY,
-        valore TEXT)""")
-    db_execute(conn,
-               "INSERT INTO stato_pronostici_iniziali (id, is_locked) "
-               "VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING")
+# Lo schema (tabelle, colonne, indici) e' gestito solo da Alembic: vedi
+# db_schema.py e migrations/. Qui restano i dati minimi che l'app si aspetta.
+
+def _dati_di_base(conn):
+    """Righe singole che l'app legge sempre (id=1). Idempotente."""
+    db_execute(conn, "INSERT INTO stato_pronostici_iniziali (id, is_locked) VALUES (1, ?) "
+                     "ON CONFLICT (id) DO NOTHING", (False,))
     db_execute(conn, "INSERT INTO risultati_finali (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
 
-def _create_tables_sqlite(conn):
-    conn.execute("""CREATE TABLE IF NOT EXISTS utenti (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_utente TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        is_temp_password BOOLEAN NOT NULL DEFAULT 0,
-        is_admin BOOLEAN NOT NULL DEFAULT 0,
-        email TEXT,
-        tentativi_falliti INTEGER NOT NULL DEFAULT 0,
-        bloccato_fino TEXT)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_iniziali (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT,
-        FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS partite (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        giornata INTEGER NOT NULL,
-        squadra_casa TEXT NOT NULL, squadra_ospite TEXT NOT NULL,
-        risultato_casa_reale INTEGER, risultato_ospite_reale INTEGER,
-        marcatore_reale TEXT,
-        pronosticabile BOOLEAN NOT NULL DEFAULT 0,
-        data_ora_partita TEXT,
-        promemoria_inviato BOOLEAN NOT NULL DEFAULT 0,
-        promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT 0)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS pronostici_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        id_partita INTEGER NOT NULL,
-        esito_pronosticato TEXT,
-        risultato_casa_pronosticato INTEGER,
-        risultato_ospite_pronosticato INTEGER,
-        marcatore_pronosticato TEXT,
-        FOREIGN KEY(id_utente) REFERENCES utenti(id),
-        FOREIGN KEY(id_partita) REFERENCES partite(id))""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS punteggi (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL UNIQUE,
-        punteggio_totale INTEGER NOT NULL DEFAULT 0,
-        bonus_finale INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS stato_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        giornata INTEGER NOT NULL UNIQUE,
-        is_attiva BOOLEAN NOT NULL DEFAULT 0,
-        is_in_archivio BOOLEAN NOT NULL DEFAULT 0)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS stato_pronostici_iniziali (
-        id INTEGER PRIMARY KEY,
-        is_locked BOOLEAN NOT NULL DEFAULT 0)""")
-    conn.execute("INSERT OR IGNORE INTO stato_pronostici_iniziali (id, is_locked) VALUES (1, 0)")
-    conn.execute("""CREATE TABLE IF NOT EXISTS risultati_finali (
-        id INTEGER PRIMARY KEY,
-        squadra_1 TEXT, squadra_2 TEXT, squadra_3 TEXT, squadra_4 TEXT,
-        capocannoniere TEXT)""")
-    conn.execute("INSERT OR IGNORE INTO risultati_finali (id) VALUES (1)")
-    conn.execute("""CREATE TABLE IF NOT EXISTS giocatori (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_giocatore TEXT NOT NULL,
-        squadra TEXT NOT NULL)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS punteggi_giornata (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL,
-        giornata INTEGER NOT NULL,
-        punti INTEGER NOT NULL DEFAULT 0,
-        UNIQUE (id_utente, giornata),
-        FOREIGN KEY(id_utente) REFERENCES utenti(id))""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
-        subscription_info TEXT NOT NULL,
-        nome_utente TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        endpoint TEXT)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS pagamenti (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_utente INTEGER NOT NULL UNIQUE REFERENCES utenti(id) ON DELETE CASCADE,
-        ha_pagato BOOLEAN NOT NULL DEFAULT 0,
-        importo REAL,
-        data_pagamento TEXT,
-        note TEXT)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS impostazioni (
-        chiave TEXT PRIMARY KEY,
-        valore TEXT)""")
-
-def _migrate_schema(conn):
-    if USE_POSTGRES:
-        try:
-            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT")
-            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
-                             "is_admin BOOLEAN NOT NULL DEFAULT FALSE")
-            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
-                             "promemoria_inviato BOOLEAN NOT NULL DEFAULT FALSE")
-            db_execute(conn, "ALTER TABLE partite ADD COLUMN IF NOT EXISTS "
-                             "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT FALSE")
-            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
-                             "tentativi_falliti INTEGER NOT NULL DEFAULT 0")
-            db_execute(conn, "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS "
-                             "bloccato_fino TEXT")
-            db_execute(conn, "ALTER TABLE punteggi ADD COLUMN IF NOT EXISTS "
-                             "bonus_finale INTEGER NOT NULL DEFAULT 0")
-        except Exception:
-            log.exception('Errore migrazione schema (postgres)')
-    else:
-        cur = conn.execute("PRAGMA table_info(utenti)")
-        cols = {r[1] for r in cur.fetchall()}
-        if 'email' not in cols:
-            try:
-                conn.execute("ALTER TABLE utenti ADD COLUMN email TEXT")
-            except Exception:
-                log.exception('Errore aggiunta colonna email')
-        if 'is_admin' not in cols:
-            try:
-                conn.execute("ALTER TABLE utenti ADD COLUMN "
-                             "is_admin BOOLEAN NOT NULL DEFAULT 0")
-            except Exception:
-                log.exception('Errore aggiunta colonna is_admin')
-        cur = conn.execute("PRAGMA table_info(partite)")
-        cols_partite = {r[1] for r in cur.fetchall()}
-        if 'promemoria_inviato' not in cols_partite:
-            try:
-                conn.execute("ALTER TABLE partite ADD COLUMN "
-                             "promemoria_inviato BOOLEAN NOT NULL DEFAULT 0")
-            except Exception:
-                log.exception('Errore aggiunta colonna promemoria_inviato')
-        if 'promemoria_scadenza_inviato' not in cols_partite:
-            try:
-                conn.execute("ALTER TABLE partite ADD COLUMN "
-                             "promemoria_scadenza_inviato BOOLEAN NOT NULL DEFAULT 0")
-            except Exception:
-                log.exception('Errore aggiunta colonna promemoria_scadenza_inviato')
-        nuove_colonne = (
-            ('utenti', 'tentativi_falliti', 'INTEGER NOT NULL DEFAULT 0'),
-            ('utenti', 'bloccato_fino', 'TEXT'),
-            ('punteggi', 'bonus_finale', 'INTEGER NOT NULL DEFAULT 0'),
-        )
-        for tabella, colonna, tipo in nuove_colonne:
-            cur = conn.execute(f"PRAGMA table_info({tabella})")
-            if colonna not in {r[1] for r in cur.fetchall()}:
-                try:
-                    conn.execute(f"ALTER TABLE {tabella} ADD COLUMN {colonna} {tipo}")
-                except Exception:
-                    log.exception(f'Errore aggiunta colonna {tabella}.{colonna}')
-
-
-def _migra_push_multi_dispositivo():
-    """Porta push_subscriptions da "un dispositivo per utente" a "una riga per
-    dispositivo": colonna endpoint unica al posto del vincolo su id_utente.
-
-    Idempotente. Gira in una transazione dedicata: se qualcosa va storto la
-    tabella resta com'era e le notifiche continuano a funzionare.
-    """
-    try:
-        with db_conn() as conn:
-            if USE_POSTGRES:
-                db_execute(conn, "ALTER TABLE push_subscriptions "
-                                 "ADD COLUMN IF NOT EXISTS endpoint TEXT")
-                db_execute(conn, "UPDATE push_subscriptions "
-                                 "SET endpoint = subscription_info->>'endpoint' "
-                                 "WHERE endpoint IS NULL")
-                # Toglie il vecchio vincolo "un dispositivo per utente",
-                # qualunque nome abbia (cercato per colonna, non per nome).
-                db_execute(conn, """
-                    DO $$
-                    DECLARE r record;
-                    BEGIN
-                        FOR r IN
-                            SELECT c.conname FROM pg_constraint c
-                            JOIN pg_attribute a ON a.attrelid = c.conrelid
-                                               AND a.attnum = ANY (c.conkey)
-                            WHERE c.conrelid = 'push_subscriptions'::regclass
-                              AND c.contype = 'u'
-                              AND array_length(c.conkey, 1) = 1
-                              AND a.attname = 'id_utente'
-                        LOOP
-                            EXECUTE 'ALTER TABLE push_subscriptions DROP CONSTRAINT '
-                                    || quote_ident(r.conname);
-                        END LOOP;
-                    END $$;
-                """)
-            else:
-                cols = {r[1] for r in conn.execute(
-                    "PRAGMA table_info(push_subscriptions)").fetchall()}
-                if 'endpoint' not in cols:
-                    conn.execute("ALTER TABLE push_subscriptions ADD COLUMN endpoint TEXT")
-                conn.execute("UPDATE push_subscriptions "
-                             "SET endpoint = json_extract(subscription_info, '$.endpoint') "
-                             "WHERE endpoint IS NULL")
-                sql = conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' "
-                                   "AND name = 'push_subscriptions'").fetchone()[0] or ''
-                if 'UNIQUE (id_utente)' in sql:
-                    # SQLite non permette di togliere un vincolo: si ricrea la tabella.
-                    conn.execute("""CREATE TABLE push_subscriptions_nuova (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
-                        subscription_info TEXT NOT NULL,
-                        nome_utente TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        endpoint TEXT)""")
-                    conn.execute("INSERT INTO push_subscriptions_nuova "
-                                 "(id, id_utente, subscription_info, nome_utente, created_at, endpoint) "
-                                 "SELECT id, id_utente, subscription_info, nome_utente, created_at, endpoint "
-                                 "FROM push_subscriptions")
-                    conn.execute("DROP TABLE push_subscriptions")
-                    conn.execute("ALTER TABLE push_subscriptions_nuova RENAME TO push_subscriptions")
-            # Stesso dispositivo salvato piu' volte: resta la riga piu' recente,
-            # preferendo quella legata a un utente rispetto a una "ospite".
-            db_execute(conn, "DELETE FROM push_subscriptions WHERE endpoint IS NOT NULL "
-                             "AND id NOT IN (SELECT MAX(p.id) FROM push_subscriptions p "
-                             "WHERE p.endpoint IS NOT NULL AND (p.id_utente IS NOT NULL "
-                             "OR NOT EXISTS (SELECT 1 FROM push_subscriptions q "
-                             "WHERE q.endpoint = p.endpoint AND q.id_utente IS NOT NULL)) "
-                             "GROUP BY p.endpoint)")
-            db_execute(conn, "CREATE UNIQUE INDEX IF NOT EXISTS ux_push_subscriptions_endpoint "
-                             "ON push_subscriptions (endpoint)")
-            db_execute(conn, "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_utente "
-                             "ON push_subscriptions (id_utente)")
-            db_commit(conn)
-        log.info('Migrazione push_subscriptions (multi-dispositivo): ok.')
-    except Exception:
-        log.exception('Errore migrazione push_subscriptions (multi-dispositivo)')
 
 def _promuovi_admin_storico(conn):
     row = db_fetchone(conn,
@@ -375,21 +82,6 @@ def _promuovi_admin_storico(conn):
                        "UPDATE utenti SET is_admin = 1 WHERE nome_utente = ?",
                        (legacy,))
         log.info(f"Migrazione: promosso '{legacy}' ad admin.")
-
-def _create_indexes(conn):
-    idx = (
-        'CREATE INDEX IF NOT EXISTS ix_partite_giornata ON partite (giornata)',
-        'CREATE INDEX IF NOT EXISTS ix_pg_id_utente ON pronostici_giornata (id_utente)',
-        'CREATE INDEX IF NOT EXISTS ix_pg_id_partita ON pronostici_giornata (id_partita)',
-        'CREATE INDEX IF NOT EXISTS ix_punteggi_giornata_utente ON punteggi_giornata (id_utente)',
-        'CREATE INDEX IF NOT EXISTS ix_giocatori_squadra ON giocatori (squadra)',
-        'CREATE INDEX IF NOT EXISTS ix_pi_id_utente ON pronostici_iniziali (id_utente)',
-    )
-    for stmt in idx:
-        try:
-            db_execute(conn, stmt)
-        except Exception:
-            log.exception('Errore creazione indice')
 
 def _pulisci_username_spazi(conn):
     try:
@@ -416,18 +108,13 @@ def _pulisci_username_spazi(conn):
         except Exception:
             log.exception('Errore normalizzazione username')
 
-def create_tables():
+def prepara_database():
+    aggiorna_schema()
     with db_conn() as conn:
-        if USE_POSTGRES:
-            _create_tables_postgres(conn)
-        else:
-            _create_tables_sqlite(conn)
-        _migrate_schema(conn)
+        _dati_di_base(conn)
         _promuovi_admin_storico(conn)
         _pulisci_username_spazi(conn)
-        _create_indexes(conn)
         db_commit(conn)
-    _migra_push_multi_dispositivo()
     from services.inviti import assicura_codice_invito
     assicura_codice_invito()
 
@@ -577,9 +264,9 @@ def create_app(config=None) -> Flask:
 
     with app.app_context():
         try:
-            create_tables()
+            prepara_database()
         except Exception:
-            log.exception('ERRORE create_tables')
+            log.exception('ERRORE preparazione database')
 
     return app
 

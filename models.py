@@ -22,8 +22,10 @@ class Utente(db.Model):
     id               = db.Column(db.Integer, primary_key=True)
     nome_utente      = db.Column(db.Text, nullable=False, unique=True)
     password         = db.Column(db.Text, nullable=False)
-    is_temp_password = db.Column(db.Boolean, nullable=False, default=False)
-    is_admin         = db.Column(db.Boolean, nullable=False, default=False)
+    is_temp_password = db.Column(db.Boolean, nullable=False, default=False,
+                                 server_default=sa.false())
+    is_admin         = db.Column(db.Boolean, nullable=False, default=False,
+                                 server_default=sa.false())
     email            = db.Column(db.Text, nullable=True)
     tentativi_falliti = db.Column(db.Integer, nullable=False, default=0,
                                   server_default='0')
@@ -48,7 +50,8 @@ class Partita(db.Model):
     risultato_casa_reale    = db.Column(db.Integer, nullable=True)
     risultato_ospite_reale  = db.Column(db.Integer, nullable=True)
     marcatore_reale         = db.Column(db.Text, nullable=True)
-    pronosticabile          = db.Column(db.Boolean, nullable=False, default=False)
+    pronosticabile          = db.Column(db.Boolean, nullable=False, default=False,
+                                        server_default=sa.false())
     data_ora_partita        = db.Column(db.Text, nullable=True)
     promemoria_inviato      = db.Column(db.Boolean, nullable=False, default=False,
                                         server_default=sa.false())
@@ -88,7 +91,8 @@ class Punteggio(db.Model):
     id               = db.Column(db.Integer, primary_key=True)
     id_utente        = db.Column(db.Integer, db.ForeignKey('utenti.id'),
                                  nullable=False, unique=True)
-    punteggio_totale = db.Column(db.Integer, nullable=False, default=0)
+    punteggio_totale = db.Column(db.Integer, nullable=False, default=0,
+                                 server_default='0')
     bonus_finale     = db.Column(db.Integer, nullable=False, default=0,
                                  server_default='0')
 
@@ -102,7 +106,8 @@ class PunteggioGiornata(db.Model):
     id_utente = db.Column(db.Integer, db.ForeignKey('utenti.id'),
                           nullable=False, index=True)
     giornata  = db.Column(db.Integer, nullable=False)
-    punti     = db.Column(db.Integer, nullable=False, default=0)
+    punti     = db.Column(db.Integer, nullable=False, default=0,
+                          server_default='0')
 
     __table_args__ = (
         db.UniqueConstraint('id_utente', 'giornata', name='uq_punteggio_giornata'),
@@ -114,15 +119,18 @@ class StatoGiornata(db.Model):
 
     id            = db.Column(db.Integer, primary_key=True)
     giornata      = db.Column(db.Integer, nullable=False, unique=True)
-    is_attiva     = db.Column(db.Boolean, nullable=False, default=False)
-    is_in_archivio = db.Column(db.Boolean, nullable=False, default=False)
+    is_attiva     = db.Column(db.Boolean, nullable=False, default=False,
+                              server_default=sa.false())
+    is_in_archivio = db.Column(db.Boolean, nullable=False, default=False,
+                               server_default=sa.false())
 
 
 class StatoPronosticiIniziali(db.Model):
     __tablename__ = 'stato_pronostici_iniziali'
 
     id        = db.Column(db.Integer, primary_key=True)
-    is_locked = db.Column(db.Boolean, nullable=False, default=False)
+    is_locked = db.Column(db.Boolean, nullable=False, default=False,
+                          server_default=sa.false())
 
 
 class PronosticoIniziale(db.Model):

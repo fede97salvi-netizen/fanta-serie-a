@@ -29,7 +29,7 @@ def app():
     import db_utils as _dbu
 
     # Predispone la connessione in-memory condivisa PRIMA di create_app,
-    # così anche il create_tables() interno alla factory usa lo stesso DB.
+    # così anche le migrazioni Alembic lanciate dalla factory usano lo stesso DB.
     _orig_new_conn = _dbu._new_connection
     _shared_conn   = sqlite3.connect(':memory:', check_same_thread=False)
     _shared_conn.row_factory = sqlite3.Row

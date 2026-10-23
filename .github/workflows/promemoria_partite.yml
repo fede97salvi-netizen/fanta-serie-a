@@ -1,8 +1,8 @@
 name: Promemoria Partite
 
+# Il trigger automatico e' cron-job.org: qui resta solo l'avvio manuale,
+# perche' due scheduler in parallelo rischiavano notifiche doppie.
 on:
-  schedule:
-    - cron: '*/10 * * * *'   # ogni 10 minuti
   workflow_dispatch:          # permette l'avvio manuale dal tab Actions
 
 jobs:
