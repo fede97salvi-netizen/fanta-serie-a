@@ -13,6 +13,7 @@ import pytz
 from flask import Flask, session, g as flask_g, render_template, request, jsonify, send_from_directory
 from flask_wtf.csrf import generate_csrf
 from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import get_config
 from auth_utils import admin_required
@@ -499,6 +500,11 @@ def create_app(config=None) -> Flask:
         db_path = os.path.join(app.root_path, 'database.db')
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Su Render l'app sta dietro un proxy: senza ProxyFix request.remote_addr
+    # e' l'IP del proxy per tutti, e il rate limit per IP diventa un unico
+    # contatore condiviso da tutti gli utenti.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # Estensioni
     csrf.init_app(app)
