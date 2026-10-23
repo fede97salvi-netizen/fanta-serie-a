@@ -153,7 +153,30 @@ def _register_filters(app: Flask):
 
 # ─── Factory ──────────────────────────────────────────────────────────────────
 
+def _inizializza_sentry():
+    """Segnala a Sentry eccezioni non gestite e log di livello ERROR.
+
+    Attivo solo se SENTRY_DSN e' impostata (su Render): in locale e nei test
+    non parte nulla. Niente dati personali: ne' IP/cookie ne' corpo delle
+    richieste (i form di login contengono password).
+    """
+    dsn = os.environ.get('SENTRY_DSN')
+    if not dsn:
+        return False
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+        release=os.environ.get('RENDER_GIT_COMMIT'),
+        send_default_pii=False,
+        max_request_body_size='never',
+        traces_sample_rate=0.0,
+    )
+    return True
+
+
 def create_app(config=None) -> Flask:
+    _inizializza_sentry()
     app = Flask(__name__)
 
     # Configurazione

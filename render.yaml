@@ -23,3 +23,5 @@ services:
         sync: false
       - key: VAPID_CLAIM_EMAIL
         sync: false
+      - key: SENTRY_DSN
+        sync: false       # chiave del progetto Sentry: senza, il monitoraggio resta spento

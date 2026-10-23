@@ -9,6 +9,7 @@ pytz==2025.2
 psycopg2-binary==2.9.9
 gunicorn==21.2.0
 requests==2.32.3
+sentry-sdk[flask]==2.73.0
 
 # Test
 pytest==8.3.2
