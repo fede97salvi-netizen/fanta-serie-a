@@ -44,13 +44,13 @@
       <div class="match-body">
       <div class="match-teams">
         <div class="team team-home">
-          <div class="team-crest" aria-hidden="true">{{ partita.squadra_casa[:3] }}</div>
-          <div class="team-name">{{ partita.squadra_casa }}</div>
+          <div class="team-crest" aria-hidden="true">{{ (partita.squadra_casa|squadra)[:3] }}</div>
+          <div class="team-name">{{ partita.squadra_casa|squadra }}</div>
         </div>
         <div class="vs-tag">vs</div>
         <div class="team team-away">
-          <div class="team-crest" aria-hidden="true">{{ partita.squadra_ospite[:3] }}</div>
-          <div class="team-name">{{ partita.squadra_ospite }}</div>
+          <div class="team-crest" aria-hidden="true">{{ (partita.squadra_ospite|squadra)[:3] }}</div>
+          <div class="team-name">{{ partita.squadra_ospite|squadra }}</div>
         </div>
       </div>
 
@@ -93,11 +93,11 @@
         </div>
         <div class="score-inputs">
           <div>
-            <label class="field-label" for="rc-{{ partita.id }}">Gol {{ partita.squadra_casa }}</label>
+            <label class="field-label" for="rc-{{ partita.id }}">Gol {{ partita.squadra_casa|squadra }}</label>
             <input type="number" id="rc-{{ partita.id }}" name="risultato_casa_{{ partita.id }}" class="form-control goal-input" inputmode="numeric" min="0" max="20" value="{{ pronostico_salvato.risultato_casa_pronosticato if pronostico_salvato and pronostico_salvato.risultato_casa_pronosticato is not none else '' }}" placeholder="–">
           </div>
           <div>
-            <label class="field-label" for="ro-{{ partita.id }}">Gol {{ partita.squadra_ospite }}</label>
+            <label class="field-label" for="ro-{{ partita.id }}">Gol {{ partita.squadra_ospite|squadra }}</label>
             <input type="number" id="ro-{{ partita.id }}" name="risultato_ospite_{{ partita.id }}" class="form-control goal-input" inputmode="numeric" min="0" max="20" value="{{ pronostico_salvato.risultato_ospite_pronosticato if pronostico_salvato and pronostico_salvato.risultato_ospite_pronosticato is not none else '' }}" placeholder="–">
           </div>
         </div>
@@ -109,10 +109,10 @@
             <option value="Autogol" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == 'Autogol' %}selected{% endif %}>— Autogol —</option>
             {% set lista_giocatori = giocatori_per_partita.get(partita.id, []) %}
             {% if lista_giocatori %}
-              <optgroup label="{{ partita.squadra_casa }}">
+              <optgroup label="{{ partita.squadra_casa|squadra }}">
                 {% for g in lista_giocatori %}{% if g.squadra|upper == partita.squadra_casa|upper %}<option value="{{ g.nome_giocatore }}" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }}</option>{% endif %}{% endfor %}
               </optgroup>
-              <optgroup label="{{ partita.squadra_ospite }}">
+              <optgroup label="{{ partita.squadra_ospite|squadra }}">
                 {% for g in lista_giocatori %}{% if g.squadra|upper == partita.squadra_ospite|upper %}<option value="{{ g.nome_giocatore }}" {% if pronostico_salvato and pronostico_salvato.marcatore_pronosticato == g.nome_giocatore %}selected{% endif %}>{{ g.nome_giocatore }}</option>{% endif %}{% endfor %}
               </optgroup>
             {% endif %}

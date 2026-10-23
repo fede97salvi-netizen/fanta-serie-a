@@ -19,7 +19,7 @@ from config import get_config
 from auth_utils import admin_required
 from extensions import csrf, limiter, db
 from db_utils import db_conn, db_execute, db_fetchone, db_fetchall, db_commit, row_get, USE_POSTGRES
-from services.game_logic import parse_flexible_datetime, pulisci_username
+from services.game_logic import parse_flexible_datetime, pulisci_username, nome_squadra_breve
 from db_schema import aggiorna_schema
 from invia_notifiche import (
     invia_promemoria_generale, invia_promemoria_partite,
@@ -121,6 +121,8 @@ def prepara_database():
 # ─── Filtri Jinja ─────────────────────────────────────────────────────────────
 
 def _register_filters(app: Flask):
+    app.add_template_filter(nome_squadra_breve, 'squadra')
+
     @app.template_filter('datetime_local_italia')
     def datetime_local_italia(s):
         if not s:

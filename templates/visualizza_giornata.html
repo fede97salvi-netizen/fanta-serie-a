@@ -11,11 +11,11 @@
   {% for partita in partite %}
   {% set is_pron = partita['pronosticabile'] %}
   <div class="result-row {% if is_pron %}is-pron{% else %}is-minor{% endif %}">
-    <div class="result-team home">{{ partita['squadra_casa'] }}</div>
+    <div class="result-team home">{{ partita['squadra_casa']|squadra }}</div>
     <div class="result-score">
       {% if partita['risultato_casa_reale'] is not none %}{{ partita['risultato_casa_reale'] }} – {{ partita['risultato_ospite_reale'] }}{% else %}– – –{% endif %}
     </div>
-    <div class="result-team away">{{ partita['squadra_ospite'] }}</div>
+    <div class="result-team away">{{ partita['squadra_ospite']|squadra }}</div>
     {% if is_pron %}
     <div class="result-meta">
       <span class="star"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>Pronosticabile</span>
@@ -45,7 +45,7 @@
             <th style="text-align:center;width:40px;">Tot</th>
             {% for partita in partite_pron %}
             <th style="text-align:center;font-size:10.5px;line-height:1.2;padding:6px 3px;">
-              {{ partita['squadra_casa'][:4] }}<br>{{ partita['squadra_ospite'][:4] }}
+              {{ (partita['squadra_casa']|squadra)[:4] }}<br>{{ (partita['squadra_ospite']|squadra)[:4] }}
             </th>
             {% endfor %}
           </tr>
@@ -88,7 +88,7 @@
   {% for partita in partite_pron %}
   <div class="fsa-card u-mb-md">
     <div class="match-caption">
-      {{ partita['squadra_casa'] }} vs {{ partita['squadra_ospite'] }}
+      {{ partita['squadra_casa']|squadra }} vs {{ partita['squadra_ospite']|squadra }}
     </div>
     <div class="overflow-x">
       <table class="fsa-table" style="table-layout:fixed;width:100%;">

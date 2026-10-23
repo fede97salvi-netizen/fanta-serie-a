@@ -5,7 +5,7 @@
 <div class="fsa-section u-pt-sm">
   {% for item in pronostici %}
   <div class="fsa-card">
-    <div class="match-caption" style="color:#fff;">{{ item.squadra_casa }} vs {{ item.squadra_ospite }}</div>
+    <div class="match-caption" style="color:#fff;">{{ item.squadra_casa|squadra }} vs {{ item.squadra_ospite|squadra }}</div>
     <div class="pick-summary">
       <div class="pick-cell"><div class="pick-k">Esito</div><div class="pick-v az">{{ item.esito_pronosticato or '–' }}</div></div>
       <div class="pick-cell"><div class="pick-k">Risultato</div><div class="pick-v">{% if item.risultato_casa_pronosticato is not none %}{{ item.risultato_casa_pronosticato }}–{{ item.risultato_ospite_pronosticato }}{% else %}–{% endif %}</div></div>

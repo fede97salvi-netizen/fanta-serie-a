@@ -368,6 +368,28 @@ def normalizza_squadra(nome: str) -> str:
     return ''.join(tokens)
 
 
+# Nomi brevi per cui non basta togliere sigle e anni.
+_NOMI_BREVI_SQUADRA = {
+    'INTERNAZIONALE MILANO': 'INTER',
+    'INTERNAZIONALE': 'INTER',
+    'HELLAS VERONA': 'VERONA',
+}
+
+
+def nome_squadra_breve(nome: str) -> str:
+    """Nome da mostrare nelle card (es. 'FC INTERNAZIONALE MILANO' -> 'INTER').
+
+    Solo per la visualizzazione: nel DB resta il nome ufficiale dell'API,
+    che serve per abbinare i risultati.
+    """
+    if not nome:
+        return ''
+    parole = [p for p in str(nome).upper().split()
+              if p not in _STOPWORDS_SQUADRA and not p.isdigit()]
+    breve = ' '.join(parole) or str(nome).upper()
+    return _NOMI_BREVI_SQUADRA.get(breve, breve)
+
+
 def squadre_compatibili(a: str, b: str) -> bool:
     """True se due nomi squadra si riferiscono verosimilmente alla stessa squadra.
     Confronto su forma normalizzata (accenti/suffissi rimossi) con match per

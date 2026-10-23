@@ -599,7 +599,7 @@ input[type="checkbox"] { accent-color: var(--azzurro); }
   padding-bottom: 6px;
 }
 .team-away .team-crest { background: linear-gradient(180deg, #14384f, #0f2130); }
-.team-name { font-family: var(--font-d); font-weight: 800; font-size: 19px; line-height: 1; text-transform: uppercase; text-align: center; color: #fff; overflow-wrap: anywhere; }
+.team-name { font-family: var(--font-d); font-weight: 800; font-size: 19px; line-height: 1; text-transform: uppercase; text-align: center; color: #fff; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vs-tag {
   font-family: var(--font-d); font-weight: 900; font-size: 15px; color: var(--muted);
   padding: 3px 8px; border: 1px solid var(--line); border-radius: 3px; transform: skewX(-10deg);
@@ -630,6 +630,9 @@ input[type="radio"].esito-radio:checked + .esito-btn {
 }
 
 .score-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+/* Etichette "Gol SQUADRA" su una riga: un nome lungo non deve spostare i campi */
+.score-inputs .field-label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-inputs > div { min-width: 0; }
 .goal-input.form-control {
   height: 52px; text-align: center; padding: 0 8px;
   font-family: var(--font-d); font-weight: 900; font-size: 28px; font-variant-numeric: tabular-nums;
